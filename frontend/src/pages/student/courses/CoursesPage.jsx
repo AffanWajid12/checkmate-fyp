@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import JoinCourseDialog from './JoinCourseDialog';
 
-// Colorful header backgrounds inspired by Google Classroom cards
+// Soft course card header backgrounds (teal-friendly palette)
 const CARD_COLORS = [
-    '#2dd4bf', // blue-600
-    '#2dd4bf', // green-700
-    '#2dd4bf', // red-600
-    '#2dd4bf', // orange-500
-    '#2dd4bf', // purple-700
-    '#2dd4bf', // teal-600
-    '#2dd4bf', // pink-600
-    '#2dd4bf', // indigo-700
+    '#0f766e', // deep muted teal
+    '#134e4a', // dark teal-green
+    '#1e3a5f', // soft navy blue
+    '#3f3cbb', // muted indigo
+    '#6b7280', // cool gray
+    '#374151', // slate gray
+    '#7c3aed', // soft purple
+    '#065f46', // forest teal
 ];
 
 const mockCourses = [

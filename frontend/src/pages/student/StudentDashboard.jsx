@@ -77,7 +77,7 @@ const SettingsIcon = () => (
 
 // ── Student mock data ──────────────────────────────────────────
 const student = {
-    name: 'Alex Rivera',
+    name: 'Ahmed Saeed',
     id: 'ID: 20230492',
 };
 
