@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom';
 import logo from './logo.png';
 
 const LandingPage = () => {
+    const navigate = useNavigate();
     return (
         <div className="min-h-screen bg-background font-sans text-text-primary">
             {/* Navbar */}
@@ -21,7 +23,12 @@ const LandingPage = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button className="text-sm font-medium hover:text-text-primary transition-colors">Log In</button>
+                    <button
+                        onClick={() => navigate('/student/dashboard')}
+                        className="text-sm font-medium hover:text-text-primary transition-colors"
+                    >
+                        Log In
+                    </button>
                     <button className="bg-primary text-text-inverse px-5 py-2.5 rounded-full text-sm font-medium hover:bg-primary-hover transition-colors">
                         Get Started
                     </button>
