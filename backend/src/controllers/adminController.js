@@ -44,7 +44,6 @@ const updateUserRole = async (req, res) => {
         const { role } = req.body;
 
         if (req.user.id === id) {
-            console.log("Attempted to change own role");
             return res.status(400).json({ message: "You cannot demote yourself. Please ask another admin to change your role." });
         }
 
