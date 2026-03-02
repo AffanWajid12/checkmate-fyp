@@ -23,12 +23,7 @@ const LandingPage = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => navigate('/student/dashboard')}
-                        className="text-sm font-medium hover:text-text-primary transition-colors"
-                    >
-                        Log In
-                    </button>
+                    <a href="/login" className="text-sm font-medium hover:text-text-primary transition-colors">Log In</a>
                     <button className="bg-primary text-text-inverse px-5 py-2.5 rounded-full text-sm font-medium hover:bg-primary-hover transition-colors">
                         Get Started
                     </button>
