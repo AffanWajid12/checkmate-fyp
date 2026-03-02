@@ -1,6 +1,8 @@
-import logo from '../logo.png';
+import { useNavigate } from 'react-router-dom';
+import logo from './logo.png';
 
 const LandingPage = () => {
+    const navigate = useNavigate();
     return (
         <div className="min-h-screen bg-background font-sans text-text-primary">
             {/* Navbar */}

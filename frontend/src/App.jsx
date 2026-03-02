@@ -7,8 +7,11 @@ import LoginPage from "./pages/LoginPage.jsx";
 import AdminLayout from "./pages/admin/Layout.jsx";
 import AdminDashboard from "./pages/admin/dashboard.jsx";
 import UserManagement from "./pages/admin/UserManagement.jsx";
+import StudentDashboard from './pages/student/StudentDashboard.jsx';
 
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 const queryClient = new QueryClient();
+
 
 function App() {
   return (
@@ -22,10 +25,11 @@ function App() {
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
           </Route>
+          <Route path="/student/dashboard" element={<StudentDashboard />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
   )
 }
 
-export default App
+export default App;
