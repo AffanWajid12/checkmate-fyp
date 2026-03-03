@@ -1,15 +1,35 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
+import { useEnrollInCourse } from '../../../hooks/useCourses';
 
 const JoinCourseDialog = ({ isOpen, onClose }) => {
     const [courseCode, setCourseCode] = useState('');
+    const { mutate: enroll, isPending } = useEnrollInCourse();
 
     if (!isOpen) return null;
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // TODO: handle join course logic
-        setCourseCode('');
-        onClose();
+        enroll(
+            { code: courseCode.trim().toUpperCase() },
+            {
+                onSuccess: () => {
+                    toast.success('Enrolled successfully!');
+                    setCourseCode('');
+                    onClose();
+                },
+                onError: (error) => {
+                    const status = error?.response?.status;
+                    if (status === 404) {
+                        toast.error('Course not found. Check the code and try again.');
+                    } else if (status === 409) {
+                        toast.error('You are already enrolled in this course.');
+                    } else {
+                        toast.error('Something went wrong. Please try again.');
+                    }
+                },
+            }
+        );
     };
 
     return (
@@ -64,13 +84,22 @@ const JoinCourseDialog = ({ isOpen, onClose }) => {
                             className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-semibold text-text-primary hover:bg-neutral-50 transition-colors"
                         >
                             Cancel
-                        </button>
-                        <button
+                        </button>                        <button
                             type="submit"
-                            disabled={!courseCode.trim()}
-                            className="flex-1 py-3 rounded-xl bg-primary text-text-inverse text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            disabled={!courseCode.trim() || isPending}
+                            className="flex-1 py-3 rounded-xl bg-primary text-text-inverse text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            Join Course
+                            {isPending ? (
+                                <>
+                                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                    </svg>
+                                    Joining…
+                                </>
+                            ) : (
+                                'Join Course'
+                            )}
                         </button>
                     </div>
                 </form>

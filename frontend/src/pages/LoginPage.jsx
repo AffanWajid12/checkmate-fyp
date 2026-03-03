@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import logo from "../logo.png";
 
 import supabase from "../utils/supabaseClient";
+import apiClient from "../utils/apiClient";
 
 const LoginPage = () => {
     const emailRef = useRef(null);
@@ -15,17 +16,27 @@ const LoginPage = () => {
     const handleSubmit = async (event) => {
         event.preventDefault();
         setError(null);
-        setLoading(true);
-
-        const { data, error } = await supabase.auth.signInWithPassword({
+        setLoading(true);        const { data, error } = await supabase.auth.signInWithPassword({
             email: emailRef.current.value,
             password: passwordRef.current.value,
-        })
-
+        });
         if (error) {
             setError(error.message);
         } else {
-            navigate("/dashboard");
+            try {
+                const { data } = await apiClient.get("/api/auth/me");
+                const role = data?.user?.role;
+                if (role === "TEACHER") {
+                    navigate("/teacher/dashboard");
+                } else if (role === "ADMIN") {
+                    navigate("/admin");
+                } else {
+                    navigate("/student/dashboard");
+                }
+            } catch {
+                // Fallback: role fetch failed, go to student dashboard
+                navigate("/student/dashboard");
+            }
         }
         setLoading(false);
     };
