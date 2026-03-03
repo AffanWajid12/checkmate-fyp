@@ -9,7 +9,6 @@ import AdminDashboard from "./pages/admin/dashboard.jsx";
 import UserManagement from "./pages/admin/UserManagement.jsx";
 import StudentDashboard from './pages/student/StudentDashboard.jsx';
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
 const queryClient = new QueryClient();
 
 

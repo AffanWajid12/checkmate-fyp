@@ -33,7 +33,7 @@ const UserManagement = () => {
                 const { data: { session } } = await supabase.auth.getSession();
                 const jwt = session?.access_token;
                 
-                const { data: { users } } = await apiClient.get("/admin/users", {
+                const { data: { users } } = await apiClient.get("/api/admin/users", {
                     headers: { Authorization: `Bearer ${jwt}` },
                 });
                 setUsers(users);
@@ -56,7 +56,7 @@ const UserManagement = () => {
             const { data: { session } } = await supabase.auth.getSession();
             const jwt = session?.access_token;
 
-            await apiClient.patch(`/admin/users/${userId}/role`, { role: newRole }, {
+            await apiClient.patch(`/api/admin/users/${userId}/role`, { role: newRole }, {
                 headers: { Authorization: `Bearer ${jwt}` },
             });
             setUsers((prev) =>
