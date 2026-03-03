@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../logo.png';
 import CoursesPage from './courses/CoursesPage';
+import AttendanceOverview from './attendance/AttendanceOverview';
+import supabase from '../../utils/supabaseClient';
 
 // ── Sidebar nav items ──────────────────────────────────────────
 const navItems = [
@@ -75,24 +77,30 @@ const SettingsIcon = () => (
     </svg>
 );
 
-// ── Student mock data ──────────────────────────────────────────
-const student = {
-    name: 'Ahmed Saeed',
-    id: 'ID: 20230492',
-};
-
 // ── Main StudentDashboard component ───────────────────────────
 const StudentDashboard = () => {
     const [activeTab, setActiveTab] = useState('courses');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [user, setUser] = useState({ name: '', email: '' });
     const navigate = useNavigate();
 
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) {
+                const meta = session.user.user_metadata;
+                setUser({
+                    name: meta?.name ?? meta?.full_name ?? session.user.email?.split('@')[0] ?? 'Student',
+                    email: session.user.email ?? '',
+                });
+            }
+        });
+    }, []);
+
     const renderContent = () => {
-        switch (activeTab) {
-            case 'courses':
+        switch (activeTab) {            case 'courses':
                 return <CoursesPage />;
             case 'attendance':
-                return <PlaceholderPage title="Attendance" />;
+                return <AttendanceOverview />;
             case 'assignments':
                 return <PlaceholderPage title="Assignments" />;
             case 'grades':
@@ -135,21 +143,19 @@ const StudentDashboard = () => {
                             </button>
                         );
                     })}
-                </nav>
-
-                {/* Student Profile Footer */}
+                </nav>                {/* Student Profile Footer */}
                 <div className="border-t border-neutral-100 px-4 py-4 flex items-center gap-3">
                     {/* Avatar */}
                     <div className="w-9 h-9 rounded-full bg-orange-400 flex-shrink-0 flex items-center justify-center text-white font-bold text-sm">
-                        {student.name.charAt(0)}
+                        {(user.name.charAt(0) || '?').toUpperCase()}
                     </div>
 
-                    {/* Name & ID */}
+                    {/* Name & Email */}
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-text-primary leading-tight truncate">
-                            {student.name}
+                            {user.name || 'Loading…'}
                         </p>
-                        <p className="text-xs text-text-muted leading-tight truncate">{student.id}</p>
+                        <p className="text-xs text-text-muted leading-tight truncate">{user.email}</p>
                     </div>
 
                     {/* Settings */}
@@ -215,16 +221,14 @@ const StudentDashboard = () => {
                             </button>
                         );
                     })}
-                </nav>
-
-                {/* Student Profile Footer */}
+                </nav>                {/* Student Profile Footer */}
                 <div className="border-t border-neutral-100 px-4 py-4 flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-orange-400 flex-shrink-0 flex items-center justify-center text-white font-bold text-sm">
-                        {student.name.charAt(0)}
+                        {(user.name.charAt(0) || '?').toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-text-primary leading-tight truncate">{student.name}</p>
-                        <p className="text-xs text-text-muted leading-tight truncate">{student.id}</p>
+                        <p className="text-sm font-semibold text-text-primary leading-tight truncate">{user.name || 'Loading…'}</p>
+                        <p className="text-xs text-text-muted leading-tight truncate">{user.email}</p>
                     </div>
                     <button title="Settings" className="text-text-muted hover:text-text-primary hover:bg-neutral-100 p-1.5 rounded-lg transition-colors flex-shrink-0">
                         <SettingsIcon />

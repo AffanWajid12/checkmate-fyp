@@ -24,6 +24,14 @@ enum AssessmentType {
   @@schema("public")
 }
 
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+
+  @@schema("public")
+}
+
 model users {
   id              String            @id @db.Uuid // This matches the ID from auth.users
   email           String            @unique
@@ -52,9 +60,11 @@ model enrollments {
 
   course_id  String @db.Uuid
   course    courses @relation("CourseEnrollments", fields: [course_id], references: [id], onDelete: Cascade)
-
   student_id String @db.Uuid
   student   users    @relation("StudentEnrollments", fields: [student_id], references: [id], onDelete: Cascade)
+
+  // attendance records for this enrollment
+  attendance attendance[] @relation("EnrollmentAttendance")
 
   @@unique([course_id, student_id])
   @@map("enrollments")
@@ -66,6 +76,7 @@ model courses {
   id          String   @id @db.Uuid @default(uuid())
   title       String
   description String?
+  code        String   @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt @default(now())
 
@@ -156,10 +167,24 @@ model attachments {
   mime_type     String
   createdAt     DateTime @default(now())
   updatedAt   DateTime @updatedAt @default(now())
-
   submission_id  String @db.Uuid
   submission    submissions @relation("SubmissionAttachments", fields: [submission_id], references: [id], onDelete: Cascade)
 
   @@map("attachments")
+  @@schema("public")
+}
+
+model attendance {
+  id            String           @id @db.Uuid @default(uuid())
+  date          DateTime         @db.Date
+  status        AttendanceStatus @default(ABSENT)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt @default(now())
+
+  enrollment_id String      @db.Uuid
+  enrollment    enrollments @relation("EnrollmentAttendance", fields: [enrollment_id], references: [id], onDelete: Cascade)
+
+  @@unique([enrollment_id, date])
+  @@map("attendance")
   @@schema("public")
 }

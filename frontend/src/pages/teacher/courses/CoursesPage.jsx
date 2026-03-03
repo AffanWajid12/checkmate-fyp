@@ -1,64 +1,38 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import JoinCourseDialog from './JoinCourseDialog';
-import { useEnrolledCourses } from '../../../hooks/useCourses';
+import { useTeacherCourses } from '../../../hooks/useCourses';
+import CreateCourseDialog from './CreateCourseDialog';
 
-// Soft course card header backgrounds (teal-friendly palette)
+// Soft course card header backgrounds (same palette as student side)
 const CARD_COLORS = [
-    '#0f766e', // deep muted teal
-    '#134e4a', // dark teal-green
-    '#1e3a5f', // soft navy blue
-    '#3f3cbb', // muted indigo
-    '#6b7280', // cool gray
-    '#374151', // slate gray
-    '#7c3aed', // soft purple
-    '#065f46', // forest teal
+    '#0f766e', '#134e4a', '#1e3a5f', '#3f3cbb',
+    '#6b7280', '#374151', '#7c3aed', '#065f46',
 ];
 
-// Student avatar icon (generic person silhouette)
-const AvatarIcon = ({ className = '' }) => (
-    <div className={`rounded-full overflow-hidden border-2 border-white/60 bg-neutral-200 flex items-center justify-center ${className}`}>
-        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-neutral-500">
-            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-        </svg>
-    </div>
-);
-
-// Three-dot menu icon
 const MoreVertIcon = () => (
     <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
         <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
     </svg>
 );
 
-// Roster icon
-const RosterIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
+const UsersIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
         <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
     </svg>
 );
 
-// Folder icon
-const FolderIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
-        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
-    </svg>
-);
+const TeacherCourseCard = ({ course, onClick }) => {
+    const studentCount = course.students?.length ?? 0;
 
-const CourseCard = ({ course, onClick }) => {
     return (
         <div
             onClick={onClick}
             className="bg-background rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden cursor-pointer"
         >
-            {/* Colored Header — fixed height so it never grows */}
-            <div
-                className="relative h-28 flex-shrink-0"
-                style={{ backgroundColor: course.color }}
-            >
-                {/* Three-dot menu */}
+            {/* Colored Header */}
+            <div className="relative h-28 flex-shrink-0" style={{ backgroundColor: course.color }}>
                 <button
                     onClick={(e) => e.stopPropagation()}
                     className="absolute top-3 right-3 text-white/80 hover:text-white hover:bg-white/20 rounded-full p-1 transition-colors z-10"
@@ -66,62 +40,52 @@ const CourseCard = ({ course, onClick }) => {
                     <MoreVertIcon />
                 </button>
 
-                {/* Course Title + Meta pinned to top-left */}
                 <div className="absolute top-0 left-0 right-10 p-4">
                     <h3 className="text-white font-bold text-base leading-snug line-clamp-2">
                         {course.title}
                     </h3>
-                    <div className="mt-1 space-y-0.5">
-                        <p className="text-white/80 text-xs font-medium">
-                            {course.code}
-                        </p>
-                        <p className="text-white/80 text-xs">
-                            {course.teacher?.name ?? 'Unknown Instructor'}
-                        </p>
+                    <div className="mt-1">
+                        <p className="text-white/80 text-xs font-medium">{course.code}</p>
                     </div>
                 </div>
 
-                {/* Avatar — overlapping the header bottom */}
-                <div className="absolute -bottom-5 right-4">
-                    <AvatarIcon className="w-10 h-10" />
+                {/* Student count badge */}
+                <div className="absolute bottom-3 right-4 flex items-center gap-1 bg-white/20 rounded-full px-2.5 py-1">
+                    <UsersIcon />
+                    <span className="text-white text-xs font-semibold">{studentCount}</span>
                 </div>
             </div>
 
-            {/* Card Body — spacer so avatar overlap is clear */}
-            <div className="flex-1 pt-8" />
+            {/* Card Body */}
+            <div className="flex-1 px-4 pt-4 pb-3">
+                {course.description ? (
+                    <p className="text-xs text-text-secondary line-clamp-2">{course.description}</p>
+                ) : (
+                    <p className="text-xs text-text-muted italic">No description</p>
+                )}
+            </div>
 
             {/* Card Footer */}
-            <div className="border-t border-neutral-100 px-4 py-3 flex items-center gap-3 text-text-muted">
-                <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="hover:text-accent-500 transition-colors"
-                    title="Roster"
-                >
-                    <RosterIcon />
-                </button>
-                <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="hover:text-accent-500 transition-colors"
-                    title="Course Files"
-                >
-                    <FolderIcon />
-                </button>
+            <div className="border-t border-neutral-100 px-4 py-3 flex items-center gap-2 text-xs text-text-muted">
+                <UsersIcon />
+                <span>{studentCount} student{studentCount !== 1 ? 's' : ''} enrolled</span>
+                <span className="ml-auto font-mono text-accent-500 font-semibold">{course.code}</span>
             </div>
         </div>
     );
 };
 
-const CoursesPage = () => {
+const TeacherCoursesPage = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const navigate = useNavigate();
-    const { data: courses = [], isLoading } = useEnrolledCourses();
+    const { data: courses = [], isLoading } = useTeacherCourses();
 
     return (
         <div className="relative min-h-full">
-            {/* Top-right Plus Button */}
+            {/* Top-right Create Button */}
             <button
                 onClick={() => setIsDialogOpen(true)}
-                title="Join a course"
+                title="Create a course"
                 className="fixed top-6 right-8 z-40 bg-primary text-text-inverse w-12 h-12 rounded-full shadow-lg hover:shadow-xl hover:bg-primary-hover transition-all flex items-center justify-center"
             >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-6 h-6">
@@ -135,7 +99,7 @@ const CoursesPage = () => {
                 <p className="text-sm text-text-secondary mt-1">
                     {isLoading
                         ? 'Loading your courses…'
-                        : `You are enrolled in ${courses.length} course${courses.length !== 1 ? 's' : ''} this semester.`
+                        : `You are teaching ${courses.length} course${courses.length !== 1 ? 's' : ''}.`
                     }
                 </p>
             </div>
@@ -146,8 +110,11 @@ const CoursesPage = () => {
                     {[...Array(4)].map((_, i) => (
                         <div key={i} className="bg-background rounded-2xl border border-neutral-200 shadow-sm flex flex-col overflow-hidden animate-pulse">
                             <div className="h-28 bg-neutral-200 flex-shrink-0" />
-                            <div className="flex-1 pt-8" />
-                            <div className="border-t border-neutral-100 px-4 py-3 h-12" />
+                            <div className="flex-1 p-4 space-y-2">
+                                <div className="h-3 bg-neutral-200 rounded w-3/4" />
+                                <div className="h-3 bg-neutral-200 rounded w-1/2" />
+                            </div>
+                            <div className="border-t border-neutral-100 px-4 py-3 h-10" />
                         </div>
                     ))}
                 </div>
@@ -164,13 +131,13 @@ const CoursesPage = () => {
                     </div>
                     <h2 className="text-lg font-bold text-text-primary mb-1">No courses yet</h2>
                     <p className="text-sm text-text-secondary mb-4">
-                        Join your first course using the code provided by your instructor.
+                        Create your first course and share the code with your students.
                     </p>
                     <button
                         onClick={() => setIsDialogOpen(true)}
                         className="px-5 py-2.5 rounded-xl bg-primary text-text-inverse text-sm font-semibold hover:bg-primary-hover transition-colors"
                     >
-                        Join a Course
+                        Create a Course
                     </button>
                 </div>
             )}
@@ -179,17 +146,17 @@ const CoursesPage = () => {
             {!isLoading && courses.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {courses.map((course, index) => (
-                        <CourseCard
+                        <TeacherCourseCard
                             key={course.id}
                             course={{ ...course, color: CARD_COLORS[index % CARD_COLORS.length] }}
-                            onClick={() => navigate(`/student/courses/${course.id}`)}
+                            onClick={() => navigate(`/teacher/courses/${course.id}`)}
                         />
                     ))}
                 </div>
             )}
 
-            {/* Join Course Dialog */}
-            <JoinCourseDialog
+            {/* Create Course Dialog */}
+            <CreateCourseDialog
                 isOpen={isDialogOpen}
                 onClose={() => setIsDialogOpen(false)}
             />
@@ -197,4 +164,4 @@ const CoursesPage = () => {
     );
 };
 
-export default CoursesPage;
+export default TeacherCoursesPage;
