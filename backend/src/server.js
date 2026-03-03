@@ -4,7 +4,8 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 
-import adminRoutes from "./routes/adminRoutes.js"
+import adminRoutes from "./routes/adminRoutes.js";
+import courseRoutes from "./routes/courseRoutes.js";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 
 //routes folders
 app.use("/api/admin", adminRoutes);
+app.use("/api/courses", courseRoutes);
 
 // Health Check Route
 app.get('/api', (req, res) => {
