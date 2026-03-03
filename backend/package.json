@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon --exec tsx src/server.js"
   },
   "keywords": [],
   "author": "",
@@ -18,7 +18,8 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "pg": "^8.19.0"
+    "pg": "^8.19.0",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",
