@@ -21,7 +21,7 @@ const AddUserModal = ({ onClose, onUserAdded }) => {
             const { data: { session } } = await supabase.auth.getSession();
             const jwt = session?.access_token;
 
-            const { data: { newUser } } = await apiClient.post("/admin/users", form, {
+            const { data: { newUser } } = await apiClient.post("/api/admin/users", form, {
                 headers: { Authorization: `Bearer ${jwt}` },
             });
             onUserAdded(newUser);
