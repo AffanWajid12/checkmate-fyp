@@ -32,6 +32,14 @@ enum AttendanceStatus {
   @@schema("public")
 }
 
+enum SubmissionStatus {
+  SUBMITTED
+  LATE
+  GRADED
+
+  @@schema("public")
+}
+
 model users {
   id              String            @id @db.Uuid // This matches the ID from auth.users
   email           String            @unique
@@ -104,7 +112,6 @@ model announcements {
   course    courses @relation("CourseAnnouncements", fields: [course_id], references: [id], onDelete: Cascade)
 
   assessments assessments[] @relation("AnnouncementAssessments")
-  sourceMaterials source_materials[] @relation("AnnouncementSourceMaterials")
 
   @@map("announcements")
   @@schema("public")
@@ -119,8 +126,8 @@ model source_materials {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt @default(now())
 
-  announcement_id  String @db.Uuid
-  announcement    announcements @relation("AnnouncementSourceMaterials", fields: [announcement_id], references: [id], onDelete: Cascade)
+  assessment_id  String @db.Uuid
+  assessment    assessments @relation("AssessmentSourceMaterials", fields: [assessment_id], references: [id], onDelete: Cascade)
 
   @@map("source_materials")
   @@schema("public")
@@ -128,23 +135,31 @@ model source_materials {
 
 model assessments {
   id            String  @id @db.Uuid @default(uuid())
+  title         String
+  instructions  String?
   type          AssessmentType @default(QUIZ)
+  due_date      DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   announcement_id  String @db.Uuid
   announcement    announcements @relation("AnnouncementAssessments", fields: [announcement_id], references: [id], onDelete: Cascade)
 
-  submissions submissions[] @relation("AssessmentSubmissions")
+  submissions      submissions[]    @relation("AssessmentSubmissions")
+  source_materials source_materials[] @relation("AssessmentSourceMaterials")
 
   @@map("assessments")
   @@schema("public")
 }
 
 model submissions {
-  id            String  @id @db.Uuid @default(uuid())
+  id            String           @id @db.Uuid @default(uuid())
+  status        SubmissionStatus @default(SUBMITTED)
+  submitted_at  DateTime         @default(now())
+  grade         Float?
+  feedback      String?
   createdAt     DateTime @default(now())
-  updatedAt   DateTime @updatedAt @default(now())
+  updatedAt     DateTime @updatedAt @default(now())
 
   user_id      String @db.Uuid
   user         users @relation("UserSubmissions", fields: [user_id], references: [id], onDelete: Cascade)
