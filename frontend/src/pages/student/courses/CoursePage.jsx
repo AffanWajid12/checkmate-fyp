@@ -25,6 +25,20 @@ const CalendarIcon = () => (
     </svg>
 );
 
+const ArrowRightIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <line x1="5" y1="12" x2="19" y2="12" />
+        <polyline points="12 5 19 12 12 19" />
+    </svg>
+);
+
+const ClockIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+    </svg>
+);
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const formatDate = (iso) => {
@@ -44,33 +58,83 @@ const timeAgo = (iso) => {
     return formatDate(iso);
 };
 
-// ─── Announcement Card ────────────────────────────────────────────────────────
+const formatDueDate = (iso) => {
+    if (!iso) return null;
+    return new Date(iso).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+    });
+};
 
-const AnnouncementCard = ({ announcement }) => (
-    <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-5">
-        <div className="flex items-start justify-between gap-4 mb-2">
-            <h3 className="text-sm font-bold text-text-primary leading-snug">{announcement.title}</h3>
-            <span className="text-xs text-text-muted whitespace-nowrap flex-shrink-0 mt-0.5">
-                {timeAgo(announcement.createdAt)}
-            </span>
-        </div>
-        <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
-            {announcement.description}
-        </p>
-        {announcement.assessments?.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-neutral-100 flex flex-wrap gap-2">
-                {announcement.assessments.map((a) => (
-                    <span
-                        key={a.id}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium bg-accent-50 text-accent-500 border border-accent-100 px-2.5 py-1 rounded-full"
-                    >
-                        📎 {a.title}
+const TYPE_META = {
+    QUIZ:       { label: 'Quiz',       color: 'bg-blue-50 text-blue-600 border-blue-200' },
+    ASSIGNMENT: { label: 'Assignment', color: 'bg-purple-50 text-purple-600 border-purple-200' },
+    EXAM:       { label: 'Exam',       color: 'bg-amber-50 text-amber-600 border-amber-200' },
+};
+
+// ─── Assessment Tile ──────────────────────────────────────────────────────────
+
+const AssessmentTile = ({ assessment, courseId }) => {
+    const navigate = useNavigate();
+    const meta = TYPE_META[assessment.type] ?? TYPE_META.ASSIGNMENT;
+    const due = formatDueDate(assessment.due_date);
+    const isOverdue = assessment.due_date && new Date(assessment.due_date) < new Date();
+
+    return (
+        <button
+            onClick={() => navigate(`/student/courses/${courseId}/assessments/${assessment.id}`)}
+            className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 hover:border-accent-300 hover:bg-accent-50 transition-colors group"
+        >
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${meta.color}`}>
+                        {meta.label}
                     </span>
-                ))}
+                    <span className="text-sm font-semibold text-text-primary truncate">{assessment.title}</span>
+                </div>
+                {due && (
+                    <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-error' : 'text-text-muted'}`}>
+                        <ClockIcon />
+                        <span>Due {due}</span>
+                    </div>
+                )}
             </div>
-        )}
-    </div>
-);
+            <span className="text-text-muted group-hover:text-accent-500 transition-colors flex-shrink-0">
+                <ArrowRightIcon />
+            </span>
+        </button>
+    );
+};
+
+// ─── Announcement Card (two variants) ─────────────────────────────────────────
+
+const AnnouncementCard = ({ announcement, courseId }) => {
+    const hasAssessments = announcement.assessments?.length > 0;
+
+    return (
+        <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-5">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 mb-2">
+                <h3 className="text-sm font-bold text-text-primary leading-snug">{announcement.title}</h3>
+                <span className="text-xs text-text-muted whitespace-nowrap flex-shrink-0 mt-0.5">
+                    {timeAgo(announcement.createdAt)}
+                </span>
+            </div>
+            <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
+                {announcement.description}
+            </p>
+
+            {/* Assessment tiles */}
+            {hasAssessments && (
+                <div className="mt-4 pt-4 border-t border-neutral-100 space-y-2">
+                    {announcement.assessments.map((a) => (
+                        <AssessmentTile key={a.id} assessment={a} courseId={courseId} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -170,7 +234,7 @@ const CoursePage = () => {
             {!isLoading && announcements.length > 0 && (
                 <div className="space-y-4">
                     {announcements.map((a) => (
-                        <AnnouncementCard key={a.id} announcement={a} />
+                        <AnnouncementCard key={a.id} announcement={a} courseId={courseId} />
                     ))}
                 </div>
             )}
