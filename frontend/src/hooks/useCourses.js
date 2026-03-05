@@ -3,11 +3,13 @@ import apiClient from "../utils/apiClient.js";
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
 export const courseKeys = {
-    enrolledCourses: ["courses", "enrolled"],
-    teacherCourses:  ["courses", "teacher"],
-    announcements:   (courseId) => ["courses", courseId, "announcements"],
+    enrolledCourses:   ["courses", "enrolled"],
+    teacherCourses:    ["courses", "teacher"],
+    announcements:     (courseId) => ["courses", courseId, "announcements"],
     studentAttendance: (courseId) => ["courses", courseId, "attendance", "mine"],
     courseAttendance:  (courseId) => ["courses", courseId, "attendance"],
+    assessmentDetails: (courseId, assessmentId) => ["courses", courseId, "assessments", assessmentId],
+    submissionDetails: (courseId, assessmentId, submissionId) => ["courses", courseId, "assessments", assessmentId, "submissions", submissionId],
 };
 
 // ─── Student Hooks ────────────────────────────────────────────────────────────
@@ -161,3 +163,128 @@ export const useCourseAttendance = (courseId) =>
         },
         enabled: !!courseId,
     });
+
+// ─── Assessment Hooks ─────────────────────────────────────────────────────────
+
+/**
+ * POST /api/courses/:courseId/announcements/:announcementId/assessments
+ * Body: multipart/form-data — title*, type*, instructions?, due_date?, files?
+ * Creates an assessment linked to an announcement, with optional source material uploads.
+ */
+export const useAddAssessment = (courseId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ announcementId, formData }) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/announcements/${announcementId}/assessments`,
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } }
+            );
+            return data; // { assessment, source_materials[] }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });
+        },
+    });
+};
+
+/**
+ * GET /api/courses/:courseId/assessments/:assessmentId
+ * Role-aware: teacher gets submitted/late/not_submitted lists; student gets own submission.
+ */
+export const useAssessmentDetails = (courseId, assessmentId) =>
+    useQuery({
+        queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+        queryFn: async () => {
+            const { data } = await apiClient.get(
+                `/api/courses/${courseId}/assessments/${assessmentId}`
+            );
+            return data; // { assessment, submitted[], late[], not_submitted[] } OR { assessment, submission }
+        },
+        enabled: !!courseId && !!assessmentId,
+    });
+
+/**
+ * POST /api/courses/:courseId/assessments/:assessmentId/submit
+ * Body: multipart/form-data — files* (at least one)
+ * Creates the student's first submission.
+ */
+export const useSubmitAssessment = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (formData) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments/${assessmentId}/submit`,
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } }
+            );
+            return data; // { submission, attachments[] }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+        },
+    });
+};
+
+/**
+ * PATCH /api/courses/:courseId/assessments/:assessmentId/submit
+ * Body: multipart/form-data — files* (at least one)
+ * Appends more files to an existing submission (blocked if GRADED).
+ */
+export const useUpdateSubmission = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (formData) => {
+            const { data } = await apiClient.patch(
+                `/api/courses/${courseId}/assessments/${assessmentId}/submit`,
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } }
+            );
+            return data; // { submission, new_attachments[] }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+        },
+    });
+};
+
+/**
+ * GET /api/courses/:courseId/assessments/:assessmentId/submissions/:submissionId
+ * Teacher only — returns full submission with signed attachment URLs.
+ */
+export const useGetSubmissionDetails = (courseId, assessmentId, submissionId) =>
+    useQuery({
+        queryKey: courseKeys.submissionDetails(courseId, assessmentId, submissionId),
+        queryFn: async () => {
+            const { data } = await apiClient.get(
+                `/api/courses/${courseId}/assessments/${assessmentId}/submissions/${submissionId}`
+            );
+            return data.submission; // { id, status, submitted_at, grade, feedback, user, attachments[] }
+        },
+        enabled: !!courseId && !!assessmentId && !!submissionId,
+    });
+
+/**
+ * DELETE /api/courses/:courseId/assessments/:assessmentId/source-materials/:materialId
+ * Teacher only — removes a source material from storage and DB.
+ */
+export const useDeleteSourceMaterial = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (materialId) => {
+            const { data } = await apiClient.delete(
+                `/api/courses/${courseId}/assessments/${assessmentId}/source-materials/${materialId}`
+            );
+            return data; // { message }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+        },
+    });
+};

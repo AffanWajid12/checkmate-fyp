@@ -11,10 +11,14 @@ import UserManagement from "./pages/admin/UserManagement.jsx";
 import StudentDashboard from "./pages/student/StudentDashboard.jsx";
 import StudentCoursePage from "./pages/student/courses/CoursePage.jsx";
 import StudentAttendancePage from "./pages/student/attendance/AttendancePage.jsx";
+import StudentAssessmentPage from "./pages/student/courses/AssessmentPage.jsx";
 
 import TeacherDashboard from "./pages/teacher/TeacherDashboard.jsx";
 import TeacherCoursePage from "./pages/teacher/courses/CoursePage.jsx";
 import TeacherAttendancePage from "./pages/teacher/attendance/AttendancePage.jsx";
+import AddAssessmentPage from "./pages/teacher/courses/AddAssessmentPage.jsx";
+import TeacherAssessmentPage from "./pages/teacher/courses/AssessmentPage.jsx";
+import ViewSubmissionPage from "./pages/teacher/courses/ViewSubmissionPage.jsx";
 
 const queryClient = new QueryClient();
 
@@ -31,17 +35,19 @@ function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
-          </Route>
-
-          {/* Student */}
+          </Route>          {/* Student */}
           <Route path="/student/dashboard" element={<StudentDashboard />} />
           <Route path="/student/courses/:courseId" element={<StudentCoursePage />} />
           <Route path="/student/courses/:courseId/attendance" element={<StudentAttendancePage />} />
+          <Route path="/student/courses/:courseId/assessments/:assessmentId" element={<StudentAssessmentPage />} />
 
           {/* Teacher */}
           <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
           <Route path="/teacher/courses/:courseId" element={<TeacherCoursePage />} />
           <Route path="/teacher/courses/:courseId/attendance" element={<TeacherAttendancePage />} />
+          <Route path="/teacher/courses/:courseId/add-assessment" element={<AddAssessmentPage />} />
+          <Route path="/teacher/courses/:courseId/assessments/:assessmentId" element={<TeacherAssessmentPage />} />
+          <Route path="/teacher/courses/:courseId/assessments/:assessmentId/submissions/:submissionId" element={<ViewSubmissionPage />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
