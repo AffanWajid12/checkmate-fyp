@@ -47,7 +47,7 @@ const generateSignedUrl = async (bucket, path) => {
 const verifyAssessmentInCourse = async (assessmentId, courseId) => {
     const assessment = await prisma.assessments.findUnique({
         where: { id: assessmentId },
-        include: { announcement: true },
+        include: { announcement: true, source_materials: true },
     });
     if (!assessment) throw { status: 404, message: "Assessment not found" };
     if (assessment.announcement.course_id !== courseId)
