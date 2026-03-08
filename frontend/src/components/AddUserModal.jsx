@@ -1,36 +1,30 @@
 import { useState } from "react";
-import apiClient from "../utils/apiClient";
-import supabase from "../utils/supabaseClient";
 import toast from "react-hot-toast";
+import { useAddUser } from "../hooks/useUsers";
 
 const ROLES = ["STUDENT", "TEACHER", "ADMIN"];
 const DEFAULT_PASSWORD = "12345678";
 const defaultForm = { name: "", email: "", role: "STUDENT", password: DEFAULT_PASSWORD };
 
-const AddUserModal = ({ onClose, onUserAdded }) => {
+const AddUserModal = ({ onClose }) => {
     const [form, setForm] = useState(defaultForm);
     const [useDefault, setUseDefault] = useState(true);
     const [formError, setFormError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const addUser = useAddUser();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormError(null);
         setSubmitting(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const jwt = session?.access_token;
-
-            const { data: { newUser } } = await apiClient.post("/api/admin/users", form, {
-                headers: { Authorization: `Bearer ${jwt}` },
-            });
-            onUserAdded(newUser);
+            const newUser = await addUser.mutateAsync(form);
             toast.success("User created successfully");
             onClose();
         } catch (err) {
             console.error(err);
-            setFormError(err.response?.data?.message ?? "Failed to create user.");
-            toast.error(err.response?.data?.message ?? "Failed to create user.");
+            setFormError(err?.response?.data?.message ?? err?.message ?? "Failed to create user.");
+            toast.error(err?.response?.data?.message ?? err?.message ?? "Failed to create user.");
         } finally {
             setSubmitting(false);
         }

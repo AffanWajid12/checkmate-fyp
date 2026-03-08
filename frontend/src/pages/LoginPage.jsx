@@ -1,45 +1,44 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuthContext } from "../components/AuthContext";
 import logo from "../logo.png";
 
-import supabase from "../utils/supabaseClient";
-import apiClient from "../utils/apiClient";
+import { useLogin } from "../hooks/useAuth";
 
 const LoginPage = () => {
     const emailRef = useRef(null);
     const passwordRef = useRef(null);
-    const [error, setError] = useState(null);
-    const [loading, setLoading] = useState(false);
-
     const navigate = useNavigate();
+
+    const { mutateAsync: login, isPending: loading, error } = useLogin();
+    const { user, loading: authLoading } = useAuthContext();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        setError(null);
-        setLoading(true);        const { data, error } = await supabase.auth.signInWithPassword({
-            email: emailRef.current.value,
-            password: passwordRef.current.value,
-        });
-        if (error) {
-            setError(error.message);
-        } else {
-            try {
-                const { data } = await apiClient.get("/api/auth/me");
-                const role = data?.user?.role;
-                if (role === "TEACHER") {
-                    navigate("/teacher/dashboard");
-                } else if (role === "ADMIN") {
-                    navigate("/admin");
-                } else {
-                    navigate("/student/dashboard");
-                }
-            } catch {
-                // Fallback: role fetch failed, go to student dashboard
+
+        try {
+            await login({
+                email: emailRef.current.value,
+                password: passwordRef.current.value
+            });
+        }
+        catch (error) {
+            console.error("Login error:", error);
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            const role = user?.role;
+            if (role === "TEACHER") {
+                navigate("/teacher/dashboard");
+            } else if (role === "ADMIN") {
+                navigate("/admin");
+            } else if (role === "STUDENT") {
                 navigate("/student/dashboard");
             }
         }
-        setLoading(false);
-    };
+    }, [user, navigate]);
 
     return (
         <div className="min-h-screen bg-background font-sans text-text-primary flex flex-col">
@@ -69,7 +68,7 @@ const LoginPage = () => {
 
                         {error && (
                             <div className="mb-6 px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600 font-medium">
-                                {error}
+                                {error.message}
                             </div>
                         )}
 
@@ -111,10 +110,10 @@ const LoginPage = () => {
 
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={loading || authLoading}
                                 className="w-full bg-primary text-text-inverse py-3.5 rounded-full text-sm font-semibold hover:bg-primary-hover transition-all shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed mt-2"
                             >
-                                {loading ? "Signing in…" : "Sign in"}
+                                {loading || authLoading ? "Signing in…" : "Sign in"}
                             </button>
                         </form>
 

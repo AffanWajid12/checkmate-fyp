@@ -4,6 +4,7 @@ import logo from '../../logo.png';
 import supabase from '../../utils/supabaseClient';
 import TeacherCoursesPage from './courses/CoursesPage';
 import TeacherAttendanceOverview from './attendance/AttendanceOverview';
+import { useLogout } from '../../hooks/useAuth';
 
 // ── Sidebar nav items ──────────────────────────────────────────
 const navItems = [
@@ -65,8 +66,10 @@ const SettingsIcon = () => (
 );
 
 // ── Sidebar shared component ───────────────────────────────────
-const SidebarContent = ({ activeTab, onTabChange, user }) => (
-    <>
+const SidebarContent = ({ activeTab, onTabChange, user }) => {
+    const { mutateAsync: logout, isPending: loading, error } = useLogout();
+
+    return ( <>
         {/* Brand */}
         <div className="flex items-center gap-2.5 px-5 py-5 border-b border-neutral-100">
             <div className="bg-primary p-1.5 rounded-lg flex-shrink-0">
@@ -120,8 +123,21 @@ const SidebarContent = ({ activeTab, onTabChange, user }) => (
                 <SettingsIcon />
             </button>
         </div>
+        <div className="px-6 py-5 border-t border-neutral-100">
+            <button className="flex items-center gap-3 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors w-full"
+                onClick={logout}
+                disabled={loading}
+            >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-text-muted">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Log out
+            </button>
+        </div>
     </>
-);
+)};
 
 // ── Main TeacherDashboard component ───────────────────────────
 const TeacherDashboard = () => {

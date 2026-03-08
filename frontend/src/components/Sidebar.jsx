@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useLogout } from "../hooks/useAuth";
 import logo from "../logo.png";
 
 
@@ -30,6 +31,8 @@ const navItems = [
 ];
 
 const Sidebar = () => {
+    const { mutateAsync: logout, isPending: loading, error } = useLogout();
+
     return (
         <aside className="h-screen w-64 bg-background border-r border-neutral-100 flex flex-col font-sans text-text-primary sticky top-0">
             {/* Brand */}
@@ -77,13 +80,16 @@ const Sidebar = () => {
 
             {/* Footer */}
             <div className="px-6 py-5 border-t border-neutral-100">
-                <button className="flex items-center gap-3 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors w-full">
+                <button className="flex items-center gap-3 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors w-full"
+                    onClick={logout}
+                    disabled={loading}
+                >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-text-muted">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                         <polyline points="16 17 21 12 16 7" />
                         <line x1="21" y1="12" x2="9" y2="12" />
                     </svg>
-                    Sign out
+                    Log out
                 </button>
             </div>
         </aside>

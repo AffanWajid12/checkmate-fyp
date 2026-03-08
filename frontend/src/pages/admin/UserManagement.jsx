@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
-import toast, { Toaster } from "react-hot-toast";
+import { useState } from "react";
+import toast from "react-hot-toast";
 
-import apiClient from "../../utils/apiClient";
-import supabase from "../../utils/supabaseClient";
 import AddUserModal from "../../components/AddUserModal";
+import DeleteUserModal from "../../components/DeleteUserModal";
+import { useUsers, useUpdateUserRole } from "../../hooks/useUsers";
 
 const ROLE_STYLES = {
     ADMIN:    "bg-primary text-text-inverse",
@@ -11,7 +11,7 @@ const ROLE_STYLES = {
     STUDENT:  "bg-neutral-100 text-text-secondary",
 };
 
-const columns = ["ID", "Name", "Email", "Role", "Created At", "Updated At"];
+const columns = ["Name", "Email", "Role", "Created At", "Updated At", "Actions"];
 
 const formatDate = (iso) => {
     if (!iso) return "—";
@@ -21,51 +21,23 @@ const formatDate = (iso) => {
 };
 
 const UserManagement = () => {
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
+    const [deleteModalUser, setDeleteModalUser] = useState(null);
 
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                const jwt = session?.access_token;
-                
-                const { data: { users } } = await apiClient.get("/api/admin/users", {
-                    headers: { Authorization: `Bearer ${jwt}` },
-                });
-                setUsers(users);
-            } catch (err) {
-                console.error(err);
-                setError("Failed to load users.");
-                toast.error("Failed to load users.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchUsers();
-    }, []);
+    const { data: users = [], isLoading, isError } = useUsers();
+    const updateUserRoleMutation = useUpdateUserRole();
 
     const [updatingRole, setUpdatingRole] = useState(null);
 
     const handleRoleChange = async (userId, newRole) => {
         setUpdatingRole(userId);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const jwt = session?.access_token;
-
-            await apiClient.patch(`/api/admin/users/${userId}/role`, { role: newRole }, {
-                headers: { Authorization: `Bearer ${jwt}` },
-            });
-            setUsers((prev) =>
-                prev.map((u) => u.id === userId ? { ...u, role: newRole } : u)
-            );
+            await updateUserRoleMutation.mutateAsync({ userId, role: newRole });
             toast.success("User role updated successfully");
         } catch (err) {
             console.error(err);
-            toast.error(`Failed to update user role: ${err.response?.data?.message ?? err.message}`);
+            toast.error(`Failed to update user role: ${err?.response?.data?.message ?? err?.message ?? err}`);
         } finally {
             setUpdatingRole(null);
         }
@@ -126,7 +98,7 @@ const UserManagement = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {loading && (
+                                {isLoading && (
                                     <tr>
                                         <td colSpan={6} className="px-6 py-16 text-center text-text-muted text-sm">
                                             <div className="flex items-center justify-center gap-2">
@@ -140,15 +112,15 @@ const UserManagement = () => {
                                     </tr>
                                 )}
 
-                                {!loading && error && (
+                                {!isLoading && isError && (
                                     <tr>
                                         <td colSpan={6} className="px-6 py-16 text-center text-sm text-red-500 font-medium">
-                                            {error}
+                                            Failed to load users.
                                         </td>
                                     </tr>
                                 )}
 
-                                {!loading && !error && users.length === 0 && (
+                                {!isLoading && !isError && users.length === 0 && (
                                     <tr>
                                         <td colSpan={6} className="px-6 py-16 text-center text-text-muted text-sm">
                                             No users found.
@@ -156,14 +128,11 @@ const UserManagement = () => {
                                     </tr>
                                 )}
 
-                                {!loading && !error && users.map((user, idx) => (
+                                {!isLoading && !isError && users.map((user, idx) => (
                                     <tr
                                         key={user.id}
                                         className={`border-b border-neutral-50 hover:bg-neutral-50 transition-colors ${idx % 2 === 0 ? "" : "bg-neutral-50/40"}`}
                                     >
-                                        <td className="px-6 py-4 font-mono text-xs text-text-muted whitespace-nowrap">
-                                            {user.id}
-                                        </td>
                                         <td className="px-6 py-4 font-semibold text-text-primary whitespace-nowrap">
                                             {user.name ?? "—"}
                                         </td>
@@ -174,7 +143,7 @@ const UserManagement = () => {
                                             <div className="relative w-32">
                                                 <select
                                                     value={user.role}
-                                                    disabled={updatingRole === user.id}
+                                                    disabled={updatingRole === user.id || updateUserRoleMutation.isLoading}
                                                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
                                                     className={`w-full pl-2.5 pr-7 py-1 rounded-full text-xs font-semibold appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent-400 transition-all border ${
                                                         ROLE_STYLES[user.role] ?? ROLE_STYLES.STUDENT
@@ -205,6 +174,18 @@ const UserManagement = () => {
                                         <td className="px-6 py-4 text-text-secondary whitespace-nowrap">
                                             {formatDate(user.updatedAt)}
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <button
+                                                onClick={() => setDeleteModalUser(user)}
+                                                className="p-2 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-50 transition-all"
+                                                title="Delete user"
+                                            >
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                                                    <path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
+                                                    <path d="M10 11v6M14 11v6" />
+                                                </svg>
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -214,10 +195,11 @@ const UserManagement = () => {
             </main>
 
             {modalOpen && (
-                <AddUserModal
-                    onClose={() => setModalOpen(false)}
-                    onUserAdded={(newUser) => setUsers((prev) => [newUser, ...prev])}
-                />
+                <AddUserModal onClose={() => setModalOpen(false)} />
+            )}
+
+            {deleteModalUser && (
+                <DeleteUserModal user={deleteModalUser} onClose={() => setDeleteModalUser(null)} />
             )}
         </div>
     );
