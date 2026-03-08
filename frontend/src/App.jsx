@@ -9,7 +9,7 @@ import RoleProtectedRoute from "./components/RoleProtectedRoute.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import AdminLayout from "./pages/admin/Layout.jsx";
-import AdminDashboard from "./pages/admin/dashboard.jsx";
+import AdminDashboard from "./pages/admin/Dashboard.jsx";
 import UserManagement from "./pages/admin/UserManagement.jsx";
 
 import StudentDashboard from "./pages/student/StudentDashboard.jsx";
