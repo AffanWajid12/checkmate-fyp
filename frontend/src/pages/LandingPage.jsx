@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import logo from '../logo.png';
+import fastLogo from '../Fast_Logo.png';
 
 const LandingPage = () => {
     const navigate = useNavigate();
@@ -16,10 +17,6 @@ const LandingPage = () => {
                 </div>
 
                 <div className="hidden md:flex items-center gap-8 text-sm font-medium text-text-secondary">
-                    <a href="#" className="hover:text-text-primary transition-colors">Product</a>
-                    <a href="#" className="hover:text-text-primary transition-colors">Solutions</a>
-                    <a href="#" className="hover:text-text-primary transition-colors">Pricing</a>
-                    <a href="#" className="hover:text-text-primary transition-colors">Resources</a>
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -31,8 +28,8 @@ const LandingPage = () => {
             </nav>
 
             {/* Hero Section */}
-            <main className="max-w-7xl mx-auto px-6 pt-12 pb-20 lg:pt-20 lg:pb-32 grid lg:grid-cols-2 gap-12 items-center">                
-                
+            <main className="max-w-7xl mx-auto px-6 pt-12 pb-20 lg:pt-20 lg:pb-32 grid lg:grid-cols-2 gap-12 items-center">
+
                 {/* Left Content */}
                 <div className="space-y-8">
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent-50 border border-accent-100">
@@ -48,25 +45,17 @@ const LandingPage = () => {
                         Streamline your classroom management with intelligent automation. Focus on strategy and student success while we handle the tactics.
                     </p>
 
-                    <div className="flex flex-wrap items-center gap-4">
-                        <button className="bg-primary text-text-inverse px-8 py-4 rounded-full text-base font-semibold hover:bg-primary-hover transition-all shadow-lg hover:shadow-xl">
-                            Get Started for Free
-                        </button>
-                        <button className="bg-background text-text-primary border border-neutral-200 px-8 py-4 rounded-full text-base font-semibold hover:bg-neutral-50 transition-all flex items-center gap-2 shadow-sm">
-                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                                <path d="M8 5v14l11-7z" />
-                            </svg>
-                            Watch Demo
-                        </button>
-                    </div>
 
                     <div className="flex items-center gap-4 pt-4">
                         <div className="flex -space-x-3">
-                            {[1, 2, 3].map((i) => (
+                            {[1, 2].map((i) => (
                                 <div key={i} className="w-10 h-10 rounded-full border-2 border-background bg-neutral-200 overflow-hidden">
                                     <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="User" className="w-full h-full object-cover" />
                                 </div>
                             ))}
+                            <div className="w-10 h-10 rounded-full border-2 border-background bg-neutral-200 overflow-hidden">
+                                <img src={`https://isb.nu.edu.pk/assets/img/person/6508_.webp`} alt="User" className="w-full h-full object-cover" />
+                            </div>
                         </div>
                         <div className="text-sm font-medium text-text-secondary">
                             Loved by teachers worldwide
@@ -75,7 +64,7 @@ const LandingPage = () => {
                 </div>
 
                 {/* Right Content - Abstract Graphic/Mockup */}
-                <div className="relative isolate"> {/* Added isolate to manage stacking contexts */}                    
+                <div className="relative isolate"> {/* Added isolate to manage stacking contexts */}
                     {/* Main Card */}
                     <div className="relative z-10 bg-background rounded-3xl shadow-2xl p-8 border border-neutral-100 max-w-md mx-auto lg:mx-0 lg:ml-auto">
                         <div className="absolute top-0 right-0 p-6">
@@ -135,13 +124,10 @@ const LandingPage = () => {
                 <div className="max-w-7xl mx-auto px-6 text-center">
                     <p className="text-xs font-bold text-text-muted tracking-widest uppercase mb-8">Trusted by top educational institutions</p>
                     <div className="flex flex-wrap justify-center gap-12 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-                        {/* Logo Placeholders */}
-                        {['Univ. of Tech', 'State College', 'Ivy Academy', 'Science Inst.'].map((name) => (
-                            <div key={name} className="flex items-center gap-2 font-bold text-xl text-text-secondary">
-                                <div className="w-6 h-6 bg-text-muted rounded-sm"></div>
-                                {name}
-                            </div>
-                        ))}
+                        <div className="flex items-center gap-3 font-bold text-xl text-text-secondary">
+                            <img src={fastLogo} alt="FAST NUCES" className="w-8 h-8 object-contain grayscale" />
+                            National University of Computer and Emerging Sciences
+                        </div>
                     </div>
                 </div>
             </section>            {/* Features Section */}
@@ -154,7 +140,7 @@ const LandingPage = () => {
                 <div className="grid md:grid-cols-3 gap-8">
                     {[
                         {
-                            title: "Smart Assessments",
+                            title: "Smart Feedback",
                             desc: "Instant grading and personalized feedback loops powered by our advanced AI engine. Save hours every week.",
                             icon: (
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
@@ -163,8 +149,8 @@ const LandingPage = () => {
                             )
                         },
                         {
-                            title: "Automated Attendance",
-                            desc: "Effortless tracking integrated with your daily workflow. Set it once and let the system handle the rest.",
+                            title: "Automated Grading",
+                            desc: "Effortless grade exams using AI. Give it instructions once and let it handle the rest.",
                             icon: (
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
                                     <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -204,9 +190,9 @@ const LandingPage = () => {
 
                         <ul className="space-y-4 mb-8">
                             {[
-                                "Real-time student progress tracking",
-                                "Customizable gradebook views",
-                                "One-click report generation"
+                                "Student progress tracking",
+                                "Topic Wise Grading Reports",
+                                "Identify key areas for improvement"
                             ].map((item, i) => (
                                 <li key={i} className="flex items-center gap-3 text-text-secondary font-medium">
                                     <div className="w-5 h-5 rounded-full bg-primary text-text-inverse flex items-center justify-center flex-shrink-0">
@@ -219,12 +205,6 @@ const LandingPage = () => {
                             ))}
                         </ul>
 
-                        <a href="#" className="inline-flex items-center gap-2 font-bold text-text-primary hover:gap-3 transition-all">
-                            Explore all features
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                                <path d="M5 12h14M12 5l7 7-7 7" />
-                            </svg>
-                        </a>
                     </div>
 
                     <div className="relative">
@@ -277,10 +257,7 @@ const LandingPage = () => {
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <button className="bg-accent text-primary px-8 py-3.5 rounded-full font-bold hover:bg-accent-300 transition-colors w-full sm:w-auto">
-                        Start Free Trial
-                    </button>
-                    <button className="text-text-inverse border border-neutral-700 px-8 py-3.5 rounded-full font-bold hover:bg-neutral-900 transition-colors w-full sm:w-auto">
-                        Schedule Demo
+                        Login
                     </button>
                 </div>
             </section>            {/* Footer */}
@@ -288,51 +265,16 @@ const LandingPage = () => {
                 <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-12 mb-16">
                     <div className="col-span-1">
                         <div className="flex items-center gap-2 mb-6">
-                            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
-                                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-text-inverse" stroke="currentColor" strokeWidth="3">
-                                    <path d="M5 12l5 5L20 7" />
-                                </svg>
+                            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
+                                <img src={logo} alt="Checkmate Logo" className="h-auto w-auto" />
                             </div>
                             <span className="text-lg font-bold">Checkmate</span>
                         </div>
                         <p className="text-text-muted text-sm leading-relaxed mb-6">
                             Empowering educators with AI-driven tools for the modern classroom.
                         </p>
-                        <div className="flex gap-4 text-text-muted">
-                            <a href="#" className="hover:text-text-primary"><svg fill="currentColor" viewBox="0 0 24 24" className="w-5 h-5"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" /></svg></a>
-                            <a href="#" className="hover:text-text-primary"><svg fill="currentColor" viewBox="0 0 24 24" className="w-5 h-5"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" /></svg></a>
-                        </div>
                     </div>
 
-                    <div>
-                        <h4 className="font-bold text-sm uppercase tracking-wider mb-6">Product</h4>
-                        <ul className="space-y-4 text-sm text-text-muted">
-                            <li><a href="#" className="hover:text-text-primary">Features</a></li>
-                            <li><a href="#" className="hover:text-text-primary">Integrations</a></li>
-                            <li><a href="#" className="hover:text-text-primary">Pricing</a></li>
-                            <li><a href="#" className="hover:text-text-primary">Roadmap</a></li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h4 className="font-bold text-sm uppercase tracking-wider mb-6">Resources</h4>
-                        <ul className="space-y-4 text-sm text-text-muted">
-                            <li><a href="#" className="hover:text-text-primary">Blog</a></li>
-                            <li><a href="#" className="hover:text-text-primary">Case Studies</a></li>
-                            <li><a href="#" className="hover:text-text-primary">Help Center</a></li>
-                            <li><a href="#" className="hover:text-text-primary">Community</a></li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h4 className="font-bold text-sm uppercase tracking-wider mb-6">Company</h4>
-                        <ul className="space-y-4 text-sm text-text-muted">
-                            <li><a href="#" className="hover:text-text-primary">About Us</a></li>
-                            <li><a href="#" className="hover:text-text-primary">Careers</a></li>
-                            <li><a href="#" className="hover:text-text-primary">Contact Us</a></li>
-                            <li><a href="#" className="hover:text-text-primary">Privacy Policy</a></li>
-                        </ul>
-                    </div>
                 </div>
             </footer>
         </div>
