@@ -7,7 +7,7 @@ import { AuthProvider } from "./components/AuthContext.jsx";
 import RoleProtectedRoute from "./components/RoleProtectedRoute.jsx";
 
 
-import LandingPage from "./pages/LandingPage.jsx";
+import LandingPage from "./pages/landingPage/LandingPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import AdminLayout from "./pages/admin/Layout.jsx";
 import AdminDashboard from "./pages/admin/Dashboard.jsx";
