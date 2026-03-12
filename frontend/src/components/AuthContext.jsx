@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
     const user = useMemo(() => {
         const base = session?.user ?? null;
         if (!base && !me) return null;
-        return base ? { ...base, ...(me?.user || {}) } : { ...(me?.user || {}) };
+        return base ? { ...base, ...(me || {}) } : { ...(me || {}) };
     }, [session, me]);
 
     return (

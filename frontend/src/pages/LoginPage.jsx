@@ -111,7 +111,7 @@ const LoginPage = () => {
                             <button
                                 type="submit"
                                 disabled={loading || authLoading}
-                                className="w-full bg-primary text-text-inverse py-3.5 rounded-full text-sm font-semibold hover:bg-primary-hover transition-all shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+                                className="w-full cursor-pointer bg-primary text-text-inverse py-3.5 rounded-full text-sm font-semibold hover:bg-primary-hover transition-all shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed mt-2"
                             >
                                 {loading || authLoading ? "Signing in…" : "Sign in"}
                             </button>

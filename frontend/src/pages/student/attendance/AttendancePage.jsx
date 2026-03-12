@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStudentAttendance, useEnrolledCourses } from '../../../hooks/useCourses';
+import StudentSidebar from '../StudentSidebar';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -12,9 +13,9 @@ const BackIcon = () => (
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS = {
-    PRESENT: { label: 'Present',  pill: 'bg-success-light text-success border-green-200' },
-    ABSENT:  { label: 'Absent',   pill: 'bg-red-50 text-red-500 border-red-200' },
-    LATE:    { label: 'Late',     pill: 'bg-amber-50 text-amber-600 border-amber-200' },
+    PRESENT: { label: 'Present', pill: 'bg-success-light text-success border-green-200' },
+    ABSENT: { label: 'Absent', pill: 'bg-red-50 text-red-500 border-red-200' },
+    LATE: { label: 'Late', pill: 'bg-amber-50 text-amber-600 border-amber-200' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -56,114 +57,115 @@ const AttendancePage = () => {
     const attendanceRate = total > 0 ? Math.round((summary.PRESENT / total) * 100) : null;
 
     return (
-        <div className="max-w-2xl mx-auto">
-            {/* Back + Header */}
-            <div className="mb-6">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4"
-                >
-                    <BackIcon />
-                    Back to Course
-                </button>
-                <h1 className="text-2xl font-bold text-text-primary">My Attendance</h1>
-                {course && (
-                    <p className="text-sm text-text-secondary mt-0.5">
-                        {course.title} · {course.code}
-                    </p>
-                )}
-            </div>
+        <StudentSidebar>
+            <div className="max-w-2xl mx-auto p-6">
+                {/* Back + Header */}
+                <div className="mb-6">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4"
+                    >
+                        <BackIcon />
+                        Back to Course
+                    </button>
+                    <h1 className="text-2xl font-bold text-text-primary">My Attendance</h1>
+                    {course && (
+                        <p className="text-sm text-text-secondary mt-0.5">
+                            {course.title} · {course.code}
+                        </p>
+                    )}
+                </div>
 
-            {/* Summary cards */}
-            {!isLoading && total > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                    {[
-                        { label: 'Total',   value: total,            color: 'text-text-primary',  bg: 'bg-neutral-50 border-neutral-200' },
-                        { label: 'Present', value: summary.PRESENT,  color: 'text-success',       bg: 'bg-success-light border-green-200' },
-                        { label: 'Absent',  value: summary.ABSENT,   color: 'text-red-500',       bg: 'bg-red-50 border-red-200' },
-                        { label: 'Late',    value: summary.LATE,     color: 'text-amber-600',     bg: 'bg-amber-50 border-amber-200' },
-                    ].map(({ label, value, color, bg }) => (
-                        <div key={label} className={`rounded-2xl border px-4 py-3 ${bg}`}>
-                            <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                            <p className="text-xs text-text-muted mt-0.5">{label}</p>
+                {/* Summary cards */}
+                {!isLoading && total > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                        {[
+                            { label: 'Total', value: total, color: 'text-text-primary', bg: 'bg-neutral-50 border-neutral-200' },
+                            { label: 'Present', value: summary.PRESENT, color: 'text-success', bg: 'bg-success-light border-green-200' },
+                            { label: 'Absent', value: summary.ABSENT, color: 'text-red-500', bg: 'bg-red-50 border-red-200' },
+                            { label: 'Late', value: summary.LATE, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+                        ].map(({ label, value, color, bg }) => (
+                            <div key={label} className={`rounded-2xl border px-4 py-3 ${bg}`}>
+                                <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                                <p className="text-xs text-text-muted mt-0.5">{label}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Attendance rate bar */}
+                {!isLoading && attendanceRate !== null && (
+                    <div className="mb-6 bg-background rounded-2xl border border-neutral-200 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-semibold text-text-primary">Attendance Rate</span>
+                            <span className={`text-sm font-bold ${attendanceRate >= 75 ? 'text-success' : 'text-red-500'}`}>
+                                {attendanceRate}%
+                            </span>
                         </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Attendance rate bar */}
-            {!isLoading && attendanceRate !== null && (
-                <div className="mb-6 bg-background rounded-2xl border border-neutral-200 p-4">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold text-text-primary">Attendance Rate</span>
-                        <span className={`text-sm font-bold ${attendanceRate >= 75 ? 'text-success' : 'text-red-500'}`}>
-                            {attendanceRate}%
-                        </span>
-                    </div>
-                    <div className="h-2.5 rounded-full bg-neutral-100 overflow-hidden">
-                        <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                                attendanceRate >= 75 ? 'bg-success' : 'bg-red-400'
-                            }`}
-                            style={{ width: `${attendanceRate}%` }}
-                        />
-                    </div>
-                    {attendanceRate < 75 && (
-                        <p className="text-xs text-red-500 mt-2">
-                            ⚠ Attendance below 75% — you may be at risk of not meeting the requirement.
-                        </p>
-                    )}
-                </div>
-            )}
-
-            {/* Records list */}
-            <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-neutral-100 flex items-center justify-between">
-                    <h2 className="text-sm font-bold text-text-primary">Session Records</h2>
-                    {!isLoading && (
-                        <span className="text-xs text-text-muted">{total} session{total !== 1 ? 's' : ''}</span>
-                    )}
-                </div>
-
-                {isLoading && (
-                    <div className="divide-y divide-neutral-100">
-                        {[...Array(5)].map((_, i) => <RowSkeleton key={i} />)}
+                        <div className="h-2.5 rounded-full bg-neutral-100 overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all duration-500 ${attendanceRate >= 75 ? 'bg-success' : 'bg-red-400'
+                                    }`}
+                                style={{ width: `${attendanceRate}%` }}
+                            />
+                        </div>
+                        {attendanceRate < 75 && (
+                            <p className="text-xs text-red-500 mt-2">
+                                ⚠ Attendance below 75% — you may be at risk of not meeting the requirement.
+                            </p>
+                        )}
                     </div>
                 )}
 
-                {!isLoading && records.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                        <p className="text-sm font-semibold text-text-primary mb-1">No records yet</p>
-                        <p className="text-xs text-text-secondary">
-                            Attendance hasn't been marked for this course yet.
-                        </p>
+                {/* Records list */}
+                <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm overflow-hidden">
+                    <div className="px-5 py-3.5 border-b border-neutral-100 flex items-center justify-between">
+                        <h2 className="text-sm font-bold text-text-primary">Session Records</h2>
+                        {!isLoading && (
+                            <span className="text-xs text-text-muted">{total} session{total !== 1 ? 's' : ''}</span>
+                        )}
                     </div>
-                )}
 
-                {!isLoading && records.length > 0 && (
-                    <div className="divide-y divide-neutral-100">
-                        {records.map((record) => {
-                            const cfg = STATUS[record.status] ?? STATUS.ABSENT;
-                            return (
-                                <div
-                                    key={record.id}
-                                    className="flex items-center justify-between px-5 py-3.5"
-                                >
-                                    <span className="text-sm text-text-primary font-medium">
-                                        {formatDate(record.date)}
-                                    </span>
-                                    <span
-                                        className={`text-xs font-semibold px-3 py-1 rounded-full border ${cfg.pill}`}
+                    {isLoading && (
+                        <div className="divide-y divide-neutral-100">
+                            {[...Array(5)].map((_, i) => <RowSkeleton key={i} />)}
+                        </div>
+                    )}
+
+                    {!isLoading && records.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                            <p className="text-sm font-semibold text-text-primary mb-1">No records yet</p>
+                            <p className="text-xs text-text-secondary">
+                                Attendance hasn't been marked for this course yet.
+                            </p>
+                        </div>
+                    )}
+
+                    {!isLoading && records.length > 0 && (
+                        <div className="divide-y divide-neutral-100">
+                            {records.map((record) => {
+                                const cfg = STATUS[record.status] ?? STATUS.ABSENT;
+                                return (
+                                    <div
+                                        key={record.id}
+                                        className="flex items-center justify-between px-5 py-3.5"
                                     >
-                                        {cfg.label}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                                        <span className="text-sm text-text-primary font-medium">
+                                            {formatDate(record.date)}
+                                        </span>
+                                        <span
+                                            className={`text-xs font-semibold px-3 py-1 rounded-full border ${cfg.pill}`}
+                                        >
+                                            {cfg.label}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+        </StudentSidebar>
     );
 };
 

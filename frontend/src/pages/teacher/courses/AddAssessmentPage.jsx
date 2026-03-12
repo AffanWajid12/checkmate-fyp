@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAddAssessment, useCourseAnnouncements } from '../../../hooks/useCourses';
+import TeacherSidebar from '../TeacherSidebar';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -49,9 +50,9 @@ const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 const MAX_FILES = 10;
 
 const TYPE_OPTIONS = [
-    { value: 'QUIZ',       label: 'Quiz',       color: 'data-[active=true]:bg-blue-50 data-[active=true]:text-blue-600 data-[active=true]:border-blue-200' },
+    { value: 'QUIZ', label: 'Quiz', color: 'data-[active=true]:bg-blue-50 data-[active=true]:text-blue-600 data-[active=true]:border-blue-200' },
     { value: 'ASSIGNMENT', label: 'Assignment', color: 'data-[active=true]:bg-purple-50 data-[active=true]:text-purple-600 data-[active=true]:border-purple-200' },
-    { value: 'EXAM',       label: 'Exam',       color: 'data-[active=true]:bg-amber-50 data-[active=true]:text-amber-600 data-[active=true]:border-amber-200' },
+    { value: 'EXAM', label: 'Exam', color: 'data-[active=true]:bg-amber-50 data-[active=true]:text-amber-600 data-[active=true]:border-amber-200' },
 ];
 
 // ─── File Dropzone ────────────────────────────────────────────────────────────
@@ -188,144 +189,145 @@ const AddAssessmentPage = () => {
     };
 
     return (
-        <div className="max-w-2xl mx-auto pb-16">
-            {/* Header */}
-            <div className="mb-8">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4"
-                >
-                    <BackIcon />
-                    Back
-                </button>
-                <h1 className="text-2xl font-bold text-text-primary">Add Assessment</h1>
-                <p className="text-sm text-text-secondary mt-1">Create an assessment and optionally attach source materials.</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Title */}
-                <div>
-                    <label className="block text-sm font-semibold text-text-primary mb-1.5">
-                        Title <span className="text-error">*</span>
-                    </label>
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="e.g. Midterm Exam, Problem Set 3…"
-                        className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
-                    />
+        <TeacherSidebar>
+            <div className="max-w-2xl mx-auto pb-16 p-6">
+                {/* Header */}
+                <div className="mb-8">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4"
+                    >
+                        <BackIcon />
+                        Back
+                    </button>
+                    <h1 className="text-2xl font-bold text-text-primary">Add Assessment</h1>
+                    <p className="text-sm text-text-secondary mt-1">Create an assessment and optionally attach source materials.</p>
                 </div>
 
-                {/* Type toggle */}
-                <div>
-                    <label className="block text-sm font-semibold text-text-primary mb-1.5">
-                        Type <span className="text-error">*</span>
-                    </label>
-                    <div className="flex gap-2 flex-wrap">
-                        {TYPE_OPTIONS.map((opt) => (
-                            <button
-                                key={opt.value}
-                                type="button"
-                                data-active={type === opt.value}
-                                onClick={() => setType(opt.value)}
-                                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
-                                    type === opt.value
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Title */}
+                    <div>
+                        <label className="block text-sm font-semibold text-text-primary mb-1.5">
+                            Title <span className="text-error">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="e.g. Midterm Exam, Problem Set 3…"
+                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
+                        />
+                    </div>
+
+                    {/* Type toggle */}
+                    <div>
+                        <label className="block text-sm font-semibold text-text-primary mb-1.5">
+                            Type <span className="text-error">*</span>
+                        </label>
+                        <div className="flex gap-2 flex-wrap">
+                            {TYPE_OPTIONS.map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    data-active={type === opt.value}
+                                    onClick={() => setType(opt.value)}
+                                    className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${type === opt.value
                                         ? opt.color.replace('data-[active=true]:', '')
                                         : 'border-neutral-200 text-text-secondary hover:bg-neutral-100'
-                                }`}
-                            >
-                                {opt.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Linked Announcement */}
-                <div>
-                    <label className="block text-sm font-semibold text-text-primary mb-1.5">
-                        Linked Announcement <span className="text-error">*</span>
-                    </label>
-                    {announcementsLoading ? (
-                        <div className="h-10 rounded-xl bg-neutral-100 animate-pulse" />
-                    ) : announcements.length === 0 ? (
-                        <p className="text-sm text-text-muted italic">No announcements yet. Post one first.</p>
-                    ) : (
-                        <select
-                            value={announcementId}
-                            onChange={(e) => setAnnouncementId(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
-                        >
-                            <option value="">Select an announcement…</option>
-                            {announcements.map((a) => (
-                                <option key={a.id} value={a.id}>{a.title}</option>
+                                        }`}
+                                >
+                                    {opt.label}
+                                </button>
                             ))}
-                        </select>
-                    )}
-                </div>
+                        </div>
+                    </div>
 
-                {/* Due Date */}
-                <div>
-                    <label className="block text-sm font-semibold text-text-primary mb-1.5">
-                        Due Date <span className="text-text-muted font-normal">(optional)</span>
-                    </label>
-                    <input
-                        type="datetime-local"
-                        value={dueDate}
-                        onChange={(e) => setDueDate(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
-                    />
-                </div>
+                    {/* Linked Announcement */}
+                    <div>
+                        <label className="block text-sm font-semibold text-text-primary mb-1.5">
+                            Linked Announcement <span className="text-error">*</span>
+                        </label>
+                        {announcementsLoading ? (
+                            <div className="h-10 rounded-xl bg-neutral-100 animate-pulse" />
+                        ) : announcements.length === 0 ? (
+                            <p className="text-sm text-text-muted italic">No announcements yet. Post one first.</p>
+                        ) : (
+                            <select
+                                value={announcementId}
+                                onChange={(e) => setAnnouncementId(e.target.value)}
+                                className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
+                            >
+                                <option value="">Select an announcement…</option>
+                                {announcements.map((a) => (
+                                    <option key={a.id} value={a.id}>{a.title}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
 
-                {/* Instructions */}
-                <div>
-                    <label className="block text-sm font-semibold text-text-primary mb-1.5">
-                        Instructions <span className="text-text-muted font-normal">(optional)</span>
-                    </label>
-                    <textarea
-                        value={instructions}
-                        onChange={(e) => setInstructions(e.target.value)}
-                        placeholder="Describe what students need to do…"
-                        rows={5}
-                        className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all resize-none"
-                    />
-                </div>
+                    {/* Due Date */}
+                    <div>
+                        <label className="block text-sm font-semibold text-text-primary mb-1.5">
+                            Due Date <span className="text-text-muted font-normal">(optional)</span>
+                        </label>
+                        <input
+                            type="datetime-local"
+                            value={dueDate}
+                            onChange={(e) => setDueDate(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
+                        />
+                    </div>
 
-                {/* File upload */}
-                <div>
-                    <label className="block text-sm font-semibold text-text-primary mb-1.5">
-                        Source Materials <span className="text-text-muted font-normal">(optional)</span>
-                    </label>
-                    <FileDropzone files={files} onChange={setFiles} />
-                </div>
+                    {/* Instructions */}
+                    <div>
+                        <label className="block text-sm font-semibold text-text-primary mb-1.5">
+                            Instructions <span className="text-text-muted font-normal">(optional)</span>
+                        </label>
+                        <textarea
+                            value={instructions}
+                            onChange={(e) => setInstructions(e.target.value)}
+                            placeholder="Describe what students need to do…"
+                            rows={5}
+                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all resize-none"
+                        />
+                    </div>
 
-                {/* Submit */}
-                <div className="flex justify-end gap-3 pt-2">
-                    <button
-                        type="button"
-                        onClick={() => navigate(-1)}
-                        className="px-5 py-2.5 rounded-xl border border-neutral-200 text-text-secondary text-sm font-semibold hover:bg-neutral-50 transition-colors"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={!canSubmit}
-                        className="px-6 py-2.5 rounded-xl bg-primary text-text-inverse text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                        {isPending ? (
-                            <>
-                                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                </svg>
-                                Creating…
-                            </>
-                        ) : 'Create Assessment'}
-                    </button>
-                </div>
-            </form>
-        </div>
+                    {/* File upload */}
+                    <div>
+                        <label className="block text-sm font-semibold text-text-primary mb-1.5">
+                            Source Materials <span className="text-text-muted font-normal">(optional)</span>
+                        </label>
+                        <FileDropzone files={files} onChange={setFiles} />
+                    </div>
+
+                    {/* Submit */}
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => navigate(-1)}
+                            className="px-5 py-2.5 rounded-xl border border-neutral-200 text-text-secondary text-sm font-semibold hover:bg-neutral-50 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={!canSubmit}
+                            className="px-6 py-2.5 rounded-xl bg-primary text-text-inverse text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {isPending ? (
+                                <>
+                                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                    </svg>
+                                    Creating…
+                                </>
+                            ) : 'Create Assessment'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </TeacherSidebar>
     );
 };
 

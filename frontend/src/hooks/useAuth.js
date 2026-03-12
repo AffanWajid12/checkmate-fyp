@@ -14,7 +14,7 @@ export const useMe = () => {
         queryKey: authKeys.me,
         queryFn: async () => {
             const res = await apiClient.get("/api/auth/me");
-            return res.data;
+            return res.data.user;
         },
         staleTime: 5 * 60 * 1000,
         retry: false,

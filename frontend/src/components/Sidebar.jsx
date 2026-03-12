@@ -59,10 +59,9 @@ const Sidebar = () => {
                         to={item.to}
                         end
                         className={({ isActive }) =>
-                            `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                                isActive
-                                    ? "bg-primary text-text-inverse shadow-sm"
-                                    : "text-text-secondary hover:bg-neutral-50 hover:text-text-primary"
+                            `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive
+                                ? "bg-primary text-text-inverse shadow-sm"
+                                : "text-text-secondary hover:bg-neutral-50 hover:text-text-primary"
                             }`
                         }
                     >

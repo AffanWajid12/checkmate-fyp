@@ -25,6 +25,8 @@ export const useEnrolledCourses = () =>
             const { data } = await apiClient.get("/api/courses/enrolled");
             return data.courses; // array of course objects (each includes teacher)
         },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        refetchOnWindowFocus: false,
     });
 
 /**
@@ -72,6 +74,8 @@ export const useCourseAnnouncements = (courseId) =>
             return data.announcements; // array of { id, title, description, createdAt, assessments[] }
         },
         enabled: !!courseId,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        refetchOnWindowFocus: false,
     });
 
 // ─── Teacher Hooks ────────────────────────────────────────────────────────────
@@ -87,6 +91,8 @@ export const useTeacherCourses = () =>
             const { data } = await apiClient.get("/api/courses/my-courses");
             return data.courses; // array of course objects (each includes students[] and announcements[])
         },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        refetchOnWindowFocus: false,
     });
 
 /**
@@ -121,6 +127,46 @@ export const useAddAnnouncement = (courseId) => {
                 description,
             });
             return data.announcement;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });
+        },
+    });
+};
+
+/**
+ * POST /api/courses/:courseId/announcements/:announcementId/comments
+ * Body: { content: string }
+ * Adds a comment to a specific announcement.
+ */
+export const useAddAnnouncementComment = (courseId, announcementId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ content }) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/announcements/${announcementId}/comments`,
+                { content }
+            );
+            return data.comment;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });
+        },
+    });
+};
+
+/**
+ * DELETE /api/courses/:courseId/announcements/:announcementId/comments/:commentId
+ * Deletes a comment from an announcement.
+ */
+export const useDeleteAnnouncementComment = (courseId, announcementId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ commentId }) => {
+            const { data } = await apiClient.delete(
+                `/api/courses/${courseId}/announcements/${announcementId}/comments/${commentId}`
+            );
+            return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });

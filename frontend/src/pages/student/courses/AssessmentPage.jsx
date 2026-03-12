@@ -292,6 +292,8 @@ const PageSkeleton = () => (
     </div>
 );
 
+import StudentSidebar from '../StudentSidebar';
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const StudentAssessmentPage = () => {
@@ -300,26 +302,29 @@ const StudentAssessmentPage = () => {
 
     const { data, isLoading, isError } = useAssessmentDetails(courseId, assessmentId);
 
-    if (isLoading) return <div className="px-4 py-8"><PageSkeleton /></div>;
+    if (isLoading) return <StudentSidebar><div className="px-4 py-8"><PageSkeleton /></div></StudentSidebar>;
     if (isError || !data) return (
-        <div className="max-w-5xl mx-auto text-center py-20">
-            <p className="text-sm text-error">Failed to load assessment. Please try again.</p>
-        </div>
+        <StudentSidebar>
+            <div className="max-w-5xl mx-auto text-center py-20">
+                <p className="text-sm text-error">Failed to load assessment. Please try again.</p>
+            </div>
+        </StudentSidebar>
     );
 
     const { assessment, submission } = data;
     const typeMeta = TYPE_META[assessment.type] ?? TYPE_META.ASSIGNMENT;
 
     return (
-        <div className="max-w-5xl mx-auto pb-16">
-            {/* Back */}
-            <button
-                onClick={() => navigate(-1)}
-                className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-6"
-            >
-                <BackIcon />
-                Back to Course
-            </button>
+        <StudentSidebar>
+            <div className="max-w-5xl mx-auto p-6 pb-16">
+                {/* Back */}
+                <button
+                    onClick={() => navigate(-1)}
+                    className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-6"
+                >
+                    <BackIcon />
+                    Back to Course
+                </button>
 
             {/* Two-column layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -381,7 +386,8 @@ const StudentAssessmentPage = () => {
                     />
                 </div>
             </div>
-        </div>
+            </div>
+        </StudentSidebar>
     );
 };
 

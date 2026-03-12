@@ -57,6 +57,9 @@ model users {
   //for student submissions
   submissions submissions[] @relation("UserSubmissions")
 
+  // for announcement comments
+  comments announcement_comments[] @relation("UserComments")
+
   @@map("users")
   @@schema("public")
 }
@@ -112,6 +115,7 @@ model announcements {
   course    courses @relation("CourseAnnouncements", fields: [course_id], references: [id], onDelete: Cascade)
 
   assessments assessments[] @relation("AnnouncementAssessments")
+  comments    announcement_comments[] @relation("AnnouncementComments")
 
   @@map("announcements")
   @@schema("public")
@@ -130,6 +134,22 @@ model source_materials {
   assessment    assessments @relation("AssessmentSourceMaterials", fields: [assessment_id], references: [id], onDelete: Cascade)
 
   @@map("source_materials")
+  @@schema("public")
+}
+
+model announcement_comments {
+  id              String   @id @db.Uuid @default(uuid())
+  content         String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @default(now())
+
+  announcement_id String @db.Uuid
+  announcement    announcements @relation("AnnouncementComments", fields: [announcement_id], references: [id], onDelete: Cascade)
+
+  user_id         String @db.Uuid
+  user            users @relation("UserComments", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("announcement_comments")
   @@schema("public")
 }
 

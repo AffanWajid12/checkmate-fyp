@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAssessmentDetails } from '../../../hooks/useCourses';
+import TeacherSidebar from '../TeacherSidebar';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -50,15 +51,15 @@ const formatDateTime = (iso) => {
 };
 
 const TYPE_META = {
-    QUIZ:       { label: 'Quiz',       color: 'bg-blue-50 text-blue-600 border-blue-200' },
+    QUIZ: { label: 'Quiz', color: 'bg-blue-50 text-blue-600 border-blue-200' },
     ASSIGNMENT: { label: 'Assignment', color: 'bg-purple-50 text-purple-600 border-purple-200' },
-    EXAM:       { label: 'Exam',       color: 'bg-amber-50 text-amber-600 border-amber-200' },
+    EXAM: { label: 'Exam', color: 'bg-amber-50 text-amber-600 border-amber-200' },
 };
 
 const STATUS_META = {
     SUBMITTED: { label: 'Submitted', color: 'bg-success-light text-success' },
-    LATE:      { label: 'Late',      color: 'bg-amber-50 text-amber-600' },
-    GRADED:    { label: 'Graded',    color: 'bg-accent-50 text-accent-500' },
+    LATE: { label: 'Late', color: 'bg-amber-50 text-amber-600' },
+    GRADED: { label: 'Graded', color: 'bg-accent-50 text-accent-500' },
 };
 
 // ─── File Chip ────────────────────────────────────────────────────────────────
@@ -188,12 +189,12 @@ const SubmissionsTab = ({ submitted, late, notSubmitted, courseId, assessmentId 
 
     const sections = [
         { key: 'submitted', label: 'Submitted', items: submitted.filter(filterName), status: 'SUBMITTED', dotColor: 'bg-success' },
-        { key: 'late',      label: 'Late',      items: late.filter(filterName),      status: 'LATE',      dotColor: 'bg-amber-400' },
-        { key: 'missing',   label: 'Not Submitted', items: notSubmitted.filter(filterName), status: null, dotColor: 'bg-neutral-300' },
+        { key: 'late', label: 'Late', items: late.filter(filterName), status: 'LATE', dotColor: 'bg-amber-400' },
+        { key: 'missing', label: 'Not Submitted', items: notSubmitted.filter(filterName), status: null, dotColor: 'bg-neutral-300' },
     ];
 
     const total = submitted.length + late.length + notSubmitted.length;
-    const done  = submitted.length + late.length;
+    const done = submitted.length + late.length;
 
     return (
         <div className="space-y-6">
@@ -275,11 +276,13 @@ const TeacherAssessmentPage = () => {
 
     const { data, isLoading, isError } = useAssessmentDetails(courseId, assessmentId);
 
-    if (isLoading) return <div className="max-w-4xl mx-auto"><PageSkeleton /></div>;
+    if (isLoading) return <TeacherSidebar><div className="max-w-4xl mx-auto p-6"><PageSkeleton /></div></TeacherSidebar>;
     if (isError || !data) return (
-        <div className="max-w-4xl mx-auto text-center py-20">
-            <p className="text-sm text-error">Failed to load assessment. Please try again.</p>
-        </div>
+        <TeacherSidebar>
+            <div className="max-w-4xl mx-auto text-center py-20 p-6">
+                <p className="text-sm text-error">Failed to load assessment. Please try again.</p>
+            </div>
+        </TeacherSidebar>
     );
 
     const { assessment, submitted = [], late = [], not_submitted = [] } = data;
@@ -287,67 +290,68 @@ const TeacherAssessmentPage = () => {
     const totalSubs = submitted.length + late.length;
 
     return (
-        <div className="max-w-4xl mx-auto pb-16">
-            {/* Back + Header */}
-            <div className="mb-8">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4"
-                >
-                    <BackIcon />
-                    Back to Course
-                </button>
+        <TeacherSidebar>
+            <div className="max-w-4xl mx-auto pb-16 p-6">
+                {/* Back + Header */}
+                <div className="mb-8">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4"
+                    >
+                        <BackIcon />
+                        Back to Course
+                    </button>
 
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                    <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${typeMeta.color}`}>
-                                {typeMeta.label}
-                            </span>
-                            {assessment.due_date && (
-                                <span className="text-xs text-text-muted">Due {formatDateTime(assessment.due_date)}</span>
-                            )}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${typeMeta.color}`}>
+                                    {typeMeta.label}
+                                </span>
+                                {assessment.due_date && (
+                                    <span className="text-xs text-text-muted">Due {formatDateTime(assessment.due_date)}</span>
+                                )}
+                            </div>
+                            <h1 className="text-2xl font-bold text-text-primary">{assessment.title}</h1>
                         </div>
-                        <h1 className="text-2xl font-bold text-text-primary">{assessment.title}</h1>
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className="text-sm text-text-secondary font-medium">{totalSubs} submission{totalSubs !== 1 ? 's' : ''}</span>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className="text-sm text-text-secondary font-medium">{totalSubs} submission{totalSubs !== 1 ? 's' : ''}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Tabs */}
-            <div className="flex gap-1 mb-6 bg-neutral-100 p-1 rounded-xl w-fit">
-                {[
-                    { key: 'details', label: 'Assessment Details' },
-                    { key: 'submissions', label: `Submissions (${totalSubs})` },
-                ].map((tab) => (
-                    <button
-                        key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                            activeTab === tab.key
+                {/* Tabs */}
+                <div className="flex gap-1 mb-6 bg-neutral-100 p-1 rounded-xl w-fit">
+                    {[
+                        { key: 'details', label: 'Assessment Details' },
+                        { key: 'submissions', label: `Submissions (${totalSubs})` },
+                    ].map((tab) => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === tab.key
                                 ? 'bg-background text-text-primary shadow-sm'
                                 : 'text-text-secondary hover:text-text-primary'
-                        }`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+                                }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
 
-            {/* Tab content */}
-            {activeTab === 'details' && <DetailsTab assessment={assessment} />}
-            {activeTab === 'submissions' && (
-                <SubmissionsTab
-                    submitted={submitted}
-                    late={late}
-                    notSubmitted={not_submitted}
-                    courseId={courseId}
-                    assessmentId={assessmentId}
-                />
-            )}
-        </div>
+                {/* Tab content */}
+                {activeTab === 'details' && <DetailsTab assessment={assessment} />}
+                {activeTab === 'submissions' && (
+                    <SubmissionsTab
+                        submitted={submitted}
+                        late={late}
+                        notSubmitted={not_submitted}
+                        courseId={courseId}
+                        assessmentId={assessmentId}
+                    />
+                )}
+            </div>
+        </TeacherSidebar>
     );
 };
 

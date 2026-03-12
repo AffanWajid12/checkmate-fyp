@@ -19,7 +19,9 @@ import StudentAttendancePage from "./pages/student/attendance/AttendancePage.jsx
 import StudentAssessmentPage from "./pages/student/courses/AssessmentPage.jsx";
 
 import TeacherDashboard from "./pages/teacher/TeacherDashboard.jsx";
-import TeacherCoursePage from "./pages/teacher/courses/CoursePage.jsx";
+import TeacherAttendanceOverview from "./pages/teacher/attendance/AttendanceOverview.jsx";
+import TeacherAssignmentsOverview from "./pages/teacher/assignments/AssignmentsOverview.jsx";
+import TeacherCoursePage from "./pages/teacher/courses/CoursePage/index.jsx";
 import TeacherAttendancePage from "./pages/teacher/attendance/AttendancePage.jsx";
 import AddAssessmentPage from "./pages/teacher/courses/AddAssessmentPage.jsx";
 import TeacherAssessmentPage from "./pages/teacher/courses/AssessmentPage.jsx";
@@ -88,6 +90,22 @@ function App() {
                 }
               />
               <Route
+                path="/student/courses"
+                element={
+                  <RoleProtectedRoute allowedRoles={["STUDENT"]}>
+                    <StudentDashboard defaultTab="courses" />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/student/attendance"
+                element={
+                  <RoleProtectedRoute allowedRoles={["STUDENT"]}>
+                    <StudentDashboard defaultTab="attendance" />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
                 path="/student/courses/:courseId"
                 element={
                   <RoleProtectedRoute allowedRoles={["STUDENT"]}>
@@ -118,6 +136,22 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={["TEACHER"]}>
                     <TeacherDashboard />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/attendance"
+                element={
+                  <RoleProtectedRoute allowedRoles={["TEACHER"]}>
+                    <TeacherAttendanceOverview />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/assignments"
+                element={
+                  <RoleProtectedRoute allowedRoles={["TEACHER"]}>
+                    <TeacherAssignmentsOverview />
                   </RoleProtectedRoute>
                 }
               />
