@@ -1,7 +1,14 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { useCourseAnnouncements, useEnrolledCourses } from '../../../hooks/useCourses';
-import { AnnouncementComments } from '../../../components/AnnouncementComments';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useEnrolledCourses } from '../../../hooks/useCourses';
 import StudentSidebar from '../StudentSidebar';
+
+import DashboardTab from './tabs/DashboardTab';
+import StudentsTab from './tabs/StudentsTab';
+import AnnouncementsTab from './tabs/AnnouncementsTab';
+import AssessmentsTab from './tabs/AssessmentsTab';
+import AttendanceTab from './tabs/AttendanceTab';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -11,14 +18,54 @@ const BackIcon = () => (
     </svg>
 );
 
-const MegaphoneIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
+const CopyIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+    </svg>
+);
+
+const BookIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-7 h-7 text-accent-500">
+        <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+    </svg>
+);
+
+const DashboardIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <rect x="3" y="3" width="7" height="9" rx="1" />
+        <rect x="14" y="3" width="7" height="5" rx="1" />
+        <rect x="14" y="12" width="7" height="9" rx="1" />
+        <rect x="3" y="16" width="7" height="5" rx="1" />
+    </svg>
+);
+
+const StudentsTabIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </svg>
+);
+
+const AnnouncementsTabIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
         <path d="M3 11l19-9-9 19-2-8-8-2z" />
     </svg>
 );
 
-const CalendarIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
+const AssessmentsTabIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+);
+
+const AttendanceTabIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
         <line x1="16" y1="2" x2="16" y2="6" />
         <line x1="8" y1="2" x2="8" y2="6" />
@@ -27,230 +74,145 @@ const CalendarIcon = () => (
     </svg>
 );
 
-const ArrowRightIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-        <line x1="5" y1="12" x2="19" y2="12" />
-        <polyline points="12 5 19 12 12 19" />
-    </svg>
-);
+// ─── Tab Definitions ──────────────────────────────────────────────────────────
 
-const ClockIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5">
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-    </svg>
-);
+const TABS = [
+    { key: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+    { key: 'students', label: 'Students', icon: <StudentsTabIcon /> },
+    { key: 'announcements', label: 'Announcements', icon: <AnnouncementsTabIcon /> },
+    { key: 'assessments', label: 'Assessments', icon: <AssessmentsTabIcon /> },
+    { key: 'attendance', label: 'Attendance', icon: <AttendanceTabIcon /> },
+];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Main Component ─────────────────────────────────────────────────────────
 
-const formatDate = (iso) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-};
-
-const timeAgo = (iso) => {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    if (days < 7) return `${days}d ago`;
-    return formatDate(iso);
-};
-
-const formatDueDate = (iso) => {
-    if (!iso) return null;
-    return new Date(iso).toLocaleDateString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-    });
-};
-
-const TYPE_META = {
-    QUIZ: { label: 'Quiz', color: 'bg-blue-50 text-blue-600 border-blue-200' },
-    ASSIGNMENT: { label: 'Assignment', color: 'bg-purple-50 text-purple-600 border-purple-200' },
-    EXAM: { label: 'Exam', color: 'bg-amber-50 text-amber-600 border-amber-200' },
-};
-
-// ─── Assessment Tile ──────────────────────────────────────────────────────────
-
-const AssessmentTile = ({ assessment, courseId }) => {
-    const navigate = useNavigate();
-    const meta = TYPE_META[assessment.type] ?? TYPE_META.ASSIGNMENT;
-    const due = formatDueDate(assessment.due_date);
-    const isOverdue = assessment.due_date && new Date(assessment.due_date) < new Date();
-
-    return (
-        <button
-            onClick={() => navigate(`/student/courses/${courseId}/assessments/${assessment.id}`)}
-            className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 hover:border-accent-300 hover:bg-accent-50 transition-colors group"
-        >
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${meta.color}`}>
-                        {meta.label}
-                    </span>
-                    <span className="text-sm font-semibold text-text-primary truncate">{assessment.title}</span>
-                </div>
-                {due && (
-                    <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-error' : 'text-text-muted'}`}>
-                        <ClockIcon />
-                        <span>Due {due}</span>
-                    </div>
-                )}
-            </div>
-            <span className="text-text-muted group-hover:text-accent-500 transition-colors flex-shrink-0">
-                <ArrowRightIcon />
-            </span>
-        </button>
-    );
-};
-
-// ─── Announcement Card (two variants) ─────────────────────────────────────────
-
-const AnnouncementCard = ({ announcement, courseId }) => {
-    const hasAssessments = announcement.assessments?.length > 0;
-
-    return (
-        <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-5">
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4 mb-2">
-                <h3 className="text-sm font-bold text-text-primary leading-snug">{announcement.title}</h3>
-                <span className="text-xs text-text-muted whitespace-nowrap flex-shrink-0 mt-0.5">
-                    {timeAgo(announcement.createdAt)}
-                </span>
-            </div>
-            <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
-                {announcement.description}
-            </p>
-
-            {/* Assessment tiles */}
-            {hasAssessments && (
-                <div className="mt-4 pt-4 border-t border-neutral-100 space-y-2">
-                    {announcement.assessments.map((a) => (
-                        <AssessmentTile key={a.id} assessment={a} courseId={courseId} />
-                    ))}
-                </div>
-            )}
-
-            {/* Comments Section */}
-            <AnnouncementComments
-                courseId={courseId}
-                announcementId={announcement.id}
-                comments={announcement.comments}
-            />
-        </div>
-    );
-};
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-const AnnouncementSkeleton = () => (
-    <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-5 animate-pulse">
-        <div className="flex items-start justify-between gap-4 mb-3">
-            <div className="h-4 bg-neutral-200 rounded w-2/3" />
-            <div className="h-3 bg-neutral-200 rounded w-16" />
-        </div>
-        <div className="space-y-2">
-            <div className="h-3 bg-neutral-200 rounded w-full" />
-            <div className="h-3 bg-neutral-200 rounded w-4/5" />
-            <div className="h-3 bg-neutral-200 rounded w-3/5" />
-        </div>
-    </div>
-);
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-
-const CoursePage = () => {
+const StudentCoursePage = () => {
     const { courseId } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const initialTab = searchParams.get('tab');
+    const [activeTab, setActiveTab] = useState(initialTab || 'dashboard');
+
+    useEffect(() => {
+        if (initialTab && initialTab !== activeTab) {
+            setActiveTab(initialTab);
+        }
+    }, [initialTab]);
 
     const { data: courses = [] } = useEnrolledCourses();
     const course = courses.find((c) => c.id === courseId);
+    const studentCount = course?.students?.length ?? 0;
 
-    const { data: announcements = [], isLoading } = useCourseAnnouncements(courseId);
+    const handleCopyCode = () => {
+        if (!course?.code) return;
+        navigator.clipboard.writeText(course.code).then(() => toast.success('Code copied!'));
+    };
 
     return (
         <StudentSidebar>
-            <div className="max-w-3xl mx-auto p-6">
-                {/* Back + Header */}
-                <div className="mb-6">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4"
-                    >
-                        <BackIcon />
-                        Back to Courses
-                    </button>
+            <div className="max-w-6xl mx-auto pb-16 p-6">
+                {/* Back */}
+                <button
+                    onClick={() => navigate('/student/dashboard')}
+                    className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4 cursor-pointer"
+                >
+                    <BackIcon />
+                    Back to My Courses
+                </button>
 
-                    <div className="flex items-start justify-between gap-4">
+                {/* ── Course Header Card ─────────────────────────── */}
+                <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 mb-0">
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-accent-50 border border-accent-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <BookIcon />
+                        </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-text-primary">
+                            {/* Code + Section */}
+                            <div className="flex items-center gap-2 mb-1">
+                                <button
+                                    onClick={handleCopyCode}
+                                    className="inline-flex items-center gap-1 font-mono text-xs font-bold text-accent-500 bg-accent-50 border border-accent-100 px-2 py-0.5 rounded-full hover:bg-accent-100 transition-colors cursor-pointer"
+                                >
+                                    {course?.code ?? '—'}
+                                    <CopyIcon />
+                                </button>
+                                {course?.section && (
+                                    <span className="text-xs text-text-muted">Section {course.section}</span>
+                                )}
+                            </div>
+
+                            {/* Title */}
+                            <h1 className="text-xl font-bold text-text-primary leading-snug">
                                 {course?.title ?? 'Course'}
                             </h1>
-                            {course && (
-                                <div className="flex items-center gap-3 mt-1">
-                                    <span className="text-sm text-text-secondary font-medium">{course.code}</span>
-                                    <span className="text-text-muted">·</span>
-                                    <span className="text-sm text-text-secondary">
-                                        {course.teacher?.name ?? 'Instructor'}
+
+                            {/* Meta row */}
+                            <div className="flex items-center gap-4 mt-1.5 text-xs text-text-secondary flex-wrap">
+                                {course?.teacher?.name && (
+                                    <span className="flex items-center gap-1">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                                            <circle cx="12" cy="7" r="4" />
+                                        </svg>
+                                        {course.teacher.name}
                                     </span>
-                                </div>
-                            )}
+                                )}
+                                {course?.semester && (
+                                    <span className="flex items-center gap-1">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                            <line x1="16" y1="2" x2="16" y2="6" />
+                                            <line x1="8" y1="2" x2="8" y2="6" />
+                                            <line x1="3" y1="10" x2="21" y2="10" />
+                                        </svg>
+                                        {course.semester}
+                                    </span>
+                                )}
+                                <span className="flex items-center gap-1">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                                        <circle cx="9" cy="7" r="4" />
+                                    </svg>
+                                    {studentCount} student{studentCount !== 1 ? 's' : ''}
+                                </span>
+                            </div>
                         </div>
-
-                        {/* Attendance shortcut */}
-                        <button
-                            onClick={() => navigate(`/student/courses/${courseId}/attendance`)}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent-50 border border-accent-100 text-accent-500 text-sm font-semibold hover:bg-accent-100 transition-colors flex-shrink-0"
-                        >
-                            <CalendarIcon />
-                            My Attendance
-                        </button>
                     </div>
                 </div>
 
-                {/* Announcements stream */}
-                <div className="mb-4 flex items-center gap-2">
-                    <MegaphoneIcon />
-                    <h2 className="text-base font-bold text-text-primary">Announcements</h2>
-                    {!isLoading && (
-                        <span className="ml-auto text-xs text-text-muted">
-                            {announcements.length} post{announcements.length !== 1 ? 's' : ''}
-                        </span>
-                    )}
-                </div>
-
-                {isLoading && (
-                    <div className="space-y-4">
-                        {[...Array(3)].map((_, i) => <AnnouncementSkeleton key={i} />)}
-                    </div>
-                )}
-
-                {!isLoading && announcements.length === 0 && (
-                    <div className="flex flex-col items-center justify-center min-h-[30vh] text-center px-6">
-                        <div className="w-14 h-14 rounded-2xl bg-accent-50 border border-accent-100 flex items-center justify-center mb-3">
-                            <MegaphoneIcon />
-                        </div>
-                        <h3 className="text-base font-bold text-text-primary mb-1">No announcements yet</h3>
-                        <p className="text-sm text-text-secondary">
-                            Your instructor hasn't posted anything yet. Check back soon.
-                        </p>
-                    </div>
-                )}
-
-                {!isLoading && announcements.length > 0 && (
-                    <div className="space-y-4">
-                        {announcements.map((a) => (
-                            <AnnouncementCard key={a.id} announcement={a} courseId={courseId} />
+                {/* ── Tab Bar ────────────────────────────────────── */}
+                <div className="mt-5 border-b border-neutral-200 bg-white shadow-sm -mt-px">
+                    <nav className="flex overflow-x-auto">
+                        {TABS.map((tab) => (
+                            <button
+                                key={tab.key}
+                                onClick={() => setActiveTab(tab.key)}
+                                className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
+                                    activeTab === tab.key
+                                        ? 'border-accent-500 text-accent-500'
+                                        : 'border-transparent text-text-secondary hover:text-text-primary hover:border-neutral-300'
+                                }`}
+                            >
+                                <span className={activeTab === tab.key ? 'text-accent-500' : 'text-text-muted'}>
+                                    {tab.icon}
+                                </span>
+                                {tab.label}
+                            </button>
                         ))}
-                    </div>
-                )}
+                    </nav>
+                </div>
+
+                {/* ── Tab Content ────────────────────────────────── */}
+                <div className="mt-6">
+                    {activeTab === 'dashboard' && <DashboardTab course={course} courseId={courseId} />}
+                    {activeTab === 'students' && <StudentsTab course={course} />}
+                    {activeTab === 'announcements' && <AnnouncementsTab courseId={courseId} />}
+                    {activeTab === 'assessments' && <AssessmentsTab courseId={courseId} />}
+                    {activeTab === 'attendance' && <AttendanceTab courseId={courseId} />}
+                </div>
             </div>
         </StudentSidebar>
     );
 };
 
-export default CoursePage;
+export default StudentCoursePage;

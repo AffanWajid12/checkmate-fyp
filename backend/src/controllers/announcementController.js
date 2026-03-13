@@ -1,5 +1,7 @@
 import prisma from "../config/prismaClient.js";
-import { handleError, verifyCourseOwner, verifyStudentEnrolled } from "../utils/courseHelpers.js";
+import supabase from "../config/supabaseClient.js";
+import { v4 as uuidv4 } from "uuid";
+import { handleError, verifyCourseOwner, verifyStudentEnrolled, generateSignedUrl } from "../utils/courseHelpers.js";
 
 // POST /api/courses/:courseId/announcements
 export const addAnnouncement = async (req, res) => {
@@ -12,11 +14,43 @@ export const addAnnouncement = async (req, res) => {
 
         await verifyCourseOwner(courseId, req.user.id);
 
+        // Upload any resource files to Supabase Storage
+        const uploadedResources = [];
+        if (req.files && req.files.length > 0) {
+            for (const file of req.files) {
+                const ext = file.originalname.split(".").pop();
+                const storagePath = `${courseId}/announcements/${uuidv4()}.${ext}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from("source-materials")
+                    .upload(storagePath, file.buffer, {
+                        contentType: file.mimetype,
+                        upsert: false,
+                    });
+
+                if (uploadError)
+                    throw { status: 500, message: `File upload failed: ${uploadError.message}` };
+
+                uploadedResources.push({
+                    bucket_path: storagePath,
+                    file_name: file.originalname,
+                    file_size: file.size,
+                    mime_type: file.mimetype,
+                });
+            }
+        }
+
         const announcement = await prisma.announcements.create({
             data: {
                 title,
                 description,
                 course_id: courseId,
+                resources: {
+                    create: uploadedResources,
+                },
+            },
+            include: {
+                resources: true,
             },
         });
 
@@ -45,6 +79,7 @@ export const getCourseAnnouncements = async (req, res) => {
                     include: { user: { select: { id: true, name: true, role: true } } },
                     orderBy: { createdAt: "asc" }
                 },
+                resources: true,
                 assessments: {
                     include: { source_materials: true },
                 },
@@ -52,7 +87,20 @@ export const getCourseAnnouncements = async (req, res) => {
             orderBy: { createdAt: "desc" },
         });
 
-        return res.status(200).json({ message: "Announcements retrieved successfully", announcements });
+        // Generate signed URLs for resources
+        const announcementsWithUrls = await Promise.all(
+            announcements.map(async (ann) => ({
+                ...ann,
+                resources: await Promise.all(
+                    (ann.resources || []).map(async (res) => ({
+                        ...res,
+                        signed_url: await generateSignedUrl("source-materials", res.bucket_path),
+                    }))
+                ),
+            }))
+        );
+
+        return res.status(200).json({ message: "Announcements retrieved successfully", announcements: announcementsWithUrls });
     } catch (error) {
         return handleError(res, error);
     }

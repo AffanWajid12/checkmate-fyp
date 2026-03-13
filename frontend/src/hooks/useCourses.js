@@ -78,6 +78,40 @@ export const useCourseAnnouncements = (courseId) =>
         refetchOnWindowFocus: false,
     });
 
+/**
+ * DELETE /api/courses/:id
+ * Permanent deletion of a course by teacher.
+ */
+export const useDeleteCourse = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (courseId) => {
+            const { data } = await apiClient.delete(`/api/courses/${courseId}`);
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: courseKeys.teacherCourses });
+        },
+    });
+};
+
+/**
+ * DELETE /api/courses/unenroll/:courseId
+ * Unenroll from a course (STUDENT).
+ */
+export const useUnenrollCourse = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (courseId) => {
+            const { data } = await apiClient.delete(`/api/courses/unenroll/${courseId}`);
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: courseKeys.enrolledCourses });
+        },
+    });
+};
+
 // ─── Teacher Hooks ────────────────────────────────────────────────────────────
 
 /**
@@ -121,10 +155,9 @@ export const useCreateCourse = () => {
 export const useAddAnnouncement = (courseId) => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ title, description }) => {
-            const { data } = await apiClient.post(`/api/courses/${courseId}/announcements`, {
-                title,
-                description,
+        mutationFn: async ({ formData }) => {
+            const { data } = await apiClient.post(`/api/courses/${courseId}/announcements`, formData, {
+                headers: { "Content-Type": "multipart/form-data" },
             });
             return data.announcement;
         },
@@ -182,12 +215,31 @@ export const useDeleteAnnouncementComment = (courseId, announcementId) => {
 export const useMarkAttendance = (courseId) => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ date, records }) => {
+        mutationFn: async ({ sessionId, date, title, records }) => {
             const { data } = await apiClient.post(`/api/courses/${courseId}/attendance`, {
+                sessionId,
                 date,
+                title,
                 records,
             });
             return data.results;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: courseKeys.courseAttendance(courseId) });
+        },
+    });
+};
+
+/**
+ * DELETE /api/courses/:courseId/attendance/:sessionId
+ * Deletes an entire attendance session and its records.
+ */
+export const useDeleteAttendanceSession = (courseId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (sessionId) => {
+            const { data } = await apiClient.delete(`/api/courses/${courseId}/attendance/${sessionId}`);
+            return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: courseKeys.courseAttendance(courseId) });
@@ -205,7 +257,7 @@ export const useCourseAttendance = (courseId) =>
         queryKey: courseKeys.courseAttendance(courseId),
         queryFn: async () => {
             const { data } = await apiClient.get(`/api/courses/${courseId}/attendance`);
-            return data.records; // array of { id, date, status, enrollment: { student: { name, email } } }
+            return data.sessions; // array of { id, title, date, records: [...] }
         },
         enabled: !!courseId,
     });

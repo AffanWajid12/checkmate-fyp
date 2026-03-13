@@ -15,14 +15,12 @@ import UserManagement from "./pages/admin/UserManagement.jsx";
 
 import StudentDashboard from "./pages/student/StudentDashboard.jsx";
 import StudentCoursePage from "./pages/student/courses/CoursePage.jsx";
-import StudentAttendancePage from "./pages/student/attendance/AttendancePage.jsx";
 import StudentAssessmentPage from "./pages/student/courses/AssessmentPage.jsx";
 
 import TeacherDashboard from "./pages/teacher/TeacherDashboard.jsx";
 import TeacherAttendanceOverview from "./pages/teacher/attendance/AttendanceOverview.jsx";
 import TeacherAssignmentsOverview from "./pages/teacher/assignments/AssignmentsOverview.jsx";
 import TeacherCoursePage from "./pages/teacher/courses/CoursePage/index.jsx";
-import TeacherAttendancePage from "./pages/teacher/attendance/AttendancePage.jsx";
 import AddAssessmentPage from "./pages/teacher/courses/AddAssessmentPage.jsx";
 import TeacherAssessmentPage from "./pages/teacher/courses/AssessmentPage.jsx";
 import ViewSubmissionPage from "./pages/teacher/courses/ViewSubmissionPage.jsx";
@@ -114,14 +112,6 @@ function App() {
                 }
               />
               <Route
-                path="/student/courses/:courseId/attendance"
-                element={
-                  <RoleProtectedRoute allowedRoles={["STUDENT"]}>
-                    <StudentAttendancePage />
-                  </RoleProtectedRoute>
-                }
-              />
-              <Route
                 path="/student/courses/:courseId/assessments/:assessmentId"
                 element={
                   <RoleProtectedRoute allowedRoles={["STUDENT"]}>
@@ -160,14 +150,6 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={["TEACHER"]}>
                     <TeacherCoursePage />
-                  </RoleProtectedRoute>
-                }
-              />
-              <Route
-                path="/teacher/courses/:courseId/attendance"
-                element={
-                  <RoleProtectedRoute allowedRoles={["TEACHER"]}>
-                    <TeacherAttendancePage />
                   </RoleProtectedRoute>
                 }
               />

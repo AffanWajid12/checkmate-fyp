@@ -313,9 +313,41 @@ export const updateSubmission = async (req, res) => {
 };
 
 // PATCH /api/courses/:courseId/assessments/:assessmentId/submissions/:submissionId/grade
-// Body: { grade, feedback? }  — TEACHER only (stub, to be implemented later)
+// Body: { grade, feedback? }  — TEACHER only
 export const gradeSubmission = async (req, res) => {
-    return res.status(501).json({ message: "Grading not yet implemented" });
+    try {
+        const { courseId, assessmentId, submissionId } = req.params;
+        const { grade, feedback } = req.body;
+
+        if (grade === undefined)
+            return res.status(400).json({ message: "grade is required" });
+
+        await verifyCourseOwner(courseId, req.user.id);
+        await verifyAssessmentInCourse(assessmentId, courseId);
+
+        const submission = await prisma.submissions.findUnique({
+            where: { id: submissionId },
+        });
+
+        if (!submission || submission.assessment_id !== assessmentId)
+            return res.status(404).json({ message: "Submission not found" });
+
+        const updated = await prisma.submissions.update({
+            where: { id: submissionId },
+            data: {
+                grade: parseFloat(grade),
+                feedback: feedback ?? null,
+                status: "GRADED",
+            },
+        });
+
+        return res.status(200).json({
+            message: "Submission graded successfully",
+            submission: updated,
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
 };
 
 // GET /api/courses/:courseId/assessments/:assessmentId/submissions/:submissionId

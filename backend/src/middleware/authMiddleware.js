@@ -18,12 +18,24 @@ const verifyUser = async (req, res, next) => {
             return res.status(401).json({ error: "Invalid or expired token" });
         }
 
-        const dbUser = await prisma.users.findUnique({ where: { id: user.id } });
+        let dbUser = await prisma.users.findUnique({ where: { id: user.id } });
+        
         if (!dbUser) {
-            return res.status(401).json({ error: "User not found" });
+            // AUTO-SYNC: If user is authenticated in Supabase but missing in DB (e.g. after DB reset)
+            // Recreate the user record automatically using Supabase metadata
+            const metadata = user.user_metadata || {};
+            dbUser = await prisma.users.create({
+                data: {
+                    id: user.id,
+                    email: user.email,
+                    name: metadata.name || user.email.split('@')[0],
+                    role: metadata.role?.toUpperCase() || 'STUDENT',
+                },
+            });
+            console.log(`Auto-synced user ${user.email} to database.`);
         }
+        
         req.user = dbUser;
-
         next();
     } catch (error) {
         res.status(500).json({ error: error.message });
