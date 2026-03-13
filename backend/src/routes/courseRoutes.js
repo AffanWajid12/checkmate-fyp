@@ -7,6 +7,8 @@ import {
     getTeacherCourses,
     enrollInCourse,
     getEnrolledCourses,
+    deleteCourse,
+    unenrollFromCourse,
 } from "../controllers/courseController.js";
 
 import {
@@ -20,6 +22,7 @@ import {
     markAttendance,
     getCourseAttendance,
     getStudentAttendance,
+    deleteAttendanceSession,
 } from "../controllers/attendanceController.js";
 
 import {
@@ -34,26 +37,29 @@ import {
 
 const router = Router();
 
+// ─── Student Routes ───────────────────────────────────────────────────────────
+router.post("/enroll", verifyUser, verifyUserType("STUDENT"), enrollInCourse);
+router.get("/enrolled", verifyUser, verifyUserType("STUDENT"), getEnrolledCourses);
+router.delete("/unenroll/:courseId", verifyUser, verifyUserType("STUDENT"), unenrollFromCourse);
+
 // ─── Teacher Routes ───────────────────────────────────────────────────────────
 router.post("/", verifyUser, verifyUserType("TEACHER"), createCourse);
 router.get("/my-courses", verifyUser, verifyUserType("TEACHER"), getTeacherCourses);
+router.delete("/:id", verifyUser, verifyUserType("TEACHER"), deleteCourse);
 
 // Announcements
-router.post("/:courseId/announcements", verifyUser, verifyUserType("TEACHER"), addAnnouncement);
+router.post("/:courseId/announcements", verifyUser, verifyUserType("TEACHER"), uploadMultiple, addAnnouncement);
 
 // Attendance
 router.post("/:courseId/attendance", verifyUser, verifyUserType("TEACHER"), markAttendance);
 router.get("/:courseId/attendance", verifyUser, verifyUserType("TEACHER"), getCourseAttendance);
+router.delete("/:courseId/attendance/:sessionId", verifyUser, verifyUserType("TEACHER"), deleteAttendanceSession);
 
 // Assessment management (teacher)
 router.post("/:courseId/announcements/:announcementId/assessments", verifyUser, verifyUserType("TEACHER"), uploadMultiple, addAssessment);
 router.get("/:courseId/assessments/:assessmentId/submissions/:submissionId", verifyUser, verifyUserType("TEACHER"), getSubmissionDetails);
 router.patch("/:courseId/assessments/:assessmentId/submissions/:submissionId/grade", verifyUser, verifyUserType("TEACHER"), gradeSubmission);
 router.delete("/:courseId/assessments/:assessmentId/source-materials/:materialId", verifyUser, verifyUserType("TEACHER"), deleteSourceMaterial);
-
-// ─── Student Routes ───────────────────────────────────────────────────────────
-router.post("/enroll", verifyUser, verifyUserType("STUDENT"), enrollInCourse);
-router.get("/enrolled", verifyUser, verifyUserType("STUDENT"), getEnrolledCourses);
 
 // Attendance (student)
 router.get("/:courseId/my-attendance", verifyUser, verifyUserType("STUDENT"), getStudentAttendance);

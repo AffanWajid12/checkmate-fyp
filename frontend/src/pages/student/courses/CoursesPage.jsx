@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JoinCourseDialog from './JoinCourseDialog';
-import { useEnrolledCourses } from '../../../hooks/useCourses';
+import { useEnrolledCourses, useUnenrollCourse } from '../../../hooks/useCourses';
+import CourseActions from '../../../components/CourseActions';
+import toast from 'react-hot-toast';
 
 // Soft course card header backgrounds (teal-friendly palette)
 const CARD_COLORS = [
@@ -47,7 +49,7 @@ const FolderIcon = () => (
     </svg>
 );
 
-const CourseCard = ({ course, onClick }) => {
+const CourseCard = ({ course, onClick, onUnenroll }) => {
     return (
         <div
             onClick={onClick}
@@ -59,12 +61,26 @@ const CourseCard = ({ course, onClick }) => {
                 style={{ backgroundColor: course.color }}
             >
                 {/* Three-dot menu */}
-                <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute top-3 right-3 text-white/80 hover:text-white hover:bg-white/20 rounded-full p-1 transition-colors z-10"
-                >
-                    <MoreVertIcon />
-                </button>
+                <div className="absolute top-3 right-3 z-20">
+                    <CourseActions 
+                        actions={[
+                            {
+                                label: 'Unenroll',
+                                icon: (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                    </svg>
+                                ),
+                                onClick: () => {
+                                    if (window.confirm(`Are you sure you want to unenroll from ${course.title}?`)) {
+                                        onUnenroll(course.id);
+                                    }
+                                },
+                                danger: true
+                            }
+                        ]}
+                    />
+                </div>
 
                 {/* Course Title + Meta pinned to top-left */}
                 <div className="absolute top-0 left-0 right-10 p-4">
@@ -115,6 +131,14 @@ const CoursesPage = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const navigate = useNavigate();
     const { data: courses = [], isLoading } = useEnrolledCourses();
+    const { mutate: unenroll } = useUnenrollCourse();
+
+    const handleUnenroll = (courseId) => {
+        unenroll(courseId, {
+            onSuccess: () => toast.success('Unenrolled successfully'),
+            onError: () => toast.error('Failed to unenroll')
+        });
+    };
 
     return (
         <div className="relative min-h-full">
@@ -183,6 +207,7 @@ const CoursesPage = () => {
                             key={course.id}
                             course={{ ...course, color: CARD_COLORS[index % CARD_COLORS.length] }}
                             onClick={() => navigate(`/student/courses/${course.id}`)}
+                            onUnenroll={handleUnenroll}
                         />
                     ))}
                 </div>

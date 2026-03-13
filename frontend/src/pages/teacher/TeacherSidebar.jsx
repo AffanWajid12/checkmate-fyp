@@ -156,7 +156,7 @@ const TeacherSidebar = ({ children }) => {
             {/* ── Mobile: backdrop ────────────────────────── */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm md:hidden"
+                    className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm md:hidden cursor-pointer"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}

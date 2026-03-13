@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTeacherCourses } from '../../../hooks/useCourses';
+import { useTeacherCourses, useDeleteCourse } from '../../../hooks/useCourses';
 import CreateCourseDialog from './CreateCourseDialog';
+import CourseActions from '../../../components/CourseActions';
+import toast from 'react-hot-toast';
 
 // Soft course card header backgrounds (same palette as student side)
 const CARD_COLORS = [
@@ -23,7 +25,7 @@ const UsersIcon = () => (
     </svg>
 );
 
-const TeacherCourseCard = ({ course, onClick }) => {
+const TeacherCourseCard = ({ course, onClick, onDelete }) => {
     const studentCount = course.students?.length ?? 0;
 
     return (
@@ -33,12 +35,26 @@ const TeacherCourseCard = ({ course, onClick }) => {
         >
             {/* Colored Header */}
             <div className="relative h-28 flex-shrink-0" style={{ backgroundColor: course.color }}>
-                <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute top-3 right-3 text-white/80 hover:text-white hover:bg-white/20 rounded-full p-1 transition-colors z-10"
-                >
-                    <MoreVertIcon />
-                </button>
+                <div className="absolute top-3 right-3 z-20">
+                    <CourseActions 
+                        actions={[
+                            {
+                                label: 'Delete Course',
+                                icon: (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                ),
+                                onClick: () => {
+                                    if (window.confirm(`Are you sure you want to delete ${course.title}? This will permanently remove all assessments, attendance, and student data for this course.`)) {
+                                        onDelete(course.id);
+                                    }
+                                },
+                                danger: true
+                            }
+                        ]}
+                    />
+                </div>
 
                 <div className="absolute top-0 left-0 right-10 p-4">
                     <h3 className="text-white font-bold text-base leading-snug line-clamp-2">
@@ -79,6 +95,14 @@ const TeacherCoursesPage = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const navigate = useNavigate();
     const { data: courses = [], isLoading } = useTeacherCourses();
+    const { mutate: deleteCourse } = useDeleteCourse();
+
+    const handleDelete = (courseId) => {
+        deleteCourse(courseId, {
+            onSuccess: () => toast.success('Course deleted successfully'),
+            onError: () => toast.error('Failed to delete course')
+        });
+    };
 
     return (
         <div className="relative min-h-full">
@@ -150,6 +174,7 @@ const TeacherCoursesPage = () => {
                             key={course.id}
                             course={{ ...course, color: CARD_COLORS[index % CARD_COLORS.length] }}
                             onClick={() => navigate(`/teacher/courses/${course.id}`)}
+                            onDelete={handleDelete}
                         />
                     ))}
                 </div>

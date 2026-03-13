@@ -67,11 +67,11 @@ export const AnnouncementComments = ({ courseId, announcementId, comments = [] }
     };
 
     return (
-        <div className="mt-4 pt-4 border-t border-neutral-100 flex flex-col gap-3 transition-all duration-300">
+        <div className="mt-4 pt-4 border-t border-neutral-100 flex flex-col gap-3 transition-all duration-300 ">
             {/* Toggle Header */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center text-text-muted hover:text-accent-600 transition-colors py-1 group w-fit"
+                className="flex items-center text-text-muted hover:text-accent-600 transition-colors py-1 group w-fit cursor-pointer"
             >
                 <MessageIcon />
                 <span className="text-xs font-bold mr-2">
@@ -116,7 +116,7 @@ export const AnnouncementComments = ({ courseId, announcementId, comments = [] }
                                                     {canDelete && (
                                                         <button
                                                             onClick={() => handleDelete(comment.id)}
-                                                            className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-error transition-opacity disabled:opacity-50"
+                                                            className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-error transition-opacity disabled:opacity-50 cursor-pointer"
                                                             disabled={deleteCommentMutation.isPending}
                                                             title="Delete comment"
                                                         >
@@ -153,7 +153,7 @@ export const AnnouncementComments = ({ courseId, announcementId, comments = [] }
                         <button
                             type="submit"
                             disabled={!newComment.trim() || addCommentMutation.isPending}
-                            className="h-10 px-4 flex items-center justify-center rounded-xl bg-accent-500 text-white text-sm font-semibold hover:bg-accent-600 active:bg-accent-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="h-10 px-4 flex items-center justify-center rounded-xl bg-accent-500 text-white text-sm font-semibold hover:bg-accent-600 active:bg-accent-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         >
                             Post
                         </button>

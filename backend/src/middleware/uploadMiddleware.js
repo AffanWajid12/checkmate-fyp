@@ -13,6 +13,10 @@ const ALLOWED_TYPES = [
     "image/jpeg",
     "image/jpg",
     "image/gif",
+    "video/mp4",
+    "video/mpeg",
+    "video/quicktime",
+    "video/webm",
 ];
 
 const fileFilter = (req, file, cb) => {

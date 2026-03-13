@@ -26,7 +26,7 @@ const CourseAttendanceCard = ({ course }) => {
 
     return (
         <div
-            onClick={() => navigate(`/teacher/courses/${course.id}/attendance`)}
+            onClick={() => navigate(`/teacher/courses/${course.id}?tab=attendance`)}
             className="bg-background rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer p-5 flex flex-col gap-3"
         >
             {/* Course info */}

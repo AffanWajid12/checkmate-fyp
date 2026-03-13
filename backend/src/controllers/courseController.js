@@ -1,5 +1,5 @@
 import prisma from "../config/prismaClient.js";
-import { generateCourseCode, handleError } from "../utils/courseHelpers.js";
+import { generateCourseCode, handleError, verifyCourseOwner } from "../utils/courseHelpers.js";
 
 // ─── Teacher Controllers ─────────────────────────────────────────────────────
 
@@ -94,13 +94,62 @@ export const getEnrolledCourses = async (req, res) => {
             where: { student_id: req.user.id },
             include: {
                 course: {
-                    include: { teacher: true },
+                    include: {
+                        teacher: true,
+                        students: {
+                            include: { student: true },
+                        },
+                    },
                 },
             },
         });
 
         const courses = enrollments.map((e) => e.course);
         return res.status(200).json({ message: "Enrolled courses retrieved successfully", courses });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+// DELETE /api/courses/enroll/:courseId — STUDENT only
+export const unenrollFromCourse = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+
+        const enrollment = await prisma.enrollments.findUnique({
+            where: {
+                course_id_student_id: {
+                    course_id: courseId,
+                    student_id: req.user.id,
+                },
+            },
+        });
+
+        if (!enrollment) {
+            return res.status(404).json({ message: "You are not enrolled in this course." });
+        }
+
+        await prisma.enrollments.delete({
+            where: { id: enrollment.id },
+        });
+
+        res.status(200).json({ message: "Unenrolled successfully" });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+// DELETE /api/courses/:id — TEACHER only
+export const deleteCourse = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await verifyCourseOwner(id, req.user.id);
+
+        await prisma.courses.delete({
+            where: { id },
+        });
+
+        res.status(200).json({ message: "Course deleted successfully" });
     } catch (error) {
         return handleError(res, error);
     }

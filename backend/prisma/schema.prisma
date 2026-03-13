@@ -99,6 +99,7 @@ model courses {
   students    enrollments[] @relation("CourseEnrollments")
 
   announcements announcements[] @relation("CourseAnnouncements")
+  attendance_sessions attendance_sessions[] @relation("CourseAttendanceSessions")
 
   @@map("courses")
   @@schema("public")
@@ -115,9 +116,26 @@ model announcements {
   course    courses @relation("CourseAnnouncements", fields: [course_id], references: [id], onDelete: Cascade)
 
   assessments assessments[] @relation("AnnouncementAssessments")
+  resources   announcement_resources[] @relation("AnnouncementResources")
   comments    announcement_comments[] @relation("AnnouncementComments")
 
   @@map("announcements")
+  @@schema("public")
+}
+
+model announcement_resources {
+  id            String  @id @db.Uuid @default(uuid())
+  bucket_path   String
+  file_name     String
+  file_size     Int
+  mime_type     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt @default(now())
+
+  announcement_id  String @db.Uuid
+  announcement    announcements @relation("AnnouncementResources", fields: [announcement_id], references: [id], onDelete: Cascade)
+
+  @@map("announcement_resources")
   @@schema("public")
 }
 
@@ -209,9 +227,24 @@ model attachments {
   @@schema("public")
 }
 
+model attendance_sessions {
+  id        String   @id @db.Uuid @default(uuid())
+  title     String?
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+
+  course_id String  @db.Uuid
+  course    courses @relation("CourseAttendanceSessions", fields: [course_id], references: [id], onDelete: Cascade)
+
+  records   attendance[] @relation("SessionAttendance")
+
+  @@map("attendance_sessions")
+  @@schema("public")
+}
+
 model attendance {
   id            String           @id @db.Uuid @default(uuid())
-  date          DateTime         @db.Date
   status        AttendanceStatus @default(ABSENT)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt @default(now())
@@ -219,7 +252,10 @@ model attendance {
   enrollment_id String      @db.Uuid
   enrollment    enrollments @relation("EnrollmentAttendance", fields: [enrollment_id], references: [id], onDelete: Cascade)
 
-  @@unique([enrollment_id, date])
+  session_id String              @db.Uuid
+  session    attendance_sessions @relation("SessionAttendance", fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@unique([enrollment_id, session_id])
   @@map("attendance")
   @@schema("public")
 }
