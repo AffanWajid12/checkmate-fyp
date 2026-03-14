@@ -24,6 +24,9 @@ import TeacherCoursePage from "./pages/teacher/courses/CoursePage/index.jsx";
 import AddAssessmentPage from "./pages/teacher/courses/AddAssessmentPage.jsx";
 import TeacherAssessmentPage from "./pages/teacher/courses/AssessmentPage.jsx";
 import ViewSubmissionPage from "./pages/teacher/courses/ViewSubmissionPage.jsx";
+import SettingsPage from "./pages/SettingsPage.jsx";
+import StudentSidebar from "./pages/student/StudentSidebar.jsx";
+import TeacherSidebar from "./pages/teacher/TeacherSidebar.jsx";
 
 const queryClient = new QueryClient();
 
@@ -178,6 +181,26 @@ function App() {
                 }
               />
 
+              <Route
+                path="/student/settings"
+                element={
+                  <RoleProtectedRoute allowedRoles={["STUDENT"]}>
+                    <StudentSidebar>
+                      <SettingsPage />
+                    </StudentSidebar>
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/settings"
+                element={
+                  <RoleProtectedRoute allowedRoles={["TEACHER"]}>
+                    <TeacherSidebar>
+                      <SettingsPage />
+                    </TeacherSidebar>
+                  </RoleProtectedRoute>
+                }
+              />
               <Route path="/*" element={<Navigate to="/login" replace />} />
             </Routes>
           </React.Suspense>

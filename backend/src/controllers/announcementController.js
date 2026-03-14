@@ -76,7 +76,7 @@ export const getCourseAnnouncements = async (req, res) => {
             where: { course_id: courseId },
             include: {
                 comments: {
-                    include: { user: { select: { id: true, name: true, role: true } } },
+                    include: { user: { select: { id: true, name: true, role: true, profile_picture: true } } },
                     orderBy: { createdAt: "asc" }
                 },
                 resources: true,
@@ -100,6 +100,7 @@ export const getCourseAnnouncements = async (req, res) => {
             }))
         );
 
+        console.log(`Sending announcements. First comment user:`, announcementsWithUrls[0]?.comments[0]?.user);
         return res.status(200).json({ message: "Announcements retrieved successfully", announcements: announcementsWithUrls });
     } catch (error) {
         return handleError(res, error);
@@ -136,10 +137,11 @@ export const addAnnouncementComment = async (req, res) => {
                 user_id: req.user.id,
             },
             include: {
-                user: { select: { id: true, name: true, role: true } },
+                user: { select: { id: true, name: true, role: true, profile_picture: true } },
             },
         });
 
+        console.log('Created comment user data:', comment.user);
         return res.status(201).json({ message: "Comment added successfully", comment });
     } catch (error) {
         return handleError(res, error);

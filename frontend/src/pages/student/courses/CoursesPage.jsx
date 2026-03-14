@@ -17,37 +17,29 @@ const CARD_COLORS = [
     '#065f46', // forest teal
 ];
 
-// Student avatar icon (generic person silhouette)
-const AvatarIcon = ({ className = '' }) => (
+// Student avatar icon (generic person silhouette or image)
+const AvatarIcon = ({ className = '', src, name }) => (
     <div className={`rounded-full overflow-hidden border-2 border-white/60 bg-neutral-200 flex items-center justify-center ${className}`}>
-        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-neutral-500">
-            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-        </svg>
+        {src && src.trim() !== "" ? (
+            <img 
+                src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profiles/${src}`} 
+                alt={name} 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                }}
+            />
+        ) : null}
+        <div className={`w-full h-full items-center justify-center ${src ? 'hidden' : 'flex'}`}>
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-neutral-500">
+                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+            </svg>
+        </div>
     </div>
 );
 
-// Three-dot menu icon
-const MoreVertIcon = () => (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-        <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-    </svg>
-);
-
-// Roster icon
-const RosterIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-    </svg>
-);
-
-// Folder icon
-const FolderIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
-        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
-    </svg>
-);
+// ... existing code ...
 
 const CourseCard = ({ course, onClick, onUnenroll }) => {
     return (
@@ -62,7 +54,7 @@ const CourseCard = ({ course, onClick, onUnenroll }) => {
             >
                 {/* Three-dot menu */}
                 <div className="absolute top-3 right-3 z-20">
-                    <CourseActions 
+                    <CourseActions
                         actions={[
                             {
                                 label: 'Unenroll',
@@ -99,30 +91,18 @@ const CourseCard = ({ course, onClick, onUnenroll }) => {
 
                 {/* Avatar — overlapping the header bottom */}
                 <div className="absolute -bottom-5 right-4">
-                    <AvatarIcon className="w-10 h-10" />
+                    <AvatarIcon 
+                        className="w-10 h-10" 
+                        src={course.teacher?.profile_picture} 
+                        name={course.teacher?.name}
+                    />
                 </div>
             </div>
 
             {/* Card Body — spacer so avatar overlap is clear */}
             <div className="flex-1 pt-8" />
 
-            {/* Card Footer */}
-            <div className="border-t border-neutral-100 px-4 py-3 flex items-center gap-3 text-text-muted">
-                <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="hover:text-accent-500 transition-colors"
-                    title="Roster"
-                >
-                    <RosterIcon />
-                </button>
-                <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="hover:text-accent-500 transition-colors"
-                    title="Course Files"
-                >
-                    <FolderIcon />
-                </button>
-            </div>
+
         </div>
     );
 };

@@ -45,6 +45,7 @@ model users {
   email           String            @unique
   name            String
   role            Role              @default(STUDENT)
+  profile_picture String?           // Path or URL to profile picture
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt @default(now())
 

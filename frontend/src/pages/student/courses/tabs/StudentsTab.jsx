@@ -57,8 +57,19 @@ const StudentsTab = ({ course }) => {
                                 key={student.id}
                                 className={`flex items-center gap-4 px-5 py-4 ${idx % 2 === 1 ? 'bg-neutral-50/40' : ''}`}
                             >
-                                <div className="w-10 h-10 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0">
-                                    <span className="text-sm font-bold text-accent-600">
+                                <div className="w-10 h-10 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0 overflow-hidden border border-neutral-200">
+                                    {student.profile_picture && student.profile_picture.trim() !== "" ? (
+                                        <img 
+                                            src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profiles/${student.profile_picture}`} 
+                                            alt={student.name} 
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                                e.target.nextSibling.style.display = 'flex';
+                                            }}
+                                        />
+                                    ) : null}
+                                    <span className={`text-sm font-bold text-accent-600 ${student.profile_picture ? 'hidden' : 'flex'}`}>
                                         {student.name?.charAt(0).toUpperCase() ?? '?'}
                                     </span>
                                 </div>

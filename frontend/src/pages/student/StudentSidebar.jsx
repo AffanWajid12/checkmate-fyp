@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { useLogout, useMe } from '../../hooks/useAuth';
 import supabase from '../../utils/supabaseClient';
 import logo from '../../logo.png';
@@ -116,8 +116,21 @@ const StudentSidebar = ({ children }) => {
 
             {/* Student Profile Footer */}
             <div className="border-t border-neutral-100 px-4 py-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-orange-400 flex-shrink-0 flex items-center justify-center text-white font-bold text-sm">
-                    {(user?.name?.charAt(0) || '?').toUpperCase()}
+                <div className="w-9 h-9 rounded-full bg-orange-400 flex-shrink-0 flex items-center justify-center text-white font-bold text-sm overflow-hidden border border-neutral-200">
+                    {user?.profile_picture && user.profile_picture.trim() !== "" ? (
+                        <img 
+                            src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profiles/${user.profile_picture}`} 
+                            alt="Profile" 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                            }}
+                        />
+                    ) : null}
+                    <span className={user?.profile_picture ? 'hidden' : 'flex'}>
+                        {(user?.name?.charAt(0) || '?').toUpperCase()}
+                    </span>
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-text-primary leading-tight truncate">
@@ -125,9 +138,9 @@ const StudentSidebar = ({ children }) => {
                     </p>
                     <p className="text-xs text-text-muted leading-tight truncate">{user?.email}</p>
                 </div>
-                <button title="Settings" className="text-text-muted hover:text-text-primary hover:bg-neutral-100 p-1.5 rounded-lg transition-colors flex-shrink-0">
+                <Link to="/student/settings" title="Settings" className="text-text-muted hover:text-text-primary hover:bg-neutral-100 p-1.5 rounded-lg transition-colors flex-shrink-0">
                     <SettingsIcon />
-                </button>
+                </Link>
             </div>
             <div className="px-6 py-5 border-t border-neutral-100">
                 <button className="flex items-center gap-3 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors w-full"

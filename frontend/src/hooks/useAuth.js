@@ -48,3 +48,40 @@ export const useLogout = () => {
         },
     });
 };
+
+export const useUpdateProfile = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (data) => {
+            const res = await apiClient.patch("/api/users/profile", data);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries(authKeys.me);
+        },
+    });
+};
+
+export const useUpdateProfilePicture = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (file) => {
+            const formData = new FormData();
+            formData.append("file", file);
+            const res = await apiClient.post("/api/users/profile-picture", formData);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries(authKeys.me);
+        },
+    });
+};
+
+export const useChangePassword = () => {
+    return useMutation({
+        mutationFn: async (password) => {
+            const res = await apiClient.patch("/api/users/change-password", { password });
+            return res.data;
+        },
+    });
+};

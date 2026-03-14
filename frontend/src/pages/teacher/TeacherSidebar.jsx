@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
-import { useLogout } from '../../hooks/useAuth';
+import { NavLink, Link } from 'react-router-dom';
+import { useLogout, useMe } from '../../hooks/useAuth';
 import supabase from '../../utils/supabaseClient';
 import logo from '../../logo.png';
 
@@ -52,20 +52,8 @@ const SettingsIcon = () => (
 
 const TeacherSidebar = ({ children }) => {
     const { mutateAsync: logout, isPending: loading } = useLogout();
-    const [user, setUser] = useState({ name: '', email: '' });
+    const { data: user } = useMe();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-
-    useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) {
-                const meta = session.user.user_metadata;
-                setUser({
-                    name: meta?.name ?? meta?.full_name ?? session.user.email?.split('@')[0] ?? 'Teacher',
-                    email: session.user.email ?? '',
-                });
-            }
-        });
-    }, []);
 
     const handleNavClick = () => {
         setSidebarOpen(false);
@@ -117,8 +105,21 @@ const TeacherSidebar = ({ children }) => {
 
             {/* Teacher Profile Footer */}
             <div className="border-t border-neutral-100 px-4 py-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-accent-500 flex-shrink-0 flex items-center justify-center text-white font-bold text-sm">
-                    {(user.name.charAt(0) || '?').toUpperCase()}
+                <div className="w-9 h-9 rounded-full bg-accent-500 flex-shrink-0 flex items-center justify-center text-white font-bold text-sm overflow-hidden border border-neutral-200">
+                    {user?.profile_picture && user.profile_picture.trim() !== "" ? (
+                        <img 
+                            src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profiles/${user.profile_picture}`} 
+                            alt="Profile" 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                            }}
+                        />
+                    ) : null}
+                    <span className={user?.profile_picture ? 'hidden' : 'flex'}>
+                        {(user?.name?.charAt(0) || '?').toUpperCase()}
+                    </span>
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-text-primary leading-tight truncate">
@@ -126,9 +127,9 @@ const TeacherSidebar = ({ children }) => {
                     </p>
                     <p className="text-xs text-text-muted leading-tight truncate">{user.email}</p>
                 </div>
-                <button title="Settings" className="text-text-muted hover:text-text-primary hover:bg-neutral-100 p-1.5 rounded-lg transition-colors flex-shrink-0">
+                <Link to="/teacher/settings" title="Settings" className="text-text-muted hover:text-text-primary hover:bg-neutral-100 p-1.5 rounded-lg transition-colors flex-shrink-0">
                     <SettingsIcon />
-                </button>
+                </Link>
             </div>
             <div className="px-6 py-5 border-t border-neutral-100">
                 <button className="flex items-center gap-3 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors w-full"

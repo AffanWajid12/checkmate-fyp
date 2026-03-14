@@ -24,6 +24,7 @@ export const verifyStudentEnrolled = async (courseId, studentId) => {
 
 // Centralised error handler — reads { status, message } thrown by helpers
 export const handleError = (res, error) => {
+    console.log(error);
     if (error.status) {
         return res.status(error.status).json({ message: error.message });
     }

@@ -36,7 +36,7 @@ const TeacherCourseCard = ({ course, onClick, onDelete }) => {
             {/* Colored Header */}
             <div className="relative h-28 flex-shrink-0" style={{ backgroundColor: course.color }}>
                 <div className="absolute top-3 right-3 z-20">
-                    <CourseActions 
+                    <CourseActions
                         actions={[
                             {
                                 label: 'Delete Course',

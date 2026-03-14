@@ -13,6 +13,13 @@ const verifyUser = async (req, res, next) => {
             return res.status(401).json({ error: "Token missing" });
         }
 
+        // The following block seems to be an unrelated API client interceptor
+        // and cannot be directly inserted here as it would cause a syntax error.
+        // It appears to be a copy-paste error from another part of the codebase.
+        // If the intention was to add console logs related to session or token
+        // within this middleware, please provide the specific console.log statements.
+        // For now, I will proceed with the original logic for token verification.
+
         const { data: { user }, error } = await supabase.auth.getUser(token);
         if (error || !user) {
             return res.status(401).json({ error: "Invalid or expired token" });
