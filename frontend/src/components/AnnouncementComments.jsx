@@ -93,26 +93,21 @@ export const AnnouncementComments = ({ courseId, announcementId, comments = [] }
                                     <div key={comment.id} className="flex items-start gap-2 group">
                                         {/* Avatar */}
                                         <div className="w-7 h-7 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden border border-neutral-200">
-                                            {(() => {
-                                                console.log(`Comment ${comment.id} user PFP:`, comment.user.profile_picture);
-                                                return null;
-                                            })()}
-                                            {comment.user.profile_picture && comment.user.profile_picture.trim() !== "" ? (
+                                            {comment.user.profile_picture ? (
                                                 <img 
-                                                    src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profiles/${comment.user.profile_picture}`} 
+                                                    src={comment.user.profile_picture} 
                                                     alt={comment.user.name} 
                                                     className="w-full h-full object-cover"
-                                                    onLoad={() => console.log(`Image loaded successfully for comment ${comment.id}`)}
                                                     onError={(e) => {
-                                                        console.error(`Image FAILED for comment ${comment.id}. URL:`, e.target.src);
                                                         e.target.style.display = 'none';
                                                         e.target.nextSibling.style.display = 'flex';
                                                     }}
                                                 />
-                                            ) : null}
-                                            <span className={`text-[10px] font-bold text-accent-700 ${comment.user.profile_picture && comment.user.profile_picture.trim() !== "" ? 'hidden' : 'flex'}`}>
-                                                {comment.user.name.charAt(0).toUpperCase()}
-                                            </span>
+                                            ) : (
+                                                <span className="text-[10px] font-bold text-accent-700">
+                                                    {comment.user.name.charAt(0).toUpperCase()}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0 bg-neutral-50 px-3 py-2 rounded-xl border border-neutral-100">
                                             <div className="flex items-center justify-between gap-2 mb-0.5">

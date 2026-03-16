@@ -5,6 +5,8 @@ import {
     useAssessmentDetails,
     useSubmitAssessment,
     useUpdateSubmission,
+    useUnsubmitAssessment,
+    useRemoveAttachment,
 } from '../../../hooks/useCourses';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -50,6 +52,19 @@ const ClockIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
+    </svg>
+);
+
+const CheckIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
+        <polyline points="20 6 9 17 4 12" />
+    </svg>
+);
+
+const PlusIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
 );
 
@@ -153,58 +168,82 @@ const MiniDropzone = ({ files, onChange }) => {
     );
 };
 
-// ─── Submission Portal ────────────────────────────────────────────────────────
+// ─── Submission Portal (Google Classroom Style) ───────────────────────────────
 
 const SubmissionPortal = ({ assessment, submission, courseId, assessmentId }) => {
     const [stagedFiles, setStagedFiles] = useState([]);
+    const [showAddFiles, setShowAddFiles] = useState(false);
+
     const { mutate: submit, isPending: submitting } = useSubmitAssessment(courseId, assessmentId);
     const { mutate: update, isPending: updating } = useUpdateSubmission(courseId, assessmentId);
+    const { mutate: unsubmit, isPending: unsubmitting } = useUnsubmitAssessment(courseId, assessmentId);
+    const { mutate: removeFile, isPending: removing } = useRemoveAttachment(courseId, assessmentId);
 
-    const isGraded  = submission?.status === 'GRADED';
+    const isGraded = submission?.status === 'GRADED';
     const hasSubmitted = !!submission;
     const statusMeta = submission ? STATUS_META[submission.status] ?? STATUS_META.SUBMITTED : null;
     const due = assessment.due_date ? formatDateTime(assessment.due_date) : null;
     const isOverdue = assessment.due_date && new Date(assessment.due_date) < new Date();
 
+    const isBusy = submitting || updating || unsubmitting || removing;
+
+    // Turn In: first submission
     const handleTurnIn = () => {
         if (!stagedFiles.length) { toast.error('Add at least one file before submitting.'); return; }
         const fd = new FormData();
         stagedFiles.forEach((f) => fd.append('files', f));
 
-        if (!hasSubmitted) {
-            submit(fd, {
-                onSuccess: () => { toast.success('Submitted!'); setStagedFiles([]); },
-                onError: (err) => toast.error(err?.response?.data?.error ?? 'Submission failed.'),
-            });
-        } else {
-            update(fd, {
-                onSuccess: () => { toast.success('Files added!'); setStagedFiles([]); },
-                onError: (err) => toast.error(err?.response?.data?.error ?? 'Update failed.'),
-            });
-        }
+        submit(fd, {
+            onSuccess: () => { toast.success('Turned in!'); setStagedFiles([]); },
+            onError: (err) => toast.error(err?.response?.data?.error ?? err?.response?.data?.message ?? 'Submission failed.'),
+        });
     };
 
-    const isPending = submitting || updating;
+    // Add more files to existing submission
+    const handleAddFiles = () => {
+        if (!stagedFiles.length) { toast.error('Select files to add.'); return; }
+        const fd = new FormData();
+        stagedFiles.forEach((f) => fd.append('files', f));
+
+        update(fd, {
+            onSuccess: () => { toast.success('Files added!'); setStagedFiles([]); setShowAddFiles(false); },
+            onError: (err) => toast.error(err?.response?.data?.error ?? err?.response?.data?.message ?? 'Update failed.'),
+        });
+    };
+
+    // Unsubmit entire submission
+    const handleUnsubmit = () => {
+        unsubmit(undefined, {
+            onSuccess: () => { toast.success('Submission retracted.'); setStagedFiles([]); setShowAddFiles(false); },
+            onError: (err) => toast.error(err?.response?.data?.error ?? err?.response?.data?.message ?? 'Unsubmit failed.'),
+        });
+    };
+
+    // Remove a single existing file
+    const handleRemoveFile = (attachmentId) => {
+        removeFile(attachmentId, {
+            onSuccess: () => toast.success('File removed.'),
+            onError: (err) => toast.error(err?.response?.data?.error ?? err?.response?.data?.message ?? 'Remove failed.'),
+        });
+    };
 
     return (
         <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-5 space-y-4 lg:sticky lg:top-6">
-            <h2 className="text-sm font-bold text-text-primary">Submission Portal</h2>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-text-primary">Your work</h2>
+                {statusMeta && (
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusMeta.color}`}>
+                        {statusMeta.label}
+                    </span>
+                )}
+            </div>
 
             {/* Due date */}
             {due && (
                 <div className={`flex items-center gap-2 text-sm ${isOverdue ? 'text-error' : 'text-text-secondary'}`}>
                     <ClockIcon />
                     <span>{isOverdue ? 'Was due' : 'Due'} {due}</span>
-                </div>
-            )}
-
-            {/* Status */}
-            {statusMeta && (
-                <div className="flex items-center justify-between">
-                    <span className="text-sm text-text-secondary">Status</span>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusMeta.color}`}>
-                        {statusMeta.label}
-                    </span>
                 </div>
             )}
 
@@ -224,56 +263,136 @@ const SubmissionPortal = ({ assessment, submission, courseId, assessmentId }) =>
                 </div>
             )}
 
-            {/* Existing attachments */}
+            {/* Existing submitted files */}
             {submission?.attachments?.length > 0 && (
                 <div className="pt-3 border-t border-neutral-100">
-                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">Your Files</p>
                     <ul className="space-y-1.5">
                         {submission.attachments.map((att) => (
-                            <li key={att.id}>
+                            <li key={att.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-200 text-sm group">
                                 <a
                                     href={att.signed_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-200 hover:border-accent-300 hover:bg-accent-50 transition-colors text-sm"
+                                    className="flex items-center gap-2 flex-1 min-w-0 hover:text-accent-500 transition-colors"
                                 >
                                     <FileIcon mime={att.mime_type} />
                                     <span className="flex-1 truncate text-text-primary">{att.file_name}</span>
                                     <ExternalLinkIcon />
                                 </a>
+                                {/* Remove button — only if not graded */}
+                                {!isGraded && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveFile(att.id)}
+                                        disabled={isBusy}
+                                        className="text-text-muted hover:text-error transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-30 flex-shrink-0"
+                                        title="Remove file"
+                                    >
+                                        <XIcon />
+                                    </button>
+                                )}
                             </li>
                         ))}
                     </ul>
                 </div>
             )}
 
-            {/* Upload area (blocked if graded) */}
-            {!isGraded && (
-                <div className="pt-3 border-t border-neutral-100">
-                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
-                        {hasSubmitted ? 'Add More Files' : 'Add Work'}
-                    </p>
-                    <MiniDropzone files={stagedFiles} onChange={setStagedFiles} />
-                </div>
+            {/* ─── NOT YET SUBMITTED ─── */}
+            {!hasSubmitted && (
+                <>
+                    <div className="pt-3 border-t border-neutral-100">
+                        <MiniDropzone files={stagedFiles} onChange={setStagedFiles} />
+                    </div>
+                    <button
+                        onClick={handleTurnIn}
+                        disabled={!stagedFiles.length || isBusy}
+                        className="w-full py-3 rounded-xl bg-primary text-text-inverse text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {submitting ? (
+                            <>
+                                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                </svg>
+                                Turning in…
+                            </>
+                        ) : (
+                            <>
+                                <CheckIcon />
+                                Turn In
+                            </>
+                        )}
+                    </button>
+                </>
             )}
 
-            {/* Turn In button */}
-            {!isGraded && (
-                <button
-                    onClick={handleTurnIn}
-                    disabled={!stagedFiles.length || isPending}
-                    className="w-full py-3 rounded-xl bg-primary text-text-inverse text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                    {isPending ? (
-                        <>
-                            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                            </svg>
-                            {hasSubmitted ? 'Uploading…' : 'Submitting…'}
-                        </>
-                    ) : hasSubmitted ? 'Add Files' : 'Turn In'}
-                </button>
+            {/* ─── SUBMITTED (NOT GRADED) ─── */}
+            {hasSubmitted && !isGraded && (
+                <>
+                    {/* Add more files toggle */}
+                    {!showAddFiles ? (
+                        <button
+                            onClick={() => setShowAddFiles(true)}
+                            disabled={isBusy}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-neutral-200 text-sm text-text-secondary font-medium hover:border-accent-300 hover:text-accent-500 transition-colors disabled:opacity-40"
+                        >
+                            <PlusIcon />
+                            Add or create
+                        </button>
+                    ) : (
+                        <div className="pt-3 border-t border-neutral-100 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">Add More Files</p>
+                                <button
+                                    onClick={() => { setShowAddFiles(false); setStagedFiles([]); }}
+                                    className="text-xs text-text-muted hover:text-text-primary transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                            <MiniDropzone files={stagedFiles} onChange={setStagedFiles} />
+                            <button
+                                onClick={handleAddFiles}
+                                disabled={!stagedFiles.length || isBusy}
+                                className="w-full py-2.5 rounded-xl bg-accent-500 text-white text-sm font-semibold hover:bg-accent-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {updating ? (
+                                    <>
+                                        <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                        </svg>
+                                        Uploading…
+                                    </>
+                                ) : 'Add Files'}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Unsubmit button */}
+                    <button
+                        onClick={handleUnsubmit}
+                        disabled={isBusy}
+                        className="w-full py-3 rounded-xl border-2 border-primary text-primary text-sm font-semibold hover:bg-primary hover:text-text-inverse transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {unsubmitting ? (
+                            <>
+                                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                </svg>
+                                Unsubmitting…
+                            </>
+                        ) : 'Unsubmit'}
+                    </button>
+                </>
+            )}
+
+            {/* Submitted timestamp */}
+            {hasSubmitted && (
+                <p className="text-xs text-text-muted text-center pt-1">
+                    Submitted {formatDateTime(submission.submitted_at)}
+                </p>
             )}
         </div>
     );

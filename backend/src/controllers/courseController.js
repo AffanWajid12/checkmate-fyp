@@ -1,5 +1,5 @@
 import prisma from "../config/prismaClient.js";
-import { generateCourseCode, handleError, verifyCourseOwner } from "../utils/courseHelpers.js";
+import { generateCourseCode, handleError, verifyCourseOwner, signUserAvatar } from "../utils/courseHelpers.js";
 
 // ─── Teacher Controllers ─────────────────────────────────────────────────────
 
@@ -45,7 +45,19 @@ export const getTeacherCourses = async (req, res) => {
             },
         });
 
-        return res.status(200).json({ message: "Courses retrieved successfully", courses });
+        const coursesWithAvatars = await Promise.all(
+            courses.map(async (course) => ({
+                ...course,
+                students: await Promise.all(
+                    (course.students || []).map(async (e) => ({
+                        ...e,
+                        student: await signUserAvatar(e.student),
+                    }))
+                ),
+            }))
+        );
+
+        return res.status(200).json({ message: "Courses retrieved successfully", courses: coursesWithAvatars });
     } catch (error) {
         return handleError(res, error);
     }
@@ -104,7 +116,23 @@ export const getEnrolledCourses = async (req, res) => {
             },
         });
 
-        const courses = enrollments.map((e) => e.course);
+        const enrollmentsWithAvatars = await Promise.all(
+            enrollments.map(async (e) => ({
+                ...e,
+                course: {
+                    ...e.course,
+                    students: await Promise.all(
+                        (e.course.students || []).map(async (s) => ({
+                            ...s,
+                            student: await signUserAvatar(s.student),
+                        }))
+                    ),
+                    teacher: await signUserAvatar(e.course.teacher),
+                },
+            }))
+        );
+
+        const courses = enrollmentsWithAvatars.map((e) => e.course);
         return res.status(200).json({ message: "Enrolled courses retrieved successfully", courses });
     } catch (error) {
         return handleError(res, error);

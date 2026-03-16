@@ -128,10 +128,18 @@ const DashboardTab = ({ course, courseId }) => {
                     <div className="divide-y divide-neutral-100">
                         {students.slice(0, 5).map((s) => (
                             <div key={s.id} className="px-5 py-3 flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0">
-                                    <span className="text-xs font-bold text-accent-600">
-                                        {s.name?.charAt(0).toUpperCase() ?? '?'}
-                                    </span>
+                                <div className="w-8 h-8 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0 overflow-hidden border border-neutral-200">
+                                    {s.profile_picture ? (
+                                        <img 
+                                            src={s.profile_picture} 
+                                            alt={s.name} 
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <span className="text-xs font-bold text-accent-600">
+                                            {s.name?.charAt(0).toUpperCase() ?? '?'}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="min-w-0">
                                     <p className="text-sm font-medium text-text-primary truncate">{s.name}</p>

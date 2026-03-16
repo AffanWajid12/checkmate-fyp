@@ -30,6 +30,8 @@ import {
     getAssessmentDetails,
     submitAssessment,
     updateSubmission,
+    unsubmitAssessment,
+    removeAttachment,
     gradeSubmission,
     getSubmissionDetails,
     deleteSourceMaterial,
@@ -64,9 +66,11 @@ router.delete("/:courseId/assessments/:assessmentId/source-materials/:materialId
 // Attendance (student)
 router.get("/:courseId/my-attendance", verifyUser, verifyUserType("STUDENT"), getStudentAttendance);
 
-// Assessment submissions (student)
+// Assessment submissions (student) — includes Turn In, Add Files, Unsubmit, Remove File
 router.post("/:courseId/assessments/:assessmentId/submit", verifyUser, verifyUserType("STUDENT"), uploadMultiple, submitAssessment);
 router.patch("/:courseId/assessments/:assessmentId/submit", verifyUser, verifyUserType("STUDENT"), uploadMultiple, updateSubmission);
+router.delete("/:courseId/assessments/:assessmentId/submit", verifyUser, verifyUserType("STUDENT"), unsubmitAssessment);
+router.delete("/:courseId/assessments/:assessmentId/attachments/:attachmentId", verifyUser, verifyUserType("STUDENT"), removeAttachment);
 
 // ─── Shared Routes (Teacher + Student) ───────────────────────────────────────
 // getCourseAnnouncements and getAssessmentDetails handle role checking internally

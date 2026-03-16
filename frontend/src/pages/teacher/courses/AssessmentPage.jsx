@@ -60,6 +60,7 @@ const STATUS_META = {
     SUBMITTED: { label: 'Submitted', color: 'bg-success-light text-success' },
     LATE: { label: 'Late', color: 'bg-amber-50 text-amber-600' },
     GRADED: { label: 'Graded', color: 'bg-accent-50 text-accent-500' },
+    NOT_SUBMITTED: { label: 'Not Submitted', color: 'bg-neutral-100 text-text-muted' },
 };
 
 // ─── File Chip ────────────────────────────────────────────────────────────────
@@ -153,10 +154,18 @@ const SubmissionRow = ({ submission, status, courseId, assessmentId }) => {
     return (
         <div className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-neutral-50 transition-colors border border-transparent hover:border-neutral-200">
             {/* Avatar */}
-            <div className="w-8 h-8 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-xs font-bold text-accent-500">
-                    {(submission.user?.name ?? submission.name ?? '?')[0].toUpperCase()}
-                </span>
+            <div className="w-8 h-8 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {submission.user?.profile_picture ? (
+                    <img
+                        src={submission.user.profile_picture}
+                        alt={submission.user?.name ?? 'Student'}
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <span className="text-xs font-bold text-accent-500">
+                        {(submission.user?.name ?? submission.name ?? '?')[0].toUpperCase()}
+                    </span>
+                )}
             </div>
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-text-primary truncate">
@@ -190,7 +199,7 @@ const SubmissionsTab = ({ submitted, late, notSubmitted, courseId, assessmentId 
     const sections = [
         { key: 'submitted', label: 'Submitted', items: submitted.filter(filterName), status: 'SUBMITTED', dotColor: 'bg-success' },
         { key: 'late', label: 'Late', items: late.filter(filterName), status: 'LATE', dotColor: 'bg-amber-400' },
-        { key: 'missing', label: 'Not Submitted', items: notSubmitted.filter(filterName), status: null, dotColor: 'bg-neutral-300' },
+        { key: 'missing', label: 'Not Submitted', items: notSubmitted.filter(filterName), status: 'NOT_SUBMITTED', dotColor: 'bg-neutral-300' },
     ];
 
     const total = submitted.length + late.length + notSubmitted.length;

@@ -351,6 +351,48 @@ export const useUpdateSubmission = (courseId, assessmentId) => {
 };
 
 /**
+ * DELETE /api/courses/:courseId/assessments/:assessmentId/submit
+ * Retracts the student's submission entirely (Google Classroom "Unsubmit").
+ */
+export const useUnsubmitAssessment = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async () => {
+            const { data } = await apiClient.delete(
+                `/api/courses/${courseId}/assessments/${assessmentId}/submit`
+            );
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+        },
+    });
+};
+
+/**
+ * DELETE /api/courses/:courseId/assessments/:assessmentId/attachments/:attachmentId
+ * Removes a single file from the student's submission.
+ */
+export const useRemoveAttachment = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (attachmentId) => {
+            const { data } = await apiClient.delete(
+                `/api/courses/${courseId}/assessments/${assessmentId}/attachments/${attachmentId}`
+            );
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+        },
+    });
+};
+
+/**
  * GET /api/courses/:courseId/assessments/:assessmentId/submissions/:submissionId
  * Teacher only — returns full submission with signed attachment URLs.
  */

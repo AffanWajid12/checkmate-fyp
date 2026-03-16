@@ -131,10 +131,18 @@ const ViewSubmissionPage = () => {
                 <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-6 mb-6">
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0">
-                                <span className="text-sm font-bold text-accent-500">
-                                    {(submission.user?.name ?? '?')[0].toUpperCase()}
-                                </span>
+                            <div className="w-10 h-10 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                {submission.user?.profile_picture ? (
+                                    <img
+                                        src={submission.user.profile_picture}
+                                        alt={submission.user?.name ?? 'Student'}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="text-sm font-bold text-accent-500">
+                                        {(submission.user?.name ?? '?')[0].toUpperCase()}
+                                    </span>
+                                )}
                             </div>
                             <div>
                                 <h1 className="text-lg font-bold text-text-primary">{submission.user?.name ?? 'Unknown Student'}</h1>

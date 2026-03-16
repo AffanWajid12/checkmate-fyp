@@ -70,7 +70,7 @@ const PlusIcon = () => (
 
 const AssessmentsTab = ({ courseId }) => {
     const navigate = useNavigate();
-    const { data: announcements = [], isLoading } = useCourseAnnouncements(courseId);
+    const { data: announcements = [], isLoading, isError } = useCourseAnnouncements(courseId);
 
     // Flatten all assessments from all announcements
     const allAssessments = [];
@@ -111,6 +111,15 @@ const AssessmentsTab = ({ courseId }) => {
             {isLoading && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[...Array(3)].map((_, i) => <CardSkeleton key={i} />)}
+                </div>
+            )}
+
+            {/* Error */}
+            {isError && (
+                <div className="flex flex-col items-center justify-center min-h-[20vh] text-center px-6">
+                    <p className="text-sm text-error bg-error/10 px-4 py-2 rounded-xl">
+                        Failed to load assessments. Please try again later.
+                    </p>
                 </div>
             )}
 

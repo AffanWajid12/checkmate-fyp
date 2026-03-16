@@ -50,8 +50,16 @@ const PlusIcon = () => (
 const StudentRow = ({ student, status, onStatusChange }) => (
     <div className="flex items-center justify-between px-5 py-3.5">
         <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-bold text-text-secondary flex-shrink-0">
-                {student.name?.charAt(0).toUpperCase() ?? '?'}
+            <div className="w-8 h-8 rounded-full bg-accent-100 flex items-center justify-center text-xs font-bold text-accent-500 flex-shrink-0 overflow-hidden border border-neutral-200">
+                {student.profile_picture ? (
+                    <img
+                        src={student.profile_picture}
+                        alt={student.name}
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <span>{student.name?.charAt(0).toUpperCase() ?? '?'}</span>
+                )}
             </div>
             <div>
                 <p className="text-sm font-semibold text-text-primary">{student.name}</p>

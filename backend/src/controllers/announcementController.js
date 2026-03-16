@@ -1,7 +1,7 @@
 import prisma from "../config/prismaClient.js";
 import supabase from "../config/supabaseClient.js";
 import { v4 as uuidv4 } from "uuid";
-import { handleError, verifyCourseOwner, verifyStudentEnrolled, generateSignedUrl } from "../utils/courseHelpers.js";
+import { handleError, verifyCourseOwner, verifyStudentEnrolled, generateSignedUrl, signUserAvatar } from "../utils/courseHelpers.js";
 
 // POST /api/courses/:courseId/announcements
 export const addAnnouncement = async (req, res) => {
@@ -87,22 +87,31 @@ export const getCourseAnnouncements = async (req, res) => {
             orderBy: { createdAt: "desc" },
         });
 
-        // Generate signed URLs for resources
+        // Generate signed URLs for resources and comments
         const announcementsWithUrls = await Promise.all(
-            announcements.map(async (ann) => ({
-                ...ann,
-                resources: await Promise.all(
+            announcements.map(async (ann) => {
+                const resources = await Promise.all(
                     (ann.resources || []).map(async (res) => ({
                         ...res,
                         signed_url: await generateSignedUrl("source-materials", res.bucket_path),
                     }))
-                ),
-            }))
+                );
+
+                const comments = await Promise.all(
+                    (ann.comments || []).map(async (comment) => ({
+                        ...comment,
+                        user: await signUserAvatar(comment.user),
+                    }))
+                );
+
+                return { ...ann, resources, comments };
+            })
         );
 
-        console.log(`Sending announcements. First comment user:`, announcementsWithUrls[0]?.comments[0]?.user);
+        console.log(`Successfully processed ${announcementsWithUrls.length} announcements`);
         return res.status(200).json({ message: "Announcements retrieved successfully", announcements: announcementsWithUrls });
     } catch (error) {
+        console.error("CRITICAL ERROR in getCourseAnnouncements:", error);
         return handleError(res, error);
     }
 };
@@ -141,8 +150,9 @@ export const addAnnouncementComment = async (req, res) => {
             },
         });
 
-        console.log('Created comment user data:', comment.user);
-        return res.status(201).json({ message: "Comment added successfully", comment });
+        const signedUser = await signUserAvatar(comment.user);
+        console.log('Created comment user data:', signedUser);
+        return res.status(201).json({ message: "Comment added successfully", comment: { ...comment, user: signedUser } });
     } catch (error) {
         return handleError(res, error);
     }

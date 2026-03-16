@@ -1,5 +1,5 @@
 import prisma from "../config/prismaClient.js";
-import { handleError, verifyCourseOwner, verifyStudentEnrolled } from "../utils/courseHelpers.js";
+import { handleError, verifyCourseOwner, verifyStudentEnrolled, signUserAvatar } from "../utils/courseHelpers.js";
 
 // POST /api/courses/:courseId/attendance
 // Body: { sessionId?, date, title?, records: [{ student_id, status }] }
@@ -90,7 +90,22 @@ export const getCourseAttendance = async (req, res) => {
             orderBy: { date: "desc" },
         });
 
-        return res.status(200).json({ message: "Attendance retrieved successfully", sessions });
+        const sessionsWithAvatars = await Promise.all(
+            sessions.map(async (session) => ({
+                ...session,
+                records: await Promise.all(
+                    (session.records || []).map(async (record) => ({
+                        ...record,
+                        enrollment: {
+                            ...record.enrollment,
+                            student: await signUserAvatar(record.enrollment.student),
+                        },
+                    }))
+                ),
+            }))
+        );
+
+        return res.status(200).json({ message: "Attendance retrieved successfully", sessions: sessionsWithAvatars });
     } catch (error) {
         return handleError(res, error);
     }

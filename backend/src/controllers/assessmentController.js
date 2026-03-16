@@ -7,6 +7,7 @@ import {
     verifyStudentEnrolled,
     verifyAssessmentInCourse,
     generateSignedUrl,
+    signUserAvatar,
 } from "../utils/courseHelpers.js";
 
 // POST /api/courses/:courseId/announcements/:announcementId/assessments
@@ -102,31 +103,42 @@ export const getAssessmentDetails = async (req, res) => {
             // Get all enrolled students for this course
             const enrollments = await prisma.enrollments.findMany({
                 where: { course_id: courseId },
-                include: { student: { select: { id: true, name: true, email: true } } },
+                include: { student: { select: { id: true, name: true, email: true, profile_picture: true } } },
             });
 
             // Get all submissions for this assessment
             const submissions = await prisma.submissions.findMany({
                 where: { assessment_id: assessmentId },
                 include: {
-                    user: { select: { id: true, name: true, email: true } },
+                    user: { select: { id: true, name: true, email: true, profile_picture: true } },
                 },
             });
 
             const submittedIds = new Set(submissions.map((s) => s.user_id));
 
-            const submitted = submissions.filter((s) => s.status === "SUBMITTED" || s.status === "GRADED");
-            const late = submissions.filter((s) => s.status === "LATE");
-            const notSubmitted = enrollments
-                .filter((e) => !submittedIds.has(e.student_id))
-                .map((e) => e.student);
+            // Sign all avatars
+            const submittedWithAvatars = await Promise.all(
+                submissions
+                    .filter((s) => s.status === "SUBMITTED" || s.status === "GRADED")
+                    .map(async (s) => ({ ...s, user: await signUserAvatar(s.user) }))
+            );
+            const lateWithAvatars = await Promise.all(
+                submissions
+                    .filter((s) => s.status === "LATE")
+                    .map(async (s) => ({ ...s, user: await signUserAvatar(s.user) }))
+            );
+            const notSubmittedWithAvatars = await Promise.all(
+                enrollments
+                    .filter((e) => !submittedIds.has(e.student_id))
+                    .map(async (e) => await signUserAvatar(e.student))
+            );
 
             return res.status(200).json({
                 message: "Assessment details retrieved successfully",
                 assessment: { ...assessment, source_materials: materialsWithUrls },
-                submitted,
-                late,
-                not_submitted: notSubmitted,
+                submitted: submittedWithAvatars,
+                late: lateWithAvatars,
+                not_submitted: notSubmittedWithAvatars,
             });
         } else {
             await verifyStudentEnrolled(courseId, req.user.id);
@@ -312,6 +324,94 @@ export const updateSubmission = async (req, res) => {
     }
 };
 
+// DELETE /api/courses/:courseId/assessments/:assessmentId/submit
+// Student retracts their submission entirely (like Google Classroom "Unsubmit")
+export const unsubmitAssessment = async (req, res) => {
+    try {
+        const { courseId, assessmentId } = req.params;
+
+        await verifyStudentEnrolled(courseId, req.user.id);
+        await verifyAssessmentInCourse(assessmentId, courseId);
+
+        const submission = await prisma.submissions.findUnique({
+            where: {
+                user_id_assessment_id: {
+                    user_id: req.user.id,
+                    assessment_id: assessmentId,
+                },
+            },
+            include: { attachments: true },
+        });
+
+        if (!submission)
+            return res.status(404).json({ message: "No submission found to retract." });
+
+        if (submission.status === "GRADED")
+            return res.status(403).json({ message: "Submission has been graded and cannot be retracted." });
+
+        // Delete all files from Supabase Storage
+        if (submission.attachments.length > 0) {
+            const paths = submission.attachments.map((a) => a.bucket_path);
+            const { error: storageError } = await supabase.storage
+                .from("submission-files")
+                .remove(paths);
+            if (storageError)
+                console.error("Storage deletion failed:", storageError.message);
+        }
+
+        // Delete all attachment DB records, then the submission itself
+        await prisma.attachments.deleteMany({ where: { submission_id: submission.id } });
+        await prisma.submissions.delete({ where: { id: submission.id } });
+
+        return res.status(200).json({ message: "Submission retracted successfully." });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+// DELETE /api/courses/:courseId/assessments/:assessmentId/attachments/:attachmentId
+// Student removes a single file from their submission
+export const removeAttachment = async (req, res) => {
+    try {
+        const { courseId, assessmentId, attachmentId } = req.params;
+
+        await verifyStudentEnrolled(courseId, req.user.id);
+        await verifyAssessmentInCourse(assessmentId, courseId);
+
+        // Find the attachment and verify it belongs to this student's submission
+        const attachment = await prisma.attachments.findUnique({
+            where: { id: attachmentId },
+            include: { submission: true },
+        });
+
+        if (!attachment)
+            return res.status(404).json({ message: "Attachment not found." });
+
+        if (attachment.submission.user_id !== req.user.id)
+            return res.status(403).json({ message: "You can only remove your own files." });
+
+        if (attachment.submission.assessment_id !== assessmentId)
+            return res.status(403).json({ message: "Attachment does not belong to this assessment." });
+
+        if (attachment.submission.status === "GRADED")
+            return res.status(403).json({ message: "Submission has been graded and cannot be modified." });
+
+        // Delete from Supabase Storage
+        const { error: storageError } = await supabase.storage
+            .from("submission-files")
+            .remove([attachment.bucket_path]);
+        if (storageError)
+            console.error("Storage deletion failed:", storageError.message);
+
+        // Delete DB record
+        await prisma.attachments.delete({ where: { id: attachmentId } });
+
+        return res.status(200).json({ message: "File removed successfully." });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
 // PATCH /api/courses/:courseId/assessments/:assessmentId/submissions/:submissionId/grade
 // Body: { grade, feedback? }  — TEACHER only
 export const gradeSubmission = async (req, res) => {
@@ -362,7 +462,7 @@ export const getSubmissionDetails = async (req, res) => {
         const submission = await prisma.submissions.findUnique({
             where: { id: submissionId },
             include: {
-                user: { select: { id: true, name: true, email: true } },
+                user: { select: { id: true, name: true, email: true, profile_picture: true } },
                 attachments: true,
             },
         });
@@ -377,9 +477,11 @@ export const getSubmissionDetails = async (req, res) => {
             }))
         );
 
+        const signedUser = await signUserAvatar(submission.user);
+
         return res.status(200).json({
             message: "Submission details retrieved successfully",
-            submission: { ...submission, attachments: attachmentsWithUrls },
+            submission: { ...submission, user: signedUser, attachments: attachmentsWithUrls },
         });
     } catch (error) {
         return handleError(res, error);

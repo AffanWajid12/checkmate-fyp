@@ -16,7 +16,7 @@ const PlusIcon = () => (
 const AnnouncementsTab = ({ courseId }) => {
     const [showForm, setShowForm] = useState(false);
     const navigate = useNavigate();
-    const { data: announcements = [], isLoading } = useCourseAnnouncements(courseId);
+    const { data: announcements = [], isLoading, isError } = useCourseAnnouncements(courseId);
 
     const handleAddAssessment = (announcementId) => {
         navigate(`/teacher/courses/${courseId}/add-assessment?announcementId=${announcementId}`);
@@ -53,6 +53,15 @@ const AnnouncementsTab = ({ courseId }) => {
             {isLoading && (
                 <div className="space-y-4">
                     {[...Array(2)].map((_, i) => <AnnouncementSkeleton key={i} />)}
+                </div>
+            )}
+
+            {/* Error */}
+            {isError && (
+                <div className="flex flex-col items-center justify-center min-h-[20vh] text-center px-6">
+                    <p className="text-sm text-error bg-error/10 px-4 py-2 rounded-xl">
+                        Failed to load announcements. Please try again later.
+                    </p>
                 </div>
             )}
 
