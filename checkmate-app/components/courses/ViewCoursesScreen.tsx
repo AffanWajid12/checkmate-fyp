@@ -27,33 +27,17 @@ export default function ViewCoursesScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchCourses = async (pageNum: number = 1, isRefresh: boolean = false) => {
+  const fetchCourses = async () => {
     try {
-      console.log('📚 Fetching courses, page:', pageNum);
-      
-      if (isRefresh) {
-        setRefreshing(true);
-      } else if (pageNum === 1) {
-        setLoading(true);
-      }
+      console.log('📚 Fetching teacher courses');
+      setLoading(true);
 
-      const response = await courseService.getCourses({
-        page: pageNum,
-        limit: 20,
-        sortBy: 'createdAt',
-        order: 'desc',
-      });
+      const courses = await courseService.getMyCourses();
+      setCourses(courses);
 
-      if (isRefresh || pageNum === 1) {
-        setCourses(response.courses);
-      } else {
-        setCourses(prev => [...prev, ...response.courses]);
-      }
-
-      setHasMore(response.pagination.hasNextPage);
-      setPage(pageNum);
-
-      console.log(`✅ Loaded ${response.courses.length} courses`);
+      // Legacy pagination state is not used with /my-courses
+      setHasMore(false);
+      setPage(1);
     } catch (error: any) {
       console.error('❌ Error fetching courses:', error);
       Alert.alert(
@@ -66,33 +50,27 @@ export default function ViewCoursesScreen() {
     }
   };
 
-  // Fetch courses when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchCourses(1, false);
+      fetchCourses();
     }, [])
   );
 
   const handleRefresh = () => {
-    fetchCourses(1, true);
+    setRefreshing(true);
+    fetchCourses();
   };
 
   const handleLoadMore = () => {
-    if (!loading && hasMore) {
-      fetchCourses(page + 1, false);
-    }
+    // no-op for /my-courses
   };
 
   const handleCoursePress = (course: CourseListItem) => {
-    navigation.navigate("ViewCourse", {
-      id: course._id,
-      title: course.title,
-      code: course.code,
-      professor: `${course.professor.firstName} ${course.professor.lastName}`,
-      enrolledStudents: course.enrolledStudents,
-      assessments: course.assessmentCount,
+    navigation.navigate('ViewCourse', {
+      course,
     });
   };
+
   const renderCourseItem = ({ item }: { item: CourseListItem }) => (
     <TouchableOpacity
       style={styles.courseCard}
@@ -100,30 +78,7 @@ export default function ViewCoursesScreen() {
     >
       <View style={styles.courseContent}>
         <Text style={styles.courseTitle}>{item.title}</Text>
-        <Text style={styles.courseCode}>
-          {item.code} - Section {item.section}
-        </Text>
-        <Text style={styles.courseSemester}>
-          {item.semester} {item.year}
-        </Text>
-        <View style={styles.courseStats}>
-          <View style={styles.statItem}>
-            <Ionicons
-              name="people-outline"
-              size={14}
-              color={theme.colors.textSecondary}
-            />
-            <Text style={styles.statText}>{item.enrolledStudents} Students</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons
-              name="document-text-outline"
-              size={14}
-              color={theme.colors.textSecondary}
-            />
-            <Text style={styles.statText}>{item.assessmentCount} Assessments</Text>
-          </View>
-        </View>
+        <Text style={styles.courseCode}>{item.code}</Text>
       </View>
       <Ionicons
         name="chevron-forward"
@@ -187,7 +142,7 @@ export default function ViewCoursesScreen() {
       <FlatList
         data={courses}
         renderItem={renderCourseItem}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={courses.length === 0 ? styles.emptyListContent : styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={

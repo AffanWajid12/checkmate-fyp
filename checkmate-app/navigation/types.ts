@@ -5,12 +5,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   AddCourse: undefined;
   ViewCourse: {
-    id: string;
-    title: string;
-    code: string;
-    professor: string;
-    enrolledStudents: number;
-    assessments: number;
+    course: import('@/services/api').Course;
   };
   ViewAssessments: {
     courseId: string;

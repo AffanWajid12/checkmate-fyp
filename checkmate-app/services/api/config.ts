@@ -1,9 +1,9 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import { storage } from '../storage';
+import { getSupabaseAccessToken } from '../supabase/authToken';
 
 // Base API URL - Update this with your actual backend URL
 const API_BASE_URL = __DEV__
-  ? 'http://192.168.1.6:5000' // Development
+  ? 'http://192.168.1.11:5000' // Development
   : 'https://api.checkmate.edu'; // Production
 
 // Create axios instance
@@ -15,7 +15,7 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor - Add auth token to requests
+// Request interceptor - Add Supabase JWT to requests
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     // Log outgoing request
@@ -27,10 +27,10 @@ apiClient.interceptors.request.use(
       data: config.data,
     });
 
-    const token = await storage.getToken();
+    const token = await getSupabaseAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('🔑 Token added to request');
+      console.log('🔑 Supabase access token added to request');
     }
     return config;
   },
@@ -40,7 +40,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor - Handle token refresh
+// Response interceptor - log responses (no refresh-token flow)
 apiClient.interceptors.response.use(
   (response) => {
     // Log successful response
@@ -59,42 +59,6 @@ apiClient.interceptors.response.use(
       message: error.message,
       data: error.response?.data,
     });
-
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
-
-    // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = await storage.getRefreshToken();
-        if (refreshToken) {
-          // Try to refresh the token
-          const response = await axios.post(
-            `${API_BASE_URL}/api/auth/refresh`,
-            { refreshToken }
-          );
-
-          const { token } = response.data.data;
-
-          // Save new token
-          await storage.setToken(token);
-
-          // Retry original request with new token
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-          }
-          return apiClient(originalRequest);
-        }
-      } catch (refreshError) {
-        // Refresh failed, clear tokens and redirect to login
-        await storage.clearAuth();
-        // You can emit an event here to navigate to login screen
-        return Promise.reject(refreshError);
-      }
-    }
 
     return Promise.reject(error);
   }

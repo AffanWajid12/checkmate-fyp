@@ -58,13 +58,12 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      const response = await authService.login({
+      await authService.login({
         email: email.trim().toLowerCase(),
         password: password,
       });
 
       console.log('✅ Login successful!');
-      console.log('👤 User:', response.user.email, response.user.firstName);
 
       // Navigate to main app after successful login
       navigation.replace('MainTabs');

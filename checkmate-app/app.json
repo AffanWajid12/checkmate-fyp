@@ -88,7 +88,9 @@
       "router": {},
       "eas": {
         "projectId": "6a286c0d-993d-4d01-8d12-92fd70de35e4"
-      }
+      },
+      "supabaseUrl": "https://ikxilzhpzyrtzrrifiom.supabase.co",
+      "supabaseAnonKey": "sb_publishable_6ANbqv6sv9-bzOYoqs1tUQ_TxanEfrh"
     }
   }
 }

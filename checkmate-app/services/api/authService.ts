@@ -1,109 +1,68 @@
 import { AxiosError } from 'axios';
 import { storage } from '../storage';
+import { supabase } from '../supabase/client';
 import { apiClient } from './config';
 import {
     ApiError,
-    ApiResponse,
     GetCurrentUserResponse,
     LoginRequest,
-    LoginResponse,
-    RefreshTokenResponse,
     RegisterRequest,
-    RegisterResponse
 } from './types';
 
 /**
  * Authentication Service
- * Handles all authentication-related API calls
+ * - Login/logout are performed via Supabase.
+ * - Backend user profile is fetched via GET /api/auth/me.
  */
 class AuthService {
   /**
-   * Register a new user
-   * @param data Registration data (email, password, firstName, lastName, role, department)
-   * @returns Promise with user data, access token, and refresh token
+   * Register a new user (Supabase)
    */
-  async register(data: RegisterRequest): Promise<RegisterResponse> {
+  async register(data: RegisterRequest): Promise<void> {
     try {
-      const response = await apiClient.post<ApiResponse<RegisterResponse>>(
-        '/api/auth/register',
-        data
-      );
+      const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      });
 
-      const { user, token, refreshToken } = response.data.data;
-
-      // Save tokens and user data to storage
-      await storage.setToken(token);
-      await storage.setRefreshToken(refreshToken);
-      await storage.setUser(user);
-
-      return response.data.data;
+      if (error) {
+        throw new Error(error.message);
+      }
     } catch (error) {
       throw this.handleError(error);
     }
   }
 
   /**
-   * Login user
-   * @param data Login credentials (email, password)
-   * @returns Promise with user data, access token, and refresh token
+   * Login user (Supabase)
    */
-  async login(data: LoginRequest): Promise<LoginResponse> {
+  async login(data: LoginRequest): Promise<void> {
     try {
-      const response = await apiClient.post<ApiResponse<LoginResponse>>(
-        '/api/auth/login',
-        data
-      );
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
 
-      const { user, token, refreshToken } = response.data.data;
+      if (error) {
+        throw new Error(error.message);
+      }
 
-      // Save tokens and user data to storage
-      await storage.setToken(token);
-      await storage.setRefreshToken(refreshToken);
-      await storage.setUser(user);
-
-      return response.data.data;
+      // Fetch and store backend user shape { user }
+      await this.getCurrentUser();
     } catch (error) {
       throw this.handleError(error);
     }
   }
 
   /**
-   * Refresh access token using refresh token
-   * @param refreshToken Refresh token
-   * @returns Promise with new access token
-   */
-  async refreshToken(
-    refreshToken: string
-  ): Promise<RefreshTokenResponse> {
-    try {
-      const response = await apiClient.post<
-        ApiResponse<RefreshTokenResponse>
-      >('/api/auth/refresh', { refreshToken });
-
-      const { token } = response.data.data;
-
-      // Save new access token
-      await storage.setToken(token);
-
-      return response.data.data;
-    } catch (error) {
-      // If refresh fails, clear all auth data
-      await storage.clearAuth();
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Get current authenticated user
-   * @returns Promise with current user data
+   * Get current authenticated user from backend
+   * Backend response: 200 { user: <dbUser> }
    */
   async getCurrentUser(): Promise<GetCurrentUserResponse> {
     try {
-      const response = await apiClient.get<
-        ApiResponse<GetCurrentUserResponse>
-      >('/api/auth/me');
+      const response = await apiClient.get<{ user: GetCurrentUserResponse }>('/api/auth/me');
 
-      const user = response.data.data;
+      const user = response.data.user;
 
       // Update stored user data
       await storage.setUser(user);
@@ -115,58 +74,52 @@ class AuthService {
   }
 
   /**
-   * Logout user
-   * Clears tokens from server and local storage
+   * Logout user (Supabase)
    */
   async logout(): Promise<void> {
     try {
-      await apiClient.post('/api/auth/logout');
+      await supabase.auth.signOut();
     } catch (error) {
-      // Continue with logout even if API call fails
-      console.error('Logout API error:', error);
+      console.error('Logout error:', error);
     } finally {
-      // Always clear local auth data
+      // Clear any legacy stored auth data
       await storage.clearAuth();
     }
   }
 
   /**
-   * Check if user is authenticated
-   * @returns Promise<boolean>
+   * Check if user is authenticated (Supabase session)
    */
   async isAuthenticated(): Promise<boolean> {
-    return await storage.isAuthenticated();
+    const { data, error } = await supabase.auth.getSession();
+    if (error) return false;
+    return !!data.session;
   }
 
   /**
    * Get stored user data
-   * @returns Promise with user data or null
    */
   async getStoredUser(): Promise<any | null> {
     return await storage.getUser();
   }
 
   /**
-   * Handle API errors
-   * @param error Axios error
-   * @returns Formatted error object
+   * Handle errors from axios/Supabase
    */
   private handleError(error: unknown): Error {
     if (error instanceof AxiosError) {
       const apiError = error.response?.data as ApiError;
-      
+
       if (apiError?.message) {
         return new Error(apiError.message);
       }
 
       if (error.response?.status === 401) {
-        return new Error('Invalid credentials. Please try again.');
+        return new Error('Unauthorized. Please login again.');
       }
 
       if (error.response?.status === 400) {
         return new Error('Invalid input. Please check your data.');
-      }      if (error.response?.status === 409) {
-        return new Error('Email already exists. Please use a different email.');
       }
 
       if (error.response?.status && error.response.status >= 500) {
@@ -180,6 +133,10 @@ class AuthService {
       if (error.code === 'ERR_NETWORK') {
         return new Error('Network error. Please check your internet connection.');
       }
+    }
+
+    if (error instanceof Error) {
+      return error;
     }
 
     return new Error('An unexpected error occurred. Please try again.');

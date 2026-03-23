@@ -22,11 +22,9 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 interface UserProfile {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
+  name: string;
   role: string;
-  department?: string;
+  profile_picture?: string;
 }
 
 export default function ProfileDetailScreen() {
@@ -62,8 +60,11 @@ export default function ProfileDetailScreen() {
     fetchProfile(true);
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    const first = parts[0]?.charAt(0) ?? '';
+    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+    return `${first}${last}`.toUpperCase();
   };
 
   if (loading && !profile) {
@@ -120,10 +121,10 @@ export default function ProfileDetailScreen() {
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {getInitials(profile.firstName, profile.lastName)}
+              {getInitials(profile.name)}
             </Text>
           </View>
-          <Text style={styles.fullName}>{profile.fullName}</Text>
+          <Text style={styles.fullName}>{profile.name}</Text>
           <View style={styles.roleBadge}>
             <Text style={styles.roleText}>
               {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
@@ -134,24 +135,14 @@ export default function ProfileDetailScreen() {
         {/* Profile Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
-          
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>First Name</Text>
-              <Text style={styles.infoValue}>{profile.firstName}</Text>
-            </View>
-          </View>
 
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
               <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Last Name</Text>
-              <Text style={styles.infoValue}>{profile.lastName}</Text>
+              <Text style={styles.infoLabel}>Name</Text>
+              <Text style={styles.infoValue}>{profile.name}</Text>
             </View>
           </View>
 
@@ -165,27 +156,13 @@ export default function ProfileDetailScreen() {
             </View>
           </View>
 
-          {profile.department && (
-            <View style={styles.infoRow}>
-              <View style={styles.infoIcon}>
-                <Ionicons name="business-outline" size={20} color={theme.colors.textSecondary} />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Department</Text>
-                <Text style={styles.infoValue}>{profile.department}</Text>
-              </View>
-            </View>
-          )}
-
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
               <Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.textSecondary} />
             </View>
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Role</Text>
-              <Text style={styles.infoValue}>
-                {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
-              </Text>
+              <Text style={styles.infoValue}>{profile.role}</Text>
             </View>
           </View>
 

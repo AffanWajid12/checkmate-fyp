@@ -1,13 +1,5 @@
-// API Response wrapper
-export interface ApiResponse<T = any> {
-  success: boolean;
-  message?: string;
-  data: T;
-}
-
 // API Error response
 export interface ApiError {
-  success: false;
   message: string;
   errors?: Array<{
     field: string;
@@ -16,38 +8,21 @@ export interface ApiError {
   statusCode?: number;
 }
 
-// User types
-export type UserRole = 'professor' | 'student' | 'admin';
+// User types (backend shape)
+export type UserRole = 'TEACHER' | 'STUDENT' | 'ADMIN';
 
 export interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  fullName?: string;
+  name: string;
   role: UserRole;
-  department?: string;
-  studentNumber?: string;
-  profileImage?: string;
-  isActive?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+  profile_picture?: string;
 }
 
-// Authentication types
+// Authentication types (Supabase does auth; backend only exposes /api/auth/me)
 export interface RegisterRequest {
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
-  role: UserRole;
-  department?: string;
-}
-
-export interface RegisterResponse {
-  user: User;
-  token: string;
-  refreshToken: string;
 }
 
 export interface LoginRequest {
@@ -55,140 +30,43 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface LoginResponse {
-  user: User;
-  token: string;
-  refreshToken: string;
-}
+export interface GetCurrentUserResponse extends User {}
 
-export interface RefreshTokenRequest {
-  refreshToken: string;
-}
-
-export interface RefreshTokenResponse {
-  token: string;
-  expiresIn: number;
-}
-
-export interface GetCurrentUserResponse {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  role: UserRole;
-  department?: string;
-  profileImage?: string;
-}
-
-// ============= COURSE TYPES =============
-
-export interface Schedule {
-  days: Array<'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday'>;
-  time: string;
-  location: string;
-}
+// ============= COURSE TYPES (backend shapes) =============
 
 export interface Announcement {
-  _id: string;
+  id: string;
   title: string;
-  content: string;
-  priority: 'low' | 'medium' | 'high';
-  postedBy: string;
-  postedAt: string;
+  description: string;
+}
+
+export interface CourseStudentEnrollment {
+  student: User;
 }
 
 export interface Course {
-  _id: string;
+  id: string;
   title: string;
-  code: string;
-  section: string;
-  semester: string;
-  year: number;
   description?: string;
-  credits: number;
-  professor: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    department?: string;
-  };
-  schedule?: Schedule;
-  maxStudents: number;
-  enrolledStudents: number;
-  assessmentCount: number;
-  announcements: Announcement[];
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  code: string;
+  teacher_id: string;
+  students?: CourseStudentEnrollment[];
+  announcements?: Announcement[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CourseListItem {
-  _id: string;
+  id: string;
   title: string;
+  description?: string;
   code: string;
-  section: string;
-  semester: string;
-  year: number;
-  professor: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  enrolledStudents: number;
-  assessmentCount: number;
-  schedule?: Schedule;
-}
-
-export interface GetCoursesRequest {
-  page?: number;
-  limit?: number;
-  semester?: string;
-  year?: number;
-  search?: string;
-  sortBy?: string;
-  order?: 'asc' | 'desc';
-}
-
-export interface GetCoursesResponse {
-  courses: CourseListItem[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalCourses: number;
-    limit: number;
-    hasNextPage: boolean;
-    hasPrevPage: boolean;
-  };
+  teacher_id: string;
 }
 
 export interface CreateCourseRequest {
   title: string;
-  code: string;
-  section: string;
-  semester: string;
-  year: number;
   description?: string;
-  credits?: number;
-  schedule?: Schedule;
-  maxStudents?: number;
-}
-
-export interface UpdateCourseRequest {
-  title?: string;
-  description?: string;
-  credits?: number;
-  schedule?: Schedule;
-  maxStudents?: number;
-  isActive?: boolean;
-}
-
-export interface CreateAnnouncementRequest {
-  title: string;
-  content: string;
-  priority?: 'low' | 'medium' | 'high';
 }
 
 // ============= ASSESSMENT TYPES =============

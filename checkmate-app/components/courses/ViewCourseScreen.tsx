@@ -28,14 +28,15 @@ export default function ViewCourseScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ViewCourseScreenRouteProp>();
   const insets = useSafeAreaInsets();
-  
-  const [course, setCourse] = useState<Course | null>(null);
+
+  const initialCourse = route.params?.course;
+
+  const [course, setCourse] = useState<Course | null>(initialCourse ?? null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
 
-  // Get course ID from route params
-  const courseId = route.params?.id || "";
+  const courseId = initialCourse?.id || "";
 
   const fetchCourseDetails = async (isRefresh: boolean = false) => {
     if (!courseId) {
@@ -45,17 +46,17 @@ export default function ViewCourseScreen() {
     }
 
     try {
-      console.log('📖 Fetching course details:', courseId);
-      
+      console.log('📖 Fetching course details (my-courses):', courseId);
+
       if (isRefresh) {
         setRefreshing(true);
       } else {
         setLoading(true);
       }
 
-      const courseData = await courseService.getCourseById(courseId);
+      const courseData = await courseService.getMyCourseById(courseId);
       setCourse(courseData);
-      
+
       console.log('✅ Course details loaded');
     } catch (error: any) {
       console.error('❌ Error fetching course:', error);
@@ -92,7 +93,7 @@ export default function ViewCourseScreen() {
   const handleAssessments = () => {
     if (!course) return;
     navigation.navigate("ViewAssessments", {
-      courseId: course._id,
+      courseId: course.id,
       courseCode: course.code,
       courseTitle: course.title,
     });
@@ -105,7 +106,7 @@ export default function ViewCourseScreen() {
   const handleAddAnnouncement = () => {
     if (!course) return;
     navigation.navigate("AddAnnouncement", {
-      courseId: course._id,
+      courseId: course.id,
       courseCode: course.code,
       courseTitle: course.title,
     });
@@ -114,7 +115,7 @@ export default function ViewCourseScreen() {
   const handleAddAssessment = () => {
     if (!course) return;
     navigation.navigate("AddAssessment", {
-      courseId: course._id,
+      courseId: course.id,
       courseCode: course.code,
       courseTitle: course.title,
     });
@@ -152,28 +153,12 @@ export default function ViewCourseScreen() {
   };
 
   const renderAnnouncementItem = (item: ApiAnnouncement) => (
-    <View key={item._id} style={styles.announcementCard}>
-      <View style={[
-        styles.announcementIcon,
-        { backgroundColor: `${getPriorityColor(item.priority)}15` }
-      ]}>
-        <Ionicons
-          name="megaphone-outline"
-          size={20}
-          color={getPriorityColor(item.priority)}
-        />
-      </View>
+    <View key={item.id} style={styles.announcementCard}>
       <View style={styles.announcementContent}>
         <View style={styles.announcementHeaderRow}>
           <Text style={styles.announcementTitle}>{item.title}</Text>
-          {item.priority === 'high' && (
-            <View style={styles.priorityBadge}>
-              <Text style={styles.priorityText}>HIGH</Text>
-            </View>
-          )}
         </View>
-        <Text style={styles.announcementDescription}>{item.content}</Text>
-        <Text style={styles.announcementTime}>{formatTimeAgo(item.postedAt)}</Text>
+        <Text style={styles.announcementDescription}>{item.description}</Text>
       </View>
     </View>
   );
@@ -274,14 +259,8 @@ export default function ViewCourseScreen() {
             />
           </View>
           <View style={styles.courseInfo}>
-            <Text style={styles.courseCode}>{course.code} - Section {course.section}</Text>
+            <Text style={styles.courseCode}>{course.code}</Text>
             <Text style={styles.courseTitle}>{course.title}</Text>
-            <Text style={styles.courseProfessor}>
-              {course.professor.firstName} {course.professor.lastName}
-            </Text>
-            <Text style={styles.courseSemester}>
-              {course.semester} {course.year} • {course.credits} Credits
-            </Text>
           </View>
         </View>
 
@@ -293,131 +272,83 @@ export default function ViewCourseScreen() {
           </View>
         )}
 
-        {/* Schedule */}
-        {course.schedule && (
-          <View style={styles.scheduleCard}>
-            <Text style={styles.scheduleTitle}>Schedule</Text>
-            <View style={styles.scheduleRow}>
-              <Ionicons name="calendar-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.scheduleText}>
-                {course.schedule.days.join(', ')}
-              </Text>
-            </View>
-            <View style={styles.scheduleRow}>
-              <Ionicons name="time-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.scheduleText}>{course.schedule.time}</Text>
-            </View>
-            <View style={styles.scheduleRow}>
-              <Ionicons name="location-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.scheduleText}>{course.schedule.location}</Text>
-            </View>
-          </View>
-        )}
-
         {/* Action Items */}
         <View style={styles.actionItems}>
           <TouchableOpacity
             style={styles.actionItem}
             onPress={() => console.log('Navigate to enrolled students')}
           >
-            <View style={styles.actionItemLeft}>
-              <Ionicons
-                name="people-outline"
-                size={20}
-                color={theme.colors.textSecondary}
-              />
-              <Text style={styles.actionItemText}>Enrolled Students</Text>
+            <View style={styles.actionIcon}>
+              <Ionicons name="people-outline" size={20} color={theme.colors.primary} />
             </View>
-            <View style={styles.actionItemRight}>
-              <Text style={styles.actionItemCount}>
-                {course.enrolledStudents} / {course.maxStudents}
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>Students</Text>
+              <Text style={styles.actionSubtitle}>
+                {(course.students?.length ?? 0)} enrolled
               </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={theme.colors.textSecondary}
-              />
             </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionItem}
-            onPress={handleAssessments}
-          >
-            <View style={styles.actionItemLeft}>
-              <Ionicons
-                name="clipboard-outline"
-                size={20}
-                color={theme.colors.textSecondary}
-              />
-              <Text style={styles.actionItemText}>Assessments</Text>
+          <TouchableOpacity style={styles.actionItem} onPress={handleAssessments}>
+            <View style={styles.actionIcon}>
+              <Ionicons name="document-text-outline" size={20} color={theme.colors.primary} />
             </View>
-            <View style={styles.actionItemRight}>
-              <Text style={styles.actionItemCount}>
-                {course.assessmentCount}
-              </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={theme.colors.textSecondary}
-              />
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>Assessments</Text>
+              <Text style={styles.actionSubtitle}>Open assessments</Text>
             </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionItem, styles.actionItemLast]}
-            onPress={handleCourseMaterials}
-          >
-            <View style={styles.actionItemLeft}>
-              <Ionicons
-                name="folder-outline"
-                size={20}
-                color={theme.colors.textSecondary}
-              />
-              <Text style={styles.actionItemText}>Course Materials</Text>
+          <TouchableOpacity style={styles.actionItem} onPress={handleCourseMaterials}>
+            <View style={styles.actionIcon}>
+              <Ionicons name="folder-outline" size={20} color={theme.colors.primary} />
             </View>
-            <View style={styles.actionItemRight}>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={theme.colors.textSecondary}
-              />
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>Materials</Text>
+              <Text style={styles.actionSubtitle}>Coming soon</Text>
             </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
         {/* Announcements Section */}
-        <View style={styles.streamSection}>
-          <Text style={styles.streamTitle}>Announcements</Text>
-          {course.announcements.length > 0 ? (
-            course.announcements.map(renderAnnouncementItem)
-          ) : (
-            <View style={styles.noAnnouncementsCard}>
-              <Ionicons name="megaphone-outline" size={40} color={theme.colors.textSecondary} />
-              <Text style={styles.noAnnouncementsText}>No announcements yet</Text>
-            </View>
-          )}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Announcements</Text>
+          <TouchableOpacity onPress={handleAddAnnouncement} style={styles.addSectionButton}>
+            <Ionicons name="add" size={20} color={theme.colors.primary} />
+          </TouchableOpacity>
         </View>
+
+        {(course.announcements?.length ?? 0) > 0 ? (
+          <View style={styles.announcementsList}>
+            {course.announcements?.map(renderAnnouncementItem)}
+          </View>
+        ) : (
+          <View style={styles.emptyAnnouncements}>
+            <Text style={styles.emptyAnnouncementsText}>No announcements yet</Text>
+          </View>
+        )}
+
+        <View style={{ height: insets.bottom + 100 }} />
       </ScrollView>
 
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={[
-          styles.fab,
-          { bottom: 20 + insets.bottom + 60 }, // 60 is tab bar height
-        ]}
-        onPress={() => setDrawerVisible(true)}
-      >
-        <Ionicons name="add" size={24} color={theme.colors.onPrimary} />
-      </TouchableOpacity>
-
-      {/* Add Options Drawer */}
       <AddOptionsDrawer
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
-        onAddAnnouncement={handleAddAnnouncement}
-        onAddAssessment={handleAddAssessment}
-        onAddCourseMaterial={handleAddCourseMaterial}
+        onAddAnnouncement={() => {
+          setDrawerVisible(false);
+          handleAddAnnouncement();
+        }}
+        onAddAssessment={() => {
+          setDrawerVisible(false);
+          handleAddAssessment();
+        }}
+        onAddCourseMaterial={() => {
+          setDrawerVisible(false);
+          handleAddCourseMaterial();
+        }}
       />
     </SafeAreaView>
   );
@@ -491,15 +422,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     marginBottom: 4,
   },
-  courseProfessor: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginBottom: 2,
-  },
-  courseSemester: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-  },
   descriptionCard: {
     backgroundColor: theme.colors.card,
     marginHorizontal: theme.spacing.md,
@@ -519,30 +441,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     lineHeight: 20,
   },
-  scheduleCard: {
-    backgroundColor: theme.colors.card,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    ...theme.shadows.sm,
-  },
-  scheduleTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.sm,
-  },
-  scheduleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: theme.spacing.xs,
-  },
-  scheduleText: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginLeft: theme.spacing.sm,
-  },
   actionItems: {
     backgroundColor: theme.colors.card,
     marginHorizontal: theme.spacing.md,
@@ -558,40 +456,46 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.divider,
   },
-  actionItemLast: {
-    borderBottomWidth: 0,
+  actionIcon: {
+    marginRight: theme.spacing.md,
   },
-  actionItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
+  actionContent: {
     flex: 1,
   },
-  actionItemText: {
+  actionTitle: {
     fontSize: 15,
+    fontWeight: "600",
     color: theme.colors.textPrimary,
-    marginLeft: theme.spacing.sm,
-    fontWeight: "500",
   },
-  actionItemRight: {
+  actionSubtitle: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+  },
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  actionItemCount: {
-    fontSize: 15,
-    color: theme.colors.textSecondary,
-    marginRight: theme.spacing.sm,
-    fontWeight: "600",
-  },
-  streamSection: {
-    marginTop: theme.spacing.sm,
+    justifyContent: "space-between",
     paddingHorizontal: theme.spacing.md,
-    paddingBottom: 100, // Account for FAB + tab bar
+    marginTop: theme.spacing.lg,
   },
-  streamTitle: {
+  sectionTitle: {
     fontSize: 17,
     fontWeight: "700",
     color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.md,
+  },
+  addSectionButton: {
+    padding: theme.spacing.sm,
+  },
+  announcementsList: {
+    marginHorizontal: theme.spacing.md,
+  },
+  emptyAnnouncements: {
+    alignItems: "center",
+    marginTop: theme.spacing.lg,
+  },
+  emptyAnnouncementsText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
   },
   announcementCard: {
     flexDirection: "row",
@@ -601,15 +505,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
     ...theme.shadows.sm,
   },
-  announcementIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: `${theme.colors.primary}15`,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: theme.spacing.sm,
-  },
   announcementContent: {
     flex: 1,
   },
@@ -618,17 +513,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: theme.spacing.xs,
-  },
-  priorityBadge: {
-    backgroundColor: '#EF444415',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  priorityText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#EF4444',
   },
   announcementTitle: {
     fontSize: 14,
@@ -641,22 +525,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     lineHeight: 18,
     marginBottom: 8,
-  },
-  announcementTime: {
-    fontSize: 12,
-    color: theme.colors.textTertiary,
-  },
-  noAnnouncementsCard: {
-    backgroundColor: theme.colors.card,
-    padding: theme.spacing.xl,
-    borderRadius: theme.borderRadius.md,
-    alignItems: 'center',
-    ...theme.shadows.sm,
-  },
-  noAnnouncementsText: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.sm,
   },
   fab: {
     position: "absolute",

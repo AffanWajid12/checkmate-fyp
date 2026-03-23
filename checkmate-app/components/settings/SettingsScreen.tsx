@@ -19,8 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface UserInfo {
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
   role: string;
 }
@@ -47,8 +46,11 @@ export default function SettingsScreen() {
     }
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    const first = parts[0]?.charAt(0) ?? '';
+    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+    return `${first}${last}`.toUpperCase();
   };
 
   const handleViewProfile = () => {
@@ -112,17 +114,11 @@ export default function SettingsScreen() {
         {user && (
           <View style={styles.profileSection}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {getInitials(user.firstName, user.lastName)}
-              </Text>
+              <Text style={styles.avatarText}>{getInitials(user.name)}</Text>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>
-                {user.firstName} {user.lastName}
-              </Text>
-              <Text style={styles.profileRole}>
-                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-              </Text>
+              <Text style={styles.profileName}>{user.name}</Text>
+              <Text style={styles.profileRole}>{user.role}</Text>
             </View>
           </View>
         )}
