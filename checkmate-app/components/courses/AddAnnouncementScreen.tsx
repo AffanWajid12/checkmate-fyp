@@ -4,23 +4,31 @@ import { courseService } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as DocumentPicker from "expo-document-picker";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type AddAnnouncementScreenRouteProp = RouteProp<RootStackParamList, "AddAnnouncement">;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+type AttachmentFile = {
+  uri: string;
+  name: string;
+  type?: string;
+  size?: number;
+};
 
 export default function AddAnnouncementScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -29,8 +37,8 @@ export default function AddAnnouncementScreen() {
 
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  const [description, setDescription] = useState("");
+  const [files, setFiles] = useState<AttachmentFile[]>([]);
 
   const validateForm = (): boolean => {
     if (!title.trim()) {
@@ -41,70 +49,69 @@ export default function AddAnnouncementScreen() {
       Alert.alert("Validation Error", "Title must be at least 3 characters");
       return false;
     }
-    if (!content.trim()) {
-      Alert.alert("Validation Error", "Announcement content is required");
+    if (!description.trim()) {
+      Alert.alert("Validation Error", "Announcement description is required");
       return false;
     }
-    if (content.trim().length < 10) {
-      Alert.alert("Validation Error", "Content must be at least 10 characters");
+    if (description.trim().length < 10) {
+      Alert.alert("Validation Error", "Description must be at least 10 characters");
       return false;
     }
     return true;
   };
 
-  const handleCreateAnnouncement = async () => {
-    if (!validateForm()) {
-      return;
+  const handlePickFiles = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets?.length) {
+        const picked: AttachmentFile[] = result.assets.map((a) => ({
+          uri: a.uri,
+          name: a.name,
+          type: a.mimeType ?? "application/octet-stream",
+          size: a.size,
+        }));
+        setFiles((prev) => [...prev, ...picked]);
+      }
+    } catch (e) {
+      console.error('❌ Error picking files:', e);
+      Alert.alert("Error", "Failed to pick files. Please try again.");
     }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleCreateAnnouncement = async () => {
+    if (!validateForm()) return;
 
     console.log("📢 Creating announcement...");
     setLoading(true);
 
     try {
-      const announcementData = {
+      await courseService.createAnnouncement(courseId, {
         title: title.trim(),
-        content: content.trim(),
-        priority,
-      };
-
-      await courseService.addAnnouncement(courseId, announcementData);
+        description: description.trim(),
+        files: files.map((f) => ({ uri: f.uri, name: f.name, type: f.type })),
+      });
 
       Alert.alert("Success", "Announcement posted successfully!", [
-        {
-          text: "OK",
-          onPress: () => navigation.goBack(),
-        },
+        { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
       console.error("❌ Error creating announcement:", error);
 
-      let errorMessage = "Failed to post announcement. Please try again.";
-
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
+      const errorMessage =
+        error.response?.data?.message || error.message || "Failed to post announcement. Please try again.";
       Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
-  };
-
-  const getPriorityColor = (priorityValue: "low" | "medium" | "high") => {
-    switch (priorityValue) {
-      case "high":
-        return "#EF4444";
-      case "medium":
-        return "#F59E0B";
-      case "low":
-        return "#10B981";
-    }
-  };
-
-  const getPriorityLabel = (priorityValue: "low" | "medium" | "high") => {
-    return priorityValue.charAt(0).toUpperCase() + priorityValue.slice(1);
   };
 
   return (
@@ -163,63 +170,48 @@ export default function AddAnnouncementScreen() {
               <Text style={styles.helperText}>{title.length}/100</Text>
             </View>
 
-            {/* Content Input */}
+            {/* Description Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>
-                Content <Text style={styles.required}>*</Text>
+                Description <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="Write your announcement..."
                 placeholderTextColor={theme.colors.textTertiary}
-                value={content}
-                onChangeText={setContent}
+                value={description}
+                onChangeText={setDescription}
                 multiline
                 numberOfLines={8}
                 textAlignVertical="top"
                 maxLength={1000}
               />
-              <Text style={styles.helperText}>{content.length}/1000</Text>
+              <Text style={styles.helperText}>{description.length}/1000</Text>
             </View>
 
-            {/* Priority Selector */}
+            {/* Attachments */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Priority</Text>
-              <View style={styles.priorityContainer}>
-                {(["low", "medium", "high"] as const).map((priorityValue) => (
-                  <TouchableOpacity
-                    key={priorityValue}
-                    style={[
-                      styles.priorityOption,
-                      priority === priorityValue && {
-                        backgroundColor: getPriorityColor(priorityValue) + "20",
-                        borderColor: getPriorityColor(priorityValue),
-                      },
-                    ]}
-                    onPress={() => setPriority(priorityValue)}
-                  >
-                    <View
-                      style={[
-                        styles.priorityDot,
-                        {
-                          backgroundColor: getPriorityColor(priorityValue),
-                        },
-                      ]}
-                    />
-                    <Text
-                      style={[
-                        styles.priorityText,
-                        priority === priorityValue && {
-                          color: getPriorityColor(priorityValue),
-                          fontWeight: "600",
-                        },
-                      ]}
-                    >
-                      {getPriorityLabel(priorityValue)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Text style={styles.label}>Attachments (optional)</Text>
+              <TouchableOpacity style={styles.attachmentButton} onPress={handlePickFiles}>
+                <Ionicons name="attach" size={18} color={theme.colors.primary} />
+                <Text style={styles.attachmentButtonText}>Add files</Text>
+              </TouchableOpacity>
+
+              {files.length > 0 && (
+                <View style={styles.filesList}>
+                  {files.map((f, idx) => (
+                    <View key={`${f.uri}-${idx}`} style={styles.fileRow}>
+                      <Ionicons name="document-outline" size={18} color={theme.colors.textSecondary} />
+                      <Text style={styles.fileName} numberOfLines={1}>
+                        {f.name}
+                      </Text>
+                      <TouchableOpacity onPress={() => handleRemoveFile(idx)}>
+                        <Ionicons name="close" size={18} color={theme.colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Info Card */}
@@ -346,6 +338,40 @@ const styles = StyleSheet.create({
     color: theme.colors.textTertiary,
     marginTop: 4,
     textAlign: "right",
+  },
+  attachmentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  attachmentButtonText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  filesList: {
+    marginTop: 10,
+    gap: 8,
+  },
+  fileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  fileName: {
+    flex: 1,
+    color: theme.colors.textPrimary,
   },
   priorityContainer: {
     flexDirection: "row",

@@ -34,11 +34,51 @@ export interface GetCurrentUserResponse extends User {}
 
 // ============= COURSE TYPES (backend shapes) =============
 
-export interface Announcement {
+export interface BackendAnnouncement {
   id: string;
   title: string;
   description: string;
+  createdAt?: string;
+  comments?: BackendAnnouncementComment[];
+  resources?: BackendAnnouncementResource[];
+  assessments?: BackendAssessment[];
 }
+
+export interface BackendAnnouncementResource {
+  id: string;
+  signed_url: string;
+  file_name?: string;
+  mime_type?: string;
+}
+
+export interface BackendAnnouncementComment {
+  id: string;
+  content: string;
+  createdAt?: string;
+  user?: {
+    id: string;
+    name: string;
+    role: UserRole;
+    profile_picture?: string;
+  };
+}
+
+export interface BackendAssessment {
+  id: string;
+  title: string;
+  type: BackendAssessmentType;
+  instructions?: string;
+  due_date?: string;
+  createdAt?: string;
+  source_materials?: Array<{
+    id: string;
+    signed_url: string;
+    file_name?: string;
+    mime_type?: string;
+  }>;
+}
+
+export type BackendAssessmentType = 'QUIZ' | 'ASSIGNMENT' | 'EXAM';
 
 export interface CourseStudentEnrollment {
   student: User;
@@ -51,7 +91,7 @@ export interface Course {
   code: string;
   teacher_id: string;
   students?: CourseStudentEnrollment[];
-  announcements?: Announcement[];
+  announcements?: BackendAnnouncement[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -71,18 +111,18 @@ export interface CreateCourseRequest {
 
 // ============= ASSESSMENT TYPES =============
 
-export type AssessmentType = 'exam' | 'quiz' | 'homework' | 'project' | 'assignment';
-export type AssessmentStatus = 'upcoming' | 'active' | 'graded';
+export type LegacyAssessmentType = 'exam' | 'quiz' | 'homework' | 'project' | 'assignment';
+export type LegacyAssessmentStatus = 'upcoming' | 'active' | 'graded';
 
-export interface AssessmentListItem {
+export interface LegacyAssessmentListItem {
   _id: string;
   course: string;
   title: string;
-  type: AssessmentType;
+  type: LegacyAssessmentType;
   description?: string;
   totalPoints: number;
   dueDate: string;
-  status: AssessmentStatus;
+  status: LegacyAssessmentStatus;
   submissionCount: number;
   totalStudents: number;
   gradedCount: number;
@@ -97,7 +137,7 @@ export interface AssessmentListItem {
   updatedAt: string;
 }
 
-export interface Assessment {
+export interface LegacyAssessment {
   _id: string;
   course: {
     _id: string;
@@ -105,7 +145,7 @@ export interface Assessment {
     title: string;
   };
   title: string;
-  type: AssessmentType;
+  type: LegacyAssessmentType;
   description?: string;
   instructions?: string;
   totalPoints: number;
@@ -113,7 +153,7 @@ export interface Assessment {
   allowLateSubmissions: boolean;
   latePenalty: number;
   visibleToStudents: boolean;
-  status: AssessmentStatus;
+  status: LegacyAssessmentStatus;
   submissionStats: {
     submitted: number;
     notSubmitted: number;
@@ -132,27 +172,29 @@ export interface Assessment {
   updatedAt: string;
 }
 
+// Legacy: recent submission item used by some teacher assessment detail UIs
 export interface RecentSubmission {
-  id: string;
-  studentId: string;
-  studentName: string;
-  studentAvatar?: string;
+  _id: string;
+  student: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+  };
   submittedAt: string;
-  status: 'graded' | 'not-graded';
-  grade: number | null;
-  percentage: number | null;
-  fileCount: number;
+  grade?: number;
+  status?: 'submitted' | 'graded' | 'late' | 'missing';
 }
 
-export interface GetAssessmentsRequest {
-  status?: AssessmentStatus;
-  type?: AssessmentType;
+export interface LegacyGetAssessmentsRequest {
+  status?: LegacyAssessmentStatus;
+  type?: LegacyAssessmentType;
   sortBy?: 'dueDate' | 'createdAt' | 'title' | 'totalPoints';
   order?: 'asc' | 'desc';
 }
 
-export interface GetAssessmentsResponse {
-  assessments: AssessmentListItem[];
+export interface LegacyGetAssessmentsResponse {
+  assessments: LegacyAssessmentListItem[];
   stats: {
     totalAssessments: number;
     activeAssessments: number;
@@ -161,9 +203,9 @@ export interface GetAssessmentsResponse {
   };
 }
 
-export interface CreateAssessmentRequest {
+export interface LegacyCreateAssessmentRequest {
   title: string;
-  type: AssessmentType;
+  type: LegacyAssessmentType;
   description?: string;
   instructions?: string;
   totalPoints: number;
@@ -173,7 +215,7 @@ export interface CreateAssessmentRequest {
   visibleToStudents?: boolean;
 }
 
-export interface UpdateAssessmentRequest {
+export interface LegacyUpdateAssessmentRequest {
   title?: string;
   description?: string;
   instructions?: string;

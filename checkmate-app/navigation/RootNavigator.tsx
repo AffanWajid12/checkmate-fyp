@@ -12,6 +12,7 @@ import AddSubmissionScreen from "../components/courses/AddSubmissionScreen";
 import ViewAssessmentDetailScreen from "../components/courses/ViewAssessmentDetailScreen";
 import ViewAssessmentsScreen from "../components/courses/ViewAssessmentsScreen";
 import ViewCourseScreen from "../components/courses/ViewCourseScreen";
+import ViewAnnouncementScreen from "../components/courses/ViewAnnouncementScreen";
 import RecordScreen from "../components/RecorderScreen";
 import ProfileDetailScreen from "../components/settings/ProfileDetailScreen";
 import StudentDetailScreen from "../components/students/StudentDetailScreen";
@@ -78,6 +79,7 @@ export default function RootNavigator() {
       <Stack.Screen name="RecordScreen" component={RecordScreen} />
       <Stack.Screen name="CapturesScreen" component={CapturesScreen} />
       <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} />
+      <Stack.Screen name="ViewAnnouncement" component={ViewAnnouncementScreen} />
     </Stack.Navigator>
   );
 }

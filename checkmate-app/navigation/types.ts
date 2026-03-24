@@ -21,7 +21,8 @@ export type RootStackParamList = {
     courseId: string;
     courseCode: string;
     courseTitle: string;
-  };  AddAssessment: {
+  };
+  AddAssessment: {
     courseId: string;
     courseCode: string;
     courseTitle: string;
@@ -39,4 +40,10 @@ export type RootStackParamList = {
   RecordScreen: undefined;
   CapturesScreen: undefined;
   VideoPlayer: { uri: string };
+  ViewAnnouncement: {
+    courseId: string;
+    courseCode: string;
+    courseTitle: string;
+    announcement: import('@/services/api').BackendAnnouncement;
+  };
 };

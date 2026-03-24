@@ -1,23 +1,29 @@
 import { theme } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/types";
-import { Announcement as ApiAnnouncement, Course, courseService } from "@/services/api";
+import {
+  BackendAnnouncement as ApiAnnouncement,
+  BackendAnnouncementResource,
+  Course,
+  courseService,
+} from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import * as WebBrowser from 'expo-web-browser';
 import {
-    SafeAreaView,
-    useSafeAreaInsets,
+  SafeAreaView,
+  useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import AddOptionsDrawer from "./AddOptionsDrawer";
 
@@ -35,6 +41,7 @@ export default function ViewCourseScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [announcements, setAnnouncements] = useState<ApiAnnouncement[]>(initialCourse?.announcements ?? []);
 
   const courseId = initialCourse?.id || "";
 
@@ -56,6 +63,10 @@ export default function ViewCourseScreen() {
 
       const courseData = await courseService.getMyCourseById(courseId);
       setCourse(courseData);
+
+      // Phase 3: announcements are sourced from /api/courses/:courseId/announcements
+      const anns = await courseService.getCourseAnnouncements(courseId);
+      setAnnouncements(anns);
 
       console.log('✅ Course details loaded');
     } catch (error: any) {
@@ -152,15 +163,112 @@ export default function ViewCourseScreen() {
     }
   };
 
+  const sortedAnnouncements = useMemo(() => {
+    const list = announcements ? [...announcements] : [];
+    return list.sort((a: any, b: any) => {
+      const at = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
+      const bt = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
+      return bt - at;
+    });
+  }, [announcements]);
+
+  const timeAgo = (iso?: string) => {
+    if (!iso) return '';
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const openResource = async (resource: BackendAnnouncementResource) => {
+    const url = resource.signed_url;
+    const mime = resource.mime_type ?? '';
+
+    try {
+      // Simple video UX: use in-app video player
+      if (mime.startsWith('video/')) {
+        navigation.navigate('VideoPlayer', { uri: url });
+        return;
+      }
+
+      // Everything else: open system preview/browser (works well for PDFs/images)
+      await WebBrowser.openBrowserAsync(url);
+    } catch (e) {
+      console.error('❌ Failed to open resource:', e);
+      Alert.alert('Error', 'Unable to open attachment.');
+    }
+  };
+
+  const renderResourceRow = (r: BackendAnnouncementResource) => {
+    const label = r.file_name || 'Attachment';
+    return (
+      <TouchableOpacity
+        key={r.id}
+        style={styles.resourceRow}
+        onPress={() => openResource(r)}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="attach" size={16} color={theme.colors.primary} />
+        <Text style={styles.resourceName} numberOfLines={1}>
+          {label}
+        </Text>
+        <Ionicons name="open-outline" size={16} color={theme.colors.textSecondary} />
+      </TouchableOpacity>
+    );
+  };
+
   const renderAnnouncementItem = (item: ApiAnnouncement) => (
-    <View key={item.id} style={styles.announcementCard}>
+    <TouchableOpacity
+      key={item.id}
+      style={styles.announcementCard}
+      activeOpacity={0.85}
+      onPress={() => {
+        if (!course) return;
+        navigation.navigate('ViewAnnouncement', {
+          courseId: course.id,
+          courseCode: course.code,
+          courseTitle: course.title,
+          announcement: item,
+        });
+      }}
+    >
       <View style={styles.announcementContent}>
         <View style={styles.announcementHeaderRow}>
-          <Text style={styles.announcementTitle}>{item.title}</Text>
+          <View style={styles.announcementHeaderLeft}>
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={14} color={theme.colors.textSecondary} />
+            </View>
+            <View style={styles.announcementHeaderText}>
+              <Text style={styles.announcementTitle}>{item.title}</Text>
+              <Text style={styles.announcementMeta}>
+                {course?.title ? `${course.title} • ` : ''}{timeAgo((item as any).createdAt)}
+              </Text>
+            </View>
+          </View>
         </View>
-        <Text style={styles.announcementDescription}>{item.description}</Text>
+
+        <Text style={styles.announcementDescription} numberOfLines={3}>
+          {item.description}
+        </Text>
+
+        {(item.resources?.length ?? 0) > 0 && (
+          <View style={styles.resourcesBlock}>
+            <Text style={styles.resourcesTitle}>Attachments</Text>
+            <View
+              style={styles.resourcesList}
+              onStartShouldSetResponderCapture={() => true}
+            >
+              {item.resources?.map(renderResourceRow)}
+            </View>
+          </View>
+        )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -321,9 +429,9 @@ export default function ViewCourseScreen() {
           </TouchableOpacity>
         </View>
 
-        {(course.announcements?.length ?? 0) > 0 ? (
+        {sortedAnnouncements.length > 0 ? (
           <View style={styles.announcementsList}>
-            {course.announcements?.map(renderAnnouncementItem)}
+            {sortedAnnouncements.map(renderAnnouncementItem)}
           </View>
         ) : (
           <View style={styles.emptyAnnouncements}>
@@ -514,11 +622,36 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: theme.spacing.xs,
   },
+  announcementHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    flex: 1,
+  },
+  avatarPlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  announcementHeaderText: {
+    flex: 1,
+  },
   announcementTitle: {
     fontSize: 14,
     fontWeight: "600",
     color: theme.colors.textPrimary,
     marginBottom: 4,
+  },
+  announcementMeta: {
+    marginTop: 2,
+    fontSize: 12,
+    color: theme.colors.textSecondary,
   },
   announcementDescription: {
     fontSize: 13,
@@ -564,5 +697,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.md,
+  },
+  resourcesBlock: {
+    marginTop: theme.spacing.sm,
+  },
+  resourcesTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    marginBottom: 8,
+  },
+  resourcesList: {
+    gap: 8,
+  },
+  resourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  resourceName: {
+    flex: 1,
+    color: theme.colors.textPrimary,
+    fontSize: 13,
   },
 });

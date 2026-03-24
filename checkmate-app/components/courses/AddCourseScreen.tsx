@@ -1,127 +1,144 @@
+import React, { useMemo, useState } from "react";
 import { theme } from "@/constants/theme";
 import { courseService } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+type CreatedCourse = {
+  id: string;
+  title: string;
+  code: string;
+  description?: string | null;
+};
 
 export default function AddCourseScreen() {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
-  
-  // Required fields
+
   const [title, setTitle] = useState("");
-  const [code, setCode] = useState("");
-  const [section, setSection] = useState("");
-  const [semester, setSemester] = useState("");
-  const [year, setYear] = useState("");
-  
-  // Optional fields
   const [description, setDescription] = useState("");
-  const [credits, setCredits] = useState("3");
-  const [maxStudents, setMaxStudents] = useState("100");
+  const [createdCourse, setCreatedCourse] = useState<CreatedCourse | null>(null);
+
+  const canSubmit = useMemo(() => title.trim().length > 0 && !loading, [title, loading]);
 
   const validateForm = (): boolean => {
     if (!title.trim()) {
-      Alert.alert('Validation Error', 'Course title is required');
+      Alert.alert("Validation Error", "Course title is required");
       return false;
     }
     if (title.trim().length < 3) {
-      Alert.alert('Validation Error', 'Course title must be at least 3 characters');
+      Alert.alert("Validation Error", "Course title must be at least 3 characters");
       return false;
     }
-    if (!code.trim()) {
-      Alert.alert('Validation Error', 'Course code is required');
-      return false;
-    }
-    if (!/^[A-Z0-9]+$/i.test(code.trim())) {
-      Alert.alert('Validation Error', 'Course code must contain only letters and numbers');
-      return false;
-    }
-    if (!section.trim()) {
-      Alert.alert('Validation Error', 'Section is required');
-      return false;
-    }
-    if (!semester.trim()) {
-      Alert.alert('Validation Error', 'Semester is required (e.g., Fall 2024)');
-      return false;
-    }
-    if (!year.trim()) {
-      Alert.alert('Validation Error', 'Year is required');
-      return false;
-    }
-    
-    const yearNum = parseInt(year);
-    if (isNaN(yearNum) || yearNum < 2020 || yearNum > 2100) {
-      Alert.alert('Validation Error', 'Please enter a valid year (2020-2100)');
-      return false;
-    }
-
     return true;
   };
 
-  const handleCreateCourse = async () => {
-    if (!validateForm()) {
-      return;
-    }
+  const handleClose = () => {
+    setTitle("");
+    setDescription("");
+    setCreatedCourse(null);
+    navigation.goBack();
+  };
 
-    console.log('➕ Creating course...');
+  const handleCreateCourse = async () => {
+    if (!validateForm()) return;
+
+    console.log("➕ Creating course...");
     setLoading(true);
 
     try {
-      const courseData = {
+      const payload = {
         title: title.trim(),
-        code: code.trim().toUpperCase(),
-        section: section.trim(),
-        semester: semester.trim(),
-        year: parseInt(year),
         description: description.trim() || undefined,
-        credits: parseInt(credits) || 3,
-        maxStudents: parseInt(maxStudents) || 100,
       };
 
-      await courseService.createCourse(courseData);
-      
-      Alert.alert(
-        'Success',
-        'Course created successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      const res: any = await courseService.createCourse(payload as any);
+
+      // Backend contract in MOBILE-APP-BACKEND-INTEGRATION.MD says: { message, course }
+      const courseFromBackend: any = res?.course ?? res;
+
+      if (!courseFromBackend?.id || !courseFromBackend?.title || !courseFromBackend?.code) {
+        Alert.alert(
+          "Created, but couldn’t show code",
+          "The course was created, but the app couldn’t read the returned course code from the response."
+        );
+        handleClose();
+        return;
+      }
+
+      setCreatedCourse({
+        id: String(courseFromBackend.id),
+        title: String(courseFromBackend.title),
+        code: String(courseFromBackend.code),
+        description: courseFromBackend.description ?? null,
+      });
     } catch (error: any) {
-      console.error('❌ Error creating course:', error);
-      
-      let errorMessage = 'Failed to create course. Please try again.';
-      
-      if (error.response?.status === 409) {
-        errorMessage = 'A course with this code and section already exists for this semester';
-      } else if (error.response?.data?.message) {
+      console.error("❌ Error creating course:", error);
+
+      let errorMessage = "Failed to create course. Please try again.";
+
+      if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
-      Alert.alert('Error', errorMessage);
+
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
   };
+
+  // Step 2: success view showing the generated code (no clipboard functionality)
+  if (createdCourse) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.successWrapper}>
+          <View style={styles.successCard}>
+            <View style={styles.successIconWrap}>
+              <Ionicons
+                name="checkmark"
+                size={28}
+                color={theme.colors.success ?? theme.colors.primary}
+              />
+            </View>
+
+            <Text style={styles.successTitle}>Course Created!</Text>
+            <Text style={styles.successSubtitle}>
+              Share the code below with your students so they can enroll.
+            </Text>
+
+            <View style={styles.courseInfoBox}>
+              <Text style={styles.mutedLabel}>Course title</Text>
+              <Text style={styles.courseInfoTitle}>{createdCourse.title}</Text>
+            </View>
+
+            <View style={styles.codeBox}>
+              <Text style={styles.mutedLabel}>Course Code</Text>
+              <Text style={styles.codeValue}>{createdCourse.code}</Text>
+            </View>
+
+            <TouchableOpacity onPress={handleClose} style={styles.doneButton}>
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -145,72 +162,33 @@ export default function AddCourseScreen() {
                 color={theme.colors.textPrimary}
               />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Add Course</Text>
+            <Text style={styles.headerTitle}>Create a Course</Text>
             <View style={styles.placeholder} />
           </View>
 
           {/* Form */}
           <View style={styles.form}>
-            <Text style={styles.sectionTitle}>Required Information</Text>
-            
+            <Text style={styles.helperText}>
+              A unique enrollment code will be generated automatically.
+            </Text>
+
             <Text style={styles.label}>Course Title *</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Introduction to Psychology"
+              placeholder="e.g. Introduction to Computer Science"
               placeholderTextColor={theme.colors.placeholder}
               value={title}
               onChangeText={setTitle}
               editable={!loading}
+              autoFocus
             />
 
-            <Text style={styles.label}>Course Code *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. PSY101"
-              placeholderTextColor={theme.colors.placeholder}
-              value={code}
-              onChangeText={(text) => setCode(text.toUpperCase())}
-              autoCapitalize="characters"
-              editable={!loading}
-            />
-
-            <Text style={styles.label}>Section *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. A, B, 01"
-              placeholderTextColor={theme.colors.placeholder}
-              value={section}
-              onChangeText={setSection}
-              editable={!loading}
-            />
-
-            <Text style={styles.label}>Semester *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Fall 2024, Spring 2025"
-              placeholderTextColor={theme.colors.placeholder}
-              value={semester}
-              onChangeText={setSemester}
-              editable={!loading}
-            />
-
-            <Text style={styles.label}>Year *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. 2024"
-              placeholderTextColor={theme.colors.placeholder}
-              value={year}
-              onChangeText={setYear}
-              keyboardType="number-pad"
-              editable={!loading}
-            />
-
-            <Text style={styles.sectionTitle}>Optional Information</Text>
-
-            <Text style={styles.label}>Description</Text>
+            <Text style={styles.label}>
+              Description <Text style={styles.optional}>(optional)</Text>
+            </Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Brief course description..."
+              placeholder="Brief description of what students will learn…"
               placeholderTextColor={theme.colors.placeholder}
               value={description}
               onChangeText={setDescription}
@@ -220,44 +198,30 @@ export default function AddCourseScreen() {
               editable={!loading}
             />
 
-            <Text style={styles.label}>Credits</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="3"
-              placeholderTextColor={theme.colors.placeholder}
-              value={credits}
-              onChangeText={setCredits}
-              keyboardType="number-pad"
-              editable={!loading}
-            />
+            <View style={styles.actionsRow}>
+              {/* Cancel button removed (user request) */}
 
-            <Text style={styles.label}>Max Students</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="100"
-              placeholderTextColor={theme.colors.placeholder}
-              value={maxStudents}
-              onChangeText={setMaxStudents}
-              keyboardType="number-pad"
-              editable={!loading}
-            />
+              <TouchableOpacity
+                style={[
+                  styles.createButton,
+                  styles.createButtonFullWidth,
+                  (!canSubmit || loading) && styles.createButtonDisabled,
+                ]}
+                onPress={handleCreateCourse}
+                disabled={!canSubmit || loading}
+              >
+                {loading ? (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator size="small" color={theme.colors.onPrimary} />
+                    <Text style={styles.createButtonText}>Creating…</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.createButtonText}>Create Course</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
-
-        {/* Create Button */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.createButton, loading && styles.createButtonDisabled]}
-            onPress={handleCreateCourse}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color={theme.colors.onPrimary} />
-            ) : (
-              <Text style={styles.createButtonText}>Create Course</Text>
-            )}
-          </TouchableOpacity>
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -300,19 +264,21 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.xl,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.textPrimary,
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
+  helperText: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.lg,
   },
   label: {
     fontSize: 13,
-    fontWeight: "500",
+    fontWeight: "600",
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
     marginTop: theme.spacing.md,
+  },
+  optional: {
+    fontWeight: "400",
+    color: theme.colors.textSecondary,
   },
   input: {
     backgroundColor: theme.colors.inputBackground,
@@ -328,35 +294,119 @@ const styles = StyleSheet.create({
     minHeight: 100,
     paddingTop: 14,
   },
-  buttonContainer: {
-    paddingHorizontal: theme.spacing.md,
-    paddingBottom: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    backgroundColor: theme.colors.background,
+  actionsRow: {
+    marginTop: theme.spacing.xl,
   },
   createButton: {
+    flex: 1,
     backgroundColor: theme.colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     height: 52,
-    shadowColor: theme.colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
   createButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
+  },
+  createButtonFullWidth: {
+    width: '100%',
+  },
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   createButtonText: {
     color: theme.colors.onPrimary,
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+
+  // Success view
+  successWrapper: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.md,
+    justifyContent: "center",
+  },
+  successCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+    padding: 20,
+  },
+  successIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignSelf: "center",
+    marginBottom: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.inputBackground,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: theme.colors.textPrimary,
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  successSubtitle: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  courseInfoBox: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.inputBackground,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  mutedLabel: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
+  },
+  courseInfoTitle: {
+    fontSize: 14,
     fontWeight: "700",
-    letterSpacing: 0.5,
+    color: theme.colors.textPrimary,
+  },
+  codeBox: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.inputBackground,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  codeValue: {
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: 3,
+    color: theme.colors.primary,
+  },
+  doneButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    height: 52,
+  },
+  doneButtonText: {
+    color: theme.colors.onPrimary,
+    fontSize: 14,
+    fontWeight: "800",
   },
 });
