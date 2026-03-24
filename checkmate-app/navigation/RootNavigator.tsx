@@ -18,6 +18,7 @@ import RecordScreen from "../components/RecorderScreen";
 import ProfileDetailScreen from "../components/settings/ProfileDetailScreen";
 import StudentDetailScreen from "../components/students/StudentDetailScreen";
 import VideoPlayerScreen from "../components/VideoPlayerScreen";
+import AttendanceScreen from "../components/courses/AttendanceScreen";
 import { theme } from "../constants/theme";
 import { authService } from "../services/api";
 import MainTabNavigator from "./MainTabNavigator";
@@ -76,6 +77,7 @@ export default function RootNavigator() {
         name="ViewSubmissionDetail"
         component={ViewSubmissionDetailScreen}
       />
+      <Stack.Screen name="Attendance" component={AttendanceScreen} />
       <Stack.Screen name="AddAnnouncement" component={AddAnnouncementScreen} />
       <Stack.Screen name="AddAssessment" component={AddAssessmentScreen} />
       <Stack.Screen name="AddSubmission" component={AddSubmissionScreen} />

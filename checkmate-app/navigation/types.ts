@@ -53,4 +53,15 @@ export type RootStackParamList = {
     courseTitle: string;
     announcement: import('@/services/api').BackendAnnouncement;
   };
+  Attendance: {
+    courseId: string;
+    courseCode: string;
+    courseTitle: string;
+    students: Array<{
+      id: string;
+      name: string;
+      email: string;
+      profile_picture?: string;
+    }>;
+  };
 };

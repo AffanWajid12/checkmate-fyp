@@ -110,6 +110,27 @@ export default function ViewCourseScreen() {
     });
   };
 
+  const handleAttendance = () => {
+    if (!course) return;
+
+    const students = (course.students ?? [])
+      .map((e) => e.student)
+      .filter(Boolean)
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        email: s.email,
+        profile_picture: s.profile_picture,
+      }));
+
+    navigation.navigate("Attendance", {
+      courseId: course.id,
+      courseCode: course.code,
+      courseTitle: course.title,
+      students,
+    });
+  };
+
   const handleCourseMaterials = () => {
     console.log("Navigate to course materials");
   };
@@ -405,6 +426,17 @@ export default function ViewCourseScreen() {
             <View style={styles.actionContent}>
               <Text style={styles.actionTitle}>Assessments</Text>
               <Text style={styles.actionSubtitle}>Open assessments</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionItem} onPress={handleAttendance}>
+            <View style={styles.actionIcon}>
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>Attendance</Text>
+              <Text style={styles.actionSubtitle}>Mark and view history</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
           </TouchableOpacity>
