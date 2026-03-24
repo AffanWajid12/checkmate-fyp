@@ -13,6 +13,7 @@ import ViewAssessmentDetailScreen from "../components/courses/ViewAssessmentDeta
 import ViewAssessmentsScreen from "../components/courses/ViewAssessmentsScreen";
 import ViewCourseScreen from "../components/courses/ViewCourseScreen";
 import ViewAnnouncementScreen from "../components/courses/ViewAnnouncementScreen";
+import ViewSubmissionDetailScreen from "../components/courses/ViewSubmissionDetailScreen";
 import RecordScreen from "../components/RecorderScreen";
 import ProfileDetailScreen from "../components/settings/ProfileDetailScreen";
 import StudentDetailScreen from "../components/students/StudentDetailScreen";
@@ -70,6 +71,10 @@ export default function RootNavigator() {
       <Stack.Screen
         name="ViewAssessmentDetail"
         component={ViewAssessmentDetailScreen}
+      />
+      <Stack.Screen
+        name="ViewSubmissionDetail"
+        component={ViewSubmissionDetailScreen}
       />
       <Stack.Screen name="AddAnnouncement" component={AddAnnouncementScreen} />
       <Stack.Screen name="AddAssessment" component={AddAssessmentScreen} />

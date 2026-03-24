@@ -18,6 +18,12 @@ export type RootStackParamList = {
     assessmentTitle: string;
     courseCode: string;
   };
+  ViewSubmissionDetail: {
+    courseId: string;
+    assessmentId: string;
+    submissionId: string;
+    courseCode: string;
+  };
   AddAnnouncement: {
     courseId: string;
     courseCode: string;

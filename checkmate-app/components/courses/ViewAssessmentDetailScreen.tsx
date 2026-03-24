@@ -207,11 +207,12 @@ export default function ViewAssessmentDetailScreen() {
         {item.submitted_at ? (
           <TouchableOpacity
             onPress={() => {
-              // Phase 4 requires a submission detail screen, but routes are not yet defined in navigation/types.
-              Alert.alert(
-                "Not implemented",
-                "Submission review screen is not wired yet. Implement: GET /api/courses/:courseId/assessments/:assessmentId/submissions/:submissionId"
-              );
+              navigation.navigate("ViewSubmissionDetail", {
+                courseId,
+                assessmentId,
+                submissionId: item.id,
+                courseCode,
+              });
             }}
             style={styles.reviewButton}
           >
