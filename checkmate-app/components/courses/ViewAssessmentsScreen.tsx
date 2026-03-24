@@ -94,6 +94,7 @@ export default function ViewAssessmentsScreen() {
 
   const handleAssessmentPress = (assessment: FlattenedAssessment) => {
     navigation.navigate("ViewAssessmentDetail", {
+      courseId,
       assessmentId: assessment.id,
       assessmentTitle: assessment.title,
       courseCode,

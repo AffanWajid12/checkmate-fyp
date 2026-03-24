@@ -1,12 +1,11 @@
 import { apiClient } from './config';
 import type {
-    ApiResponse,
-    Assessment,
-    AssessmentListItem,
-    CreateAssessmentRequest,
-    GetAssessmentsRequest,
-    GetAssessmentsResponse,
-    UpdateAssessmentRequest,
+  LegacyAssessment as Assessment,
+  LegacyAssessmentListItem as AssessmentListItem,
+  LegacyCreateAssessmentRequest as CreateAssessmentRequest,
+  LegacyGetAssessmentsRequest as GetAssessmentsRequest,
+  LegacyGetAssessmentsResponse as GetAssessmentsResponse,
+  LegacyUpdateAssessmentRequest as UpdateAssessmentRequest,
 } from './types';
 
 /**
@@ -24,31 +23,35 @@ class AssessmentService {
     params?: GetAssessmentsRequest
   ): Promise<GetAssessmentsResponse> {
     console.log('📋 Fetching assessments for course:', courseId, params);
-    
-    const response = await apiClient.get<ApiResponse<GetAssessmentsResponse>>(
+
+    const response = await apiClient.get(
       `/api/courses/${courseId}/assessments`,
       { params }
     );
-    
-    console.log(`✅ Retrieved ${response.data.data.assessments.length} assessments`);
-    console.log('📊 Stats:', response.data.data.stats);
-    return response.data.data;
+
+    const data: any = response.data;
+    // tolerate either legacy wrapper or backend style
+    const payload = (data?.data ?? data) as any;
+
+    console.log(`✅ Retrieved ${payload?.assessments?.length ?? 0} assessments`);
+    console.log('📊 Stats:', payload?.stats);
+    return payload as GetAssessmentsResponse;
   }
 
   /**
    * Get a single assessment by ID with detailed information
-   * @param assessmentId - The assessment ID
+   * Phase 4 (teacher portal): GET /api/courses/:courseId/assessments/:assessmentId
    */
-  async getAssessmentById(assessmentId: string): Promise<Assessment> {
-    console.log('📖 Fetching assessment:', assessmentId);
-    
-    const response = await apiClient.get<ApiResponse<Assessment>>(
-      `/api/assessments/${assessmentId}`
+  async getAssessmentById(courseId: string, assessmentId: string): Promise<any> {
+    console.log('📖 Fetching assessment:', { courseId, assessmentId });
+
+    const response = await apiClient.get(
+      `/api/courses/${courseId}/assessments/${assessmentId}`
     );
-    
-    console.log('✅ Assessment retrieved:', response.data.data.title);
-    console.log('📊 Submission stats:', response.data.data.submissionStats);
-    return response.data.data;
+
+    // Backend returns { message, assessment, submitted, late, not_submitted } for teachers
+    // or { message, assessment, submission } for students.
+    return response.data;
   }
 
   /**
@@ -63,13 +66,14 @@ class AssessmentService {
     console.log('➕ Creating assessment:', data.title, data.type);
     console.log('📅 Due date:', data.dueDate);
     
-    const response = await apiClient.post<ApiResponse<AssessmentListItem>>(
+    const response = await apiClient.post(
       `/api/courses/${courseId}/assessments`,
       data
     );
-    
-    console.log('✅ Assessment created successfully:', response.data.data._id);
-    return response.data.data;
+
+    const payload: any = response.data?.data ?? response.data;
+    console.log('✅ Assessment created successfully:', payload?._id ?? payload?.id);
+    return payload as AssessmentListItem;
   }
 
   /**
@@ -83,13 +87,14 @@ class AssessmentService {
   ): Promise<Assessment> {
     console.log('📝 Updating assessment:', assessmentId);
     
-    const response = await apiClient.patch<ApiResponse<Assessment>>(
+    const response = await apiClient.patch(
       `/api/assessments/${assessmentId}`,
       data
     );
-    
+
+    const payload: any = response.data?.data ?? response.data;
     console.log('✅ Assessment updated successfully');
-    return response.data.data;
+    return payload as Assessment;
   }
 
   /**
@@ -99,7 +104,7 @@ class AssessmentService {
   async deleteAssessment(assessmentId: string): Promise<void> {
     console.log('🗑️ Deleting assessment:', assessmentId);
     
-    await apiClient.delete<ApiResponse<null>>(`/api/assessments/${assessmentId}`);
+    await apiClient.delete(`/api/assessments/${assessmentId}`);
     
     console.log('✅ Assessment deleted successfully');
   }

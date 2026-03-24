@@ -1,10 +1,10 @@
 import { theme } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/types";
-import { Assessment, assessmentService } from "@/services/api";
+import { assessmentService } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,59 +12,109 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type ViewAssessmentDetailScreenRouteProp = RouteProp<RootStackParamList, "ViewAssessmentDetail">;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+type BackendAssessmentType = "QUIZ" | "ASSIGNMENT" | "EXAM";
+
+type BackendSourceMaterial = {
+  id: string;
+  signed_url: string;
+  file_name?: string;
+  mime_type?: string;
+  file_size?: number;
+};
+
+type BackendAssessment = {
+  id: string;
+  title: string;
+  type: BackendAssessmentType;
+  instructions?: string;
+  due_date?: string;
+  createdAt?: string;
+  source_materials?: BackendSourceMaterial[];
+};
+
+type SubmissionLike = {
+  id: string;
+  name?: string;
+  submitted_at?: string;
+  user?: {
+    id: string;
+    name: string;
+    profile_picture?: string;
+  };
+};
+
+type TeacherAssessmentDetailsResponse = {
+  message?: string;
+  assessment: BackendAssessment;
+  submitted?: SubmissionLike[];
+  late?: SubmissionLike[];
+  not_submitted?: SubmissionLike[];
+};
+
+const formatDateTime = (iso?: string) => {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const isOverdue = (due?: string) => !!due && new Date(due) < new Date();
+
+const TYPE_META: Record<BackendAssessmentType, { label: string; pillBg: string; pillText: string }> = {
+  QUIZ: { label: "Quiz", pillBg: "#DBEAFE", pillText: "#2563EB" },
+  ASSIGNMENT: { label: "Assignment", pillBg: "#EDE9FE", pillText: "#7C3AED" },
+  EXAM: { label: "Exam", pillBg: "#FEF3C7", pillText: "#D97706" },
+};
+
+const STATUS_META = {
+  SUBMITTED: { label: "Submitted", color: "#16A34A", bg: "#DCFCE7" },
+  LATE: { label: "Late", color: "#D97706", bg: "#FEF3C7" },
+  NOT_SUBMITTED: { label: "Not Submitted", color: theme.colors.textSecondary, bg: theme.colors.border },
+} as const;
+
 export default function ViewAssessmentDetailScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ViewAssessmentDetailScreenRouteProp>();
-  const { assessmentId, assessmentTitle, courseCode } = route.params;
+  const { courseId, assessmentId, courseCode } = route.params;
 
-  const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const [activeTab, setActiveTab] = useState<"details" | "submissions">("details");
+  const [data, setData] = useState<TeacherAssessmentDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
 
-  const fetchAssessmentDetails = async (isRefresh: boolean = false) => {
-    if (!assessmentId) {
-      Alert.alert('Error', 'Assessment ID is missing');
+  const fetchDetails = async (isRefresh = false) => {
+    if (!courseId || !assessmentId) {
+      Alert.alert("Error", "Course ID or Assessment ID is missing");
       navigation.goBack();
       return;
     }
 
     try {
-      console.log('📖 Fetching assessment details:', assessmentId);
-      
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
 
-      const data = await assessmentService.getAssessmentById(assessmentId);
-      setAssessment(data);
-      
-      console.log('✅ Assessment details loaded');
+      // Frontend calls GET /api/courses/:courseId/assessments/:assessmentId and uses the full payload
+      // { assessment, submitted, late, not_submitted } for teachers.
+      const payload: any = await assessmentService.getAssessmentById(courseId, assessmentId);
+      setData(payload as TeacherAssessmentDetailsResponse);
     } catch (error: any) {
-      console.error('❌ Error fetching assessment:', error);
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to load assessment details',
-        [
-          {
-            text: 'Go Back',
-            onPress: () => navigation.goBack(),
-          },
-          {
-            text: 'Retry',
-            onPress: () => fetchAssessmentDetails(false),
-          },
-        ]
-      );
+      console.error("❌ Error fetching assessment details:", error);
+      Alert.alert("Error", error.response?.data?.message || "Failed to load assessment details");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -73,107 +123,116 @@ export default function ViewAssessmentDetailScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchAssessmentDetails(false);
-    }, [assessmentId])
+      fetchDetails(false);
+    }, [courseId, assessmentId])
   );
 
-  const handleRefresh = () => {
-    fetchAssessmentDetails(true);
-  };
+  const assessment = data?.assessment;
+  const submitted = data?.submitted ?? [];
+  const late = data?.late ?? [];
+  const notSubmitted = data?.not_submitted ?? [];
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const total = submitted.length + late.length + notSubmitted.length;
+  const done = submitted.length + late.length;
 
-  const getTimeRemaining = (dueDate: string): string => {
-    const now = new Date();
-    const due = new Date(dueDate);
-    const diff = due.getTime() - now.getTime();
+  const q = search.trim().toLowerCase();
+  const filterName = useCallback(
+    (s: SubmissionLike) => (s.user?.name ?? s.name ?? "").toLowerCase().includes(q),
+    [q]
+  );
 
-    if (diff < 0) return 'Past due';
+  const filtered = useMemo(() => {
+    return {
+      submitted: submitted.filter(filterName),
+      late: late.filter(filterName),
+      notSubmitted: notSubmitted.filter(filterName),
+    };
+  }, [submitted, late, notSubmitted, filterName]);
 
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-    if (days > 0) return `${days}d ${hours}h remaining`;
-    if (hours > 0) return `${hours}h remaining`;
-    return 'Due soon';
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'upcoming':
-        return '#F59E0B';
-      case 'active':
-        return '#10B981';
-      case 'graded':
-        return '#6B7280';
-      default:
-        return theme.colors.textSecondary;
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'upcoming':
-        return 'time-outline';
-      case 'active':
-        return 'checkmark-circle-outline';
-      case 'graded':
-        return 'checkmark-done-outline';
-      default:
-        return 'help-circle-outline';
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'exam':
-        return 'document-text';
-      case 'quiz':
-        return 'help-circle';
-      case 'homework':
-        return 'pencil';
-      case 'project':
-        return 'briefcase';
-      case 'assignment':
-        return 'clipboard';
-      default:
-        return 'document';
-    }
-  };  const handleAddSubmission = () => {
-    if (!assessment?.course) {
-      Alert.alert('Error', 'Course information is missing');
+  const handleOpenUrl = async (url?: string) => {
+    if (!url) return;
+    const supported = await Linking.canOpenURL(url);
+    if (!supported) {
+      Alert.alert("Can't open link", "No handler available for this URL.");
       return;
     }
+    await Linking.openURL(url);
+  };
 
-    navigation.navigate('AddSubmission', {
-      assessmentId: assessment._id,
-      assessmentTitle: assessment.title,
-      courseId: typeof assessment.course === 'string' ? assessment.course : assessment.course._id,
-    });
+  const renderPill = (type?: BackendAssessmentType) => {
+    const meta = type ? TYPE_META[type] : undefined;
+    if (!meta) return null;
+
+    return (
+      <View style={[styles.pill, { backgroundColor: meta.pillBg }]}> 
+        <Text style={[styles.pillText, { color: meta.pillText }]}>{meta.label}</Text>
+      </View>
+    );
+  };
+
+  const renderTabButton = (key: "details" | "submissions", label: string) => (
+    <TouchableOpacity
+      onPress={() => setActiveTab(key)}
+      style={[styles.tabButton, activeTab === key ? styles.tabButtonActive : null]}
+      activeOpacity={0.85}
+    >
+      <Text style={[styles.tabButtonText, activeTab === key ? styles.tabButtonTextActive : null]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderSubmissionRow = (item: SubmissionLike, status: keyof typeof STATUS_META) => {
+    const meta = STATUS_META[status];
+    const name = item.user?.name ?? item.name ?? "Unknown";
+    const initial = (name[0] ?? "?").toUpperCase();
+
+    return (
+      <View key={item.id} style={styles.submissionRow}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initial}</Text>
+        </View>
+
+        <View style={styles.submissionRowMain}>
+          <Text style={styles.submissionName} numberOfLines={1}>{name}</Text>
+          {item.submitted_at ? (
+            <Text style={styles.submissionSubtext}>{formatDateTime(item.submitted_at)}</Text>
+          ) : null}
+        </View>
+
+        <View style={[styles.statusChip, { backgroundColor: meta.bg }]}> 
+          <Text style={[styles.statusChipText, { color: meta.color }]}>{meta.label}</Text>
+        </View>
+
+        {item.submitted_at ? (
+          <TouchableOpacity
+            onPress={() => {
+              // Phase 4 requires a submission detail screen, but routes are not yet defined in navigation/types.
+              Alert.alert(
+                "Not implemented",
+                "Submission review screen is not wired yet. Implement: GET /api/courses/:courseId/assessments/:assessmentId/submissions/:submissionId"
+              );
+            }}
+            style={styles.reviewButton}
+          >
+            <Text style={styles.reviewButtonText}>Review →</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    );
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color={theme.colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Assessment Details</Text>
-          <View style={styles.placeholder} />
+          <Text style={styles.headerTitle}>Assessment</Text>
+          <View style={styles.headerRightPlaceholder} />
         </View>
+
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loadingText}>Loading assessment...</Text>
@@ -186,45 +245,39 @@ export default function ViewAssessmentDetailScreen() {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color={theme.colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Assessment Details</Text>
-          <View style={styles.placeholder} />
+          <Text style={styles.headerTitle}>Assessment</Text>
+          <View style={styles.headerRightPlaceholder} />
         </View>
-        <View style={styles.emptyState}>
-          <Ionicons name="alert-circle-outline" size={64} color={theme.colors.textSecondary} />
-          <Text style={styles.emptyStateText}>Assessment not found</Text>
+
+        <View style={styles.emptyContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={theme.colors.textSecondary} />
+          <Text style={styles.emptyTitle}>Failed to load assessment</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => fetchDetails(false)}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
-  const submissionStats = assessment.submissionStats || {
-    submitted: 0,
-    notSubmitted: 0,
-    graded: 0,
-    notGraded: 0,
-    totalStudents: 0,
-  };
+  const typeMeta = TYPE_META[assessment.type] ?? TYPE_META.ASSIGNMENT;
+  const overdue = isOverdue(assessment.due_date);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} color={theme.colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {courseCode}
-        </Text>
-        <TouchableOpacity style={styles.moreButton}>
+        <Text style={styles.headerTitle} numberOfLines={1}>{courseCode}</Text>
+        <TouchableOpacity
+          style={styles.moreButton}
+          onPress={() => Alert.alert("Info", "More actions not implemented")}
+        >
           <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -235,217 +288,174 @@ export default function ViewAssessmentDetailScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={handleRefresh}
+            onRefresh={() => fetchDetails(true)}
             colors={[theme.colors.primary]}
             tintColor={theme.colors.primary}
           />
         }
       >
-        {/* Assessment Header Card */}
-        <View style={styles.assessmentHeaderCard}>
-          <View style={styles.typeIconContainer}>
-            <Ionicons
-              name={getTypeIcon(assessment.type) as any}
-              size={28}
-              color={theme.colors.primary}
-            />
-          </View>
-          <View style={styles.assessmentHeaderInfo}>
-            <Text style={styles.assessmentTitle}>{assessment.title}</Text>
-            <View style={styles.assessmentMeta}>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(assessment.status) + '20' }]}>
-                <Ionicons
-                  name={getStatusIcon(assessment.status) as any}
-                  size={14}
-                  color={getStatusColor(assessment.status)}
-                />
-                <Text style={[styles.statusText, { color: getStatusColor(assessment.status) }]}>
-                  {assessment.status.toUpperCase()}
-                </Text>
-              </View>
-              <View style={styles.typeBadge}>
-                <Text style={styles.typeText}>{assessment.type.toUpperCase()}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Quick Stats */}
-        <View style={styles.quickStatsContainer}>
-          <View style={styles.quickStatCard}>
-            <Ionicons name="trophy-outline" size={24} color="#F59E0B" />
-            <Text style={styles.quickStatValue}>{assessment.totalPoints}</Text>
-            <Text style={styles.quickStatLabel}>Points</Text>
-          </View>
-          <View style={styles.quickStatCard}>
-            <Ionicons name="time-outline" size={24} color="#10B981" />
-            <Text style={styles.quickStatValue} numberOfLines={1}>
-              {getTimeRemaining(assessment.dueDate)}
-            </Text>
-            <Text style={styles.quickStatLabel}>Remaining</Text>
-          </View>
-          <View style={styles.quickStatCard}>
-            <Ionicons name="people-outline" size={24} color="#3B82F6" />
-            <Text style={styles.quickStatValue}>
-              {submissionStats.submitted}/{submissionStats.totalStudents}
-            </Text>
-            <Text style={styles.quickStatLabel}>Submitted</Text>
-          </View>
-        </View>
-
-        {/* Due Date Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoCardHeader}>
-            <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
-            <Text style={styles.infoCardTitle}>Due Date</Text>
-          </View>
-          <Text style={styles.infoCardContent}>{formatDate(assessment.dueDate)}</Text>
-          {assessment.allowLateSubmissions && (
-            <View style={styles.lateSubmissionNotice}>
-              <Ionicons name="information-circle-outline" size={16} color="#F59E0B" />
-              <Text style={styles.lateSubmissionText}>
-                Late submissions allowed ({assessment.latePenalty}% penalty per day)
+        {/* Page header (like frontend) */}
+        <View style={styles.pageHeader}>
+          <View style={styles.pageHeaderTopRow}>
+            {renderPill(assessment.type)}
+            {assessment.due_date ? (
+              <Text style={[styles.dueInline, { color: overdue ? (theme.colors.error ?? "#EF4444") : theme.colors.textSecondary }]}>
+                {overdue ? "Was due " : "Due "}{formatDateTime(assessment.due_date)}
               </Text>
-            </View>
-          )}
+            ) : null}
+          </View>
+          <Text style={styles.pageTitle}>{assessment.title}</Text>
+          <Text style={styles.submissionCount}>{(submitted.length + late.length)} submission{(submitted.length + late.length) !== 1 ? "s" : ""}</Text>
         </View>
 
-        {/* Description Card */}
-        {assessment.description && (
-          <View style={styles.infoCard}>
-            <View style={styles.infoCardHeader}>
-              <Ionicons name="document-text-outline" size={20} color={theme.colors.primary} />
-              <Text style={styles.infoCardTitle}>Description</Text>
-            </View>
-            <Text style={styles.infoCardContent}>{assessment.description}</Text>
-          </View>
-        )}
-
-        {/* Instructions Card */}
-        {assessment.instructions && (
-          <View style={styles.infoCard}>
-            <View style={styles.infoCardHeader}>
-              <Ionicons name="list-outline" size={20} color={theme.colors.primary} />
-              <Text style={styles.infoCardTitle}>Instructions</Text>
-            </View>
-            <Text style={styles.infoCardContent}>{assessment.instructions}</Text>
-          </View>
-        )}
-
-        {/* Submission Statistics Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoCardHeader}>
-            <Ionicons name="stats-chart-outline" size={20} color={theme.colors.primary} />
-            <Text style={styles.infoCardTitle}>Submission Statistics</Text>
-          </View>
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{submissionStats.submitted}</Text>
-              <Text style={styles.statLabel}>Submitted</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{submissionStats.notSubmitted}</Text>
-              <Text style={styles.statLabel}>Not Submitted</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: '#10B981' }]}>{submissionStats.graded}</Text>
-              <Text style={styles.statLabel}>Graded</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: '#F59E0B' }]}>{submissionStats.notGraded}</Text>
-              <Text style={styles.statLabel}>Pending Review</Text>
-            </View>
-          </View>
+        {/* Tabs */}
+        <View style={styles.tabs}>
+          {renderTabButton("details", "Assessment Details")}
+          {renderTabButton("submissions", `Submissions (${submitted.length + late.length})`)}
         </View>
 
-        {/* Recent Submissions */}
-        {assessment.recentSubmissions && assessment.recentSubmissions.length > 0 && (
-          <View style={styles.infoCard}>
-            <View style={styles.infoCardHeader}>
-              <Ionicons name="document-attach-outline" size={20} color={theme.colors.primary} />
-              <Text style={styles.infoCardTitle}>Recent Submissions</Text>
+        {/* Tab content */}
+        {activeTab === "details" ? (
+          <View style={styles.tabContent}>
+            {/* Instructions */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Instructions</Text>
+              {assessment.instructions ? (
+                <Text style={styles.cardBodyText}>{assessment.instructions}</Text>
+              ) : (
+                <Text style={styles.cardBodyMuted}>No instructions provided.</Text>
+              )}
             </View>
-            {assessment.recentSubmissions.map((submission) => (
-              <View key={submission.id} style={styles.submissionItem}>
-                <View style={styles.submissionLeft}>
-                  <View style={styles.studentAvatar}>
-                    <Text style={styles.studentAvatarText}>
-                      {submission.studentName.split(' ').map(n => n[0]).join('')}
-                    </Text>
-                  </View>
-                  <View style={styles.submissionInfo}>
-                    <Text style={styles.submissionStudentName}>{submission.studentName}</Text>
-                    <Text style={styles.submissionDate}>
-                      {new Date(submission.submittedAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.submissionRight}>
-                  {submission.grade !== null ? (
-                    <View style={styles.gradeContainer}>
-                      <Text style={styles.gradeText}>{submission.grade}/{assessment.totalPoints}</Text>
-                      <Text style={styles.percentageText}>({submission.percentage}%)</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.pendingBadge}>
-                      <Text style={styles.pendingText}>Pending</Text>
-                    </View>
-                  )}
+
+            {/* Source materials */}
+            {assessment.source_materials?.length ? (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>
+                  Source Materials
+                  <Text style={styles.cardTitleHint}> ({assessment.source_materials.length})</Text>
+                </Text>
+                <View style={styles.materialsWrap}>
+                  {assessment.source_materials.map((m) => (
+                    <TouchableOpacity
+                      key={m.id}
+                      style={styles.materialChip}
+                      activeOpacity={0.85}
+                      onPress={() => handleOpenUrl(m.signed_url)}
+                    >
+                      <Ionicons
+                        name={m.mime_type === "application/pdf" ? "document-text-outline" : "document-outline"}
+                        size={16}
+                        color={m.mime_type === "application/pdf" ? "#EF4444" : theme.colors.primary}
+                      />
+                      <Text style={styles.materialName} numberOfLines={1}>{m.file_name ?? "File"}</Text>
+                      <Ionicons name="open-outline" size={14} color={theme.colors.textSecondary} />
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
-            ))}
+            ) : null}
+
+            {/* Settings (like frontend right sidebar) */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Settings</Text>
+
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Type</Text>
+                <View style={[styles.settingPill, { backgroundColor: typeMeta.pillBg }]}> 
+                  <Text style={[styles.settingPillText, { color: typeMeta.pillText }]}>{typeMeta.label}</Text>
+                </View>
+              </View>
+
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Due Date</Text>
+                <Text style={styles.settingValue}>{assessment.due_date ? formatDateTime(assessment.due_date) : "No deadline"}</Text>
+              </View>
+
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Created</Text>
+                <Text style={styles.settingValue}>{formatDateTime(assessment.createdAt)}</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.tabContent}>
+            {/* Summary */}
+            <View style={styles.card}>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryTitle}>{done} / {total} submitted</Text>
+                <Text style={styles.summaryMuted}>{notSubmitted.length} missing</Text>
+              </View>
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: total ? `${(done / total) * 100}%` : "0%" }]} />
+              </View>
+            </View>
+
+            {/* Search */}
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={18} color={theme.colors.textSecondary} />
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search by student name…"
+                placeholderTextColor={theme.colors.textSecondary}
+                style={styles.searchInput}
+              />
+            </View>
+
+            {/* Sections */}
+            {(filtered.submitted.length > 0) && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View style={[styles.sectionDot, { backgroundColor: "#16A34A" }]} />
+                  <Text style={styles.sectionTitle}>Submitted</Text>
+                  <Text style={styles.sectionCount}>({filtered.submitted.length})</Text>
+                </View>
+                <View style={styles.sectionCard}>
+                  {filtered.submitted.map((s) => renderSubmissionRow(s, "SUBMITTED"))}
+                </View>
+              </View>
+            )}
+
+            {(filtered.late.length > 0) && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View style={[styles.sectionDot, { backgroundColor: "#F59E0B" }]} />
+                  <Text style={styles.sectionTitle}>Late</Text>
+                  <Text style={styles.sectionCount}>({filtered.late.length})</Text>
+                </View>
+                <View style={styles.sectionCard}>
+                  {filtered.late.map((s) => renderSubmissionRow(s, "LATE"))}
+                </View>
+              </View>
+            )}
+
+            {(filtered.notSubmitted.length > 0) && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View style={[styles.sectionDot, { backgroundColor: theme.colors.textSecondary }]} />
+                  <Text style={styles.sectionTitle}>Not Submitted</Text>
+                  <Text style={styles.sectionCount}>({filtered.notSubmitted.length})</Text>
+                </View>
+                <View style={styles.sectionCard}>
+                  {filtered.notSubmitted.map((s) => renderSubmissionRow(s, "NOT_SUBMITTED"))}
+                </View>
+              </View>
+            )}
+
+            {(filtered.submitted.length === 0 && filtered.late.length === 0 && filtered.notSubmitted.length === 0) ? (
+              <Text style={styles.noMatchesText}>No students match your search.</Text>
+            ) : null}
           </View>
         )}
 
-        {/* Creator Info */}
-        <View style={styles.creatorCard}>
-          <View style={styles.creatorAvatar}>
-            <Text style={styles.creatorAvatarText}>
-              {assessment.createdBy.firstName[0]}{assessment.createdBy.lastName[0]}
-            </Text>
-          </View>
-          <View style={styles.creatorInfo}>
-            <Text style={styles.creatorLabel}>Created by</Text>
-            <Text style={styles.creatorName}>
-              {assessment.createdBy.firstName} {assessment.createdBy.lastName}
-            </Text>
-            <Text style={styles.creatorDate}>
-              {new Date(assessment.createdAt).toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </Text>
-          </View>
-        </View>
-
-        {/* Bottom padding for FAB */}
-        <View style={{ height: 100 }} />
-      </ScrollView>      {/* Floating Action Button - Add Submission */}
-      {assessment.status !== 'graded' && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={handleAddSubmission}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add-circle" size={24} color={theme.colors.onPrimary} />
-          <Text style={styles.fabText}>Add Submission</Text>
-        </TouchableOpacity>
-      )}
+        <View style={{ height: 24 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
+  container: { flex: 1, backgroundColor: theme.colors.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -455,320 +465,131 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "flex-start",
+  backButton: { width: 40, height: 40, justifyContent: "center", alignItems: "flex-start" },
+  headerTitle: { fontSize: 18, fontWeight: "600", color: theme.colors.textPrimary, flex: 1, textAlign: "center" },
+  moreButton: { width: 40, height: 40, justifyContent: "center", alignItems: "flex-end" },
+  headerRightPlaceholder: { width: 40 },
+
+  scrollView: { flex: 1 },
+
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: theme.spacing.md, fontSize: 14, color: theme.colors.textSecondary },
+
+  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: theme.spacing.xl },
+  emptyTitle: { marginTop: theme.spacing.md, fontSize: 16, color: theme.colors.textSecondary },
+  retryButton: { marginTop: theme.spacing.md, backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
+  retryButtonText: { color: theme.colors.onPrimary, fontWeight: "700" },
+
+  pageHeader: { paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.md },
+  pageHeaderTopRow: { flexDirection: "row", alignItems: "center", gap: theme.spacing.sm, flexWrap: "wrap" },
+  pageTitle: { marginTop: theme.spacing.sm, fontSize: 22, fontWeight: "800", color: theme.colors.textPrimary },
+  submissionCount: { marginTop: 6, fontSize: 13, color: theme.colors.textSecondary, fontWeight: "600" },
+  dueInline: { fontSize: 12, color: theme.colors.textSecondary, fontWeight: "600" },
+
+  tabs: {
+    flexDirection: "row",
+    gap: 6,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.border,
+    padding: 4,
+    borderRadius: 14,
+    alignSelf: "flex-start",
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: theme.colors.textPrimary,
-    flex: 1,
-    textAlign: "center",
-  },
-  moreButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "flex-end",
-  },
-  placeholder: {
-    width: 40,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: theme.spacing.md,
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.xl,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.md,
-  },
-  assessmentHeaderCard: {
-    flexDirection: 'row',
+  tabButton: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
+  tabButtonActive: { backgroundColor: theme.colors.card, ...theme.shadows.sm },
+  tabButtonText: { fontSize: 13, fontWeight: "700", color: theme.colors.textSecondary },
+  tabButtonTextActive: { color: theme.colors.textPrimary },
+
+  tabContent: { paddingHorizontal: theme.spacing.md, gap: theme.spacing.md },
+
+  card: {
     backgroundColor: theme.colors.card,
-    margin: theme.spacing.md,
     padding: theme.spacing.lg,
     borderRadius: theme.borderRadius.lg,
-    ...theme.shadows.md,
-  },
-  typeIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing.md,
-  },
-  assessmentHeaderInfo: {
-    flex: 1,
-  },
-  assessmentTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.sm,
-  },
-  assessmentMeta: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.sm,
-    gap: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  typeBadge: {
-    backgroundColor: theme.colors.border,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.sm,
-  },
-  typeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: theme.colors.textSecondary,
-  },
-  quickStatsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    gap: theme.spacing.sm,
-  },
-  quickStatCard: {
-    flex: 1,
-    backgroundColor: theme.colors.card,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.sm,
   },
-  quickStatValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    marginTop: theme.spacing.xs,
+  cardTitle: { fontSize: 14, fontWeight: "800", color: theme.colors.textPrimary, marginBottom: theme.spacing.sm },
+  cardTitleHint: { fontSize: 12, fontWeight: "600", color: theme.colors.textSecondary },
+  cardBodyText: { fontSize: 13, color: theme.colors.textSecondary, lineHeight: 19 },
+  cardBodyMuted: { fontSize: 13, color: theme.colors.textSecondary, fontStyle: "italic" },
+
+  materialsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  materialChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+    maxWidth: "100%",
   },
-  quickStatLabel: {
-    fontSize: 11,
-    color: theme.colors.textSecondary,
-    marginTop: 2,
-  },
-  infoCard: {
+  materialName: { flexShrink: 1, maxWidth: 220, fontSize: 13, color: theme.colors.textPrimary, fontWeight: "600" },
+
+  settingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10 },
+  settingLabel: { fontSize: 12, fontWeight: "800", color: theme.colors.textSecondary, textTransform: "uppercase" },
+  settingValue: { fontSize: 13, fontWeight: "600", color: theme.colors.textPrimary },
+  settingPill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  settingPillText: { fontSize: 12, fontWeight: "800" },
+
+  pill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  pillText: { fontSize: 12, fontWeight: "800" },
+
+  summaryRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  summaryTitle: { fontSize: 13, fontWeight: "800", color: theme.colors.textPrimary },
+  summaryMuted: { fontSize: 12, fontWeight: "600", color: theme.colors.textSecondary },
+  progressTrack: { width: "100%", height: 8, backgroundColor: theme.colors.border, borderRadius: 999, overflow: "hidden" },
+  progressFill: { height: 8, backgroundColor: "#16A34A" },
+
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     backgroundColor: theme.colors.card,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.md,
-    ...theme.shadows.sm,
   },
-  infoCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.sm,
-    gap: theme.spacing.xs,
+  searchInput: { flex: 1, fontSize: 13, color: theme.colors.textPrimary },
+
+  section: { gap: 8 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionDot: { width: 8, height: 8, borderRadius: 999 },
+  sectionTitle: { fontSize: 14, fontWeight: "800", color: theme.colors.textPrimary },
+  sectionCount: { fontSize: 12, fontWeight: "700", color: theme.colors.textSecondary },
+  sectionCard: {
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    overflow: "hidden",
   },
-  infoCardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-  },
-  infoCardContent: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    lineHeight: 20,
-  },
-  lateSubmissionNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F59E0B' + '15',
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.sm,
-    marginTop: theme.spacing.sm,
-    gap: theme.spacing.xs,
-  },
-  lateSubmissionText: {
-    fontSize: 12,
-    color: '#F59E0B',
-    flex: 1,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.md,
-  },
-  statItem: {
-    flex: 1,
-    minWidth: '45%',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginTop: 4,
-  },
-  submissionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing.sm,
+
+  submissionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  submissionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  studentAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing.sm,
-  },
-  studentAvatarText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.primary,
-  },
-  submissionInfo: {
-    flex: 1,
-  },
-  submissionStudentName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-  },
-  submissionDate: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-  },
-  submissionRight: {
-    alignItems: 'flex-end',
-  },
-  gradeContainer: {
-    alignItems: 'flex-end',
-  },
-  gradeText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#10B981',
-  },
-  percentageText: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-  },
-  pendingBadge: {
-    backgroundColor: '#F59E0B' + '20',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.sm,
-  },
-  pendingText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#F59E0B',
-  },
-  creatorCard: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.card,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    ...theme.shadows.sm,
-  },
-  creatorAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing.md,
-  },
-  creatorAvatarText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.primary,
-  },
-  creatorInfo: {
-    flex: 1,
-  },
-  creatorLabel: {
-    fontSize: 11,
-    color: theme.colors.textTertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  creatorName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-    marginTop: 2,
-  },
-  creatorDate: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginTop: 2,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 28,
-    gap: 8,
-    shadowColor: theme.colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  fabText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.onPrimary,
-  },
+  avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: theme.colors.primary + "20", alignItems: "center", justifyContent: "center" },
+  avatarText: { fontSize: 12, fontWeight: "800", color: theme.colors.primary },
+  submissionRowMain: { flex: 1, minWidth: 0 },
+  submissionName: { fontSize: 13, fontWeight: "800", color: theme.colors.textPrimary },
+  submissionSubtext: { marginTop: 2, fontSize: 12, fontWeight: "600", color: theme.colors.textSecondary },
+  statusChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  statusChipText: { fontSize: 11, fontWeight: "800" },
+  reviewButton: { paddingHorizontal: 8, paddingVertical: 6 },
+  reviewButtonText: { fontSize: 12, fontWeight: "800", color: theme.colors.primary },
+
+  noMatchesText: { textAlign: "center", paddingVertical: 18, fontSize: 13, color: theme.colors.textSecondary },
 });
