@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { timeAgo } from '../utils/helpers';
 import { AssessmentChip } from './AssessmentChip';
-import { SmallPlusIcon, FilePdfIcon, FileImageIcon, FileVideoIcon, GenericFileIcon } from './Icons';
+import { FilePdfIcon, FileImageIcon, FileVideoIcon, GenericFileIcon } from './Icons';
 import { AnnouncementComments } from '../../../../../components/AnnouncementComments';
 import { ResourceViewer } from '../../../../../components/ResourceViewer';
 
@@ -13,8 +13,10 @@ const getFileIcon = (mimeType) => {
     return <GenericFileIcon />;
 };
 
-export const AnnouncementCard = ({ announcement, courseId, onAddAssessment }) => {
+export const AnnouncementCard = ({ announcement, courseId }) => {
     const [viewingResource, setViewingResource] = useState(null);
+
+    const hasAssessment = (announcement.assessments?.length ?? 0) > 0;
 
     return (
         <div className=" bg-[#ffffff] rounded-2xl border border-neutral-200 shadow-sm p-5">
@@ -49,24 +51,13 @@ export const AnnouncementCard = ({ announcement, courseId, onAddAssessment }) =>
             )}
 
             {/* Assessment chips */}
-            {announcement.assessments?.length > 0 && (
+            {hasAssessment && (
                 <div className="mt-3 pt-3 border-t border-neutral-100 flex flex-wrap gap-2">
                     {announcement.assessments.map((a) => (
                         <AssessmentChip key={a.id} assessment={a} courseId={courseId} />
                     ))}
                 </div>
             )}
-
-            {/* Add Assessment link */}
-            <div className="mt-3 pt-2 flex justify-end">
-                <button
-                    onClick={() => onAddAssessment(announcement.id)}
-                    className="flex items-center gap-1 text-xs text-text-muted hover:text-accent-500 transition-colors cursor-pointer"
-                >
-                    <SmallPlusIcon />
-                    Add Assessment
-                </button>
-            </div>
 
             {/* Comments Section */}
             <AnnouncementComments 
