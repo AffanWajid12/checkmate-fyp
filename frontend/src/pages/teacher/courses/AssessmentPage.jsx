@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAssessmentDetails } from '../../../hooks/useCourses';
+import { useAssessmentDetails, useRunPlagiarismCheck } from '../../../hooks/useCourses';
 import TeacherSidebar from '../TeacherSidebar';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -266,6 +266,294 @@ const SubmissionsTab = ({ submitted, late, notSubmitted, courseId, assessmentId 
     );
 };
 
+// ─── Plagiarism Report Tab ────────────────────────────────────────────────────
+
+const RISK_COLORS = {
+    low: 'bg-green-50 text-green-700 border-green-200',
+    medium: 'bg-amber-50 text-amber-700 border-amber-200',
+    high: 'bg-red-50 text-red-700 border-red-200',
+};
+
+const RISK_BAR_COLORS = {
+    low: 'bg-green-500',
+    medium: 'bg-amber-500',
+    high: 'bg-red-500',
+};
+
+const ShieldIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+);
+
+const PlagiarismTab = ({ courseId, assessmentId }) => {
+    const [results, setResults] = useState(null);
+    const [detailedStudent, setDetailedStudent] = useState(null);
+    const { mutate: runCheck, isPending } = useRunPlagiarismCheck(courseId, assessmentId);
+
+    const handleRunCheck = () => {
+        runCheck(undefined, {
+            onSuccess: (data) => setResults(data.results),
+            onError: (err) => {
+                const msg = err?.response?.data?.message || 'Plagiarism check failed. Is the backend or Python service running?';
+                alert(msg);
+            },
+        });
+    };
+
+    if (!results) {
+        return (
+            <div className="text-center py-16 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-accent-50 flex items-center justify-center mx-auto text-accent-500">
+                    <ShieldIcon />
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold text-text-primary mb-1">Plagiarism & AI Detection</h3>
+                    <p className="text-sm text-text-secondary max-w-md mx-auto mb-6">
+                        Analyze all submissions for this assessment to detect AI-generated content and cross-check similarity between student submissions.
+                    </p>
+                </div>
+                <button
+                    onClick={handleRunCheck}
+                    disabled={isPending}
+                    className="px-6 py-3 rounded-xl bg-primary text-text-inverse text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                    {isPending ? (
+                        <>
+                            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                            </svg>
+                            Analyzing submissions…
+                        </>
+                    ) : (
+                        <>
+                            <ShieldIcon />
+                            Run Plagiarism Check
+                        </>
+                    )}
+                </button>
+                {isPending && (
+                    <p className="text-xs text-text-muted mt-2">This may take a minute depending on the number and size of submissions.</p>
+                )}
+            </div>
+        );
+    }
+
+    const entries = Object.entries(results);
+
+    // Backward compatibility / check for updated backend
+    const isNewFormat = entries.length === 0 || entries[0][1].files !== undefined;
+    if (!isNewFormat) {
+        return (
+            <div className="bg-red-50 text-red-700 p-6 rounded-2xl border border-red-200 mt-4 text-center">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6 text-red-600">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h3 className="font-bold text-lg mb-2">Backend Restart Required</h3>
+                <p className="text-sm max-w-md mx-auto text-red-600 space-y-2">
+                    <span>The plagiarism detection format has been upgraded to a student-wise report, but your Python backend is still returning the old format because it needs to be restarted.</span>
+                    <br/><br/>
+                    <strong className="block text-red-800 bg-red-100 py-2 rounded-lg">Please stop and restart your Python plagiarism service (<code>python app.py</code>)</strong>
+                </p>
+                <button
+                    onClick={handleRunCheck}
+                    disabled={isPending}
+                    className="mt-6 px-6 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition disabled:opacity-50"
+                >
+                    {isPending ? 'Re-running…' : 'I have restarted it, Re-run Check'}
+                </button>
+            </div>
+        );
+    }
+
+    // Detailed View for a specific student
+    if (detailedStudent && results[detailedStudent]) {
+        const studentData = results[detailedStudent];
+        return (
+            <div className="space-y-4">
+                <div className="flex items-center gap-3 mb-6">
+                    <button
+                        onClick={() => setDetailedStudent(null)}
+                        className="p-2 -ml-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-neutral-100 transition-colors"
+                        title="Back to Overview"
+                    >
+                        <BackIcon />
+                    </button>
+                    <div>
+                        <h3 className="text-lg font-bold text-text-primary">{studentData.studentName}</h3>
+                        <p className="text-xs text-text-muted">Detailed Plagiarism Report</p>
+                    </div>
+                </div>
+
+                {studentData.files.map((file, idx) => {
+                    const riskColor = RISK_COLORS[file.ai_risk_level] || RISK_COLORS.low;
+                    return (
+                        <div key={idx} className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-5 space-y-4">
+                            {/* File header */}
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0">
+                                        <span className="text-xs font-bold text-accent-500">
+                                            {(studentData.studentName || '?')[0].toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-text-primary">{studentData.studentName || 'Unknown'}</p>
+                                        <p className="text-xs text-text-muted">{file.originalFileName}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* AI Detection */}
+                            <div className="bg-neutral-50 rounded-xl p-4 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">AI Detection</p>
+                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${riskColor}`}>
+                                        {file.ai_risk_level?.toUpperCase()} — {file.ai_likelihood}%
+                                    </span>
+                                </div>
+                                <div className="w-full h-2 bg-neutral-200 rounded-full overflow-hidden">
+                                    <div
+                                        className={`h-2 rounded-full transition-all ${RISK_BAR_COLORS[file.ai_risk_level] || 'bg-green-500'}`}
+                                        style={{ width: `${Math.min(file.ai_likelihood, 100)}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Similarities */}
+                            {file.similarities?.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">
+                                        Similarity with other submissions
+                                    </p>
+                                    {file.similarities.map((sim, sIdx) => {
+                                        const simRisk = sim.status || 'low';
+                                        const simRiskColor = RISK_COLORS[simRisk];
+                                        return (
+                                            <div key={sIdx} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-neutral-50">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm text-text-primary font-medium truncate">
+                                                        {sim.compared_with_student || sim.compared_with}
+                                                    </p>
+                                                    <p className="text-xs text-text-muted truncate">{sim.compared_with_file || ''}</p>
+                                                </div>
+                                                <div className="w-24 h-1.5 bg-neutral-200 rounded-full overflow-hidden flex-shrink-0">
+                                                    <div
+                                                        className={`h-1.5 rounded-full ${RISK_BAR_COLORS[simRisk]}`}
+                                                        style={{ width: `${Math.min(sim.similarity, 100)}%` }}
+                                                    />
+                                                </div>
+                                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${simRiskColor}`}>
+                                                    {sim.similarity}%
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
+
+    // Overview View
+    return (
+        <div className="space-y-4">
+            {/* Summary header */}
+            <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-5 flex items-center justify-between">
+                <div>
+                    <h3 className="text-sm font-bold text-text-primary">Analysis Complete</h3>
+                    <p className="text-xs text-text-muted">{entries.length} student{entries.length !== 1 ? 's' : ''} analyzed</p>
+                </div>
+                <button
+                    onClick={handleRunCheck}
+                    disabled={isPending}
+                    className="px-4 py-2 rounded-xl border border-neutral-200 text-sm font-semibold text-text-secondary hover:bg-neutral-50 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                >
+                    {isPending ? (
+                        <>
+                            <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                            </svg>
+                            Re-running…
+                        </>
+                    ) : 'Re-run Check'}
+                </button>
+            </div>
+
+            {/* Student Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {entries.map(([studentName, data]) => {
+                    const aiRisk = data.average_ai_likelihood >= 70 ? 'high' : data.average_ai_likelihood >= 40 ? 'medium' : 'low';
+                    const simRisk = data.average_similarity >= 70 ? 'high' : data.average_similarity >= 40 ? 'medium' : 'low';
+                    
+                    return (
+                        <div 
+                            key={studentName} 
+                            onClick={() => setDetailedStudent(studentName)}
+                            className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-4 hover:border-accent-300 hover:shadow-md transition-all cursor-pointer group"
+                        >
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0 group-hover:bg-accent-200 transition-colors">
+                                    <span className="text-xs font-bold text-accent-600">
+                                        {(studentName || '?')[0].toUpperCase()}
+                                    </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold text-text-primary truncate">{studentName}</p>
+                                    <p className="text-xs text-text-muted">{data.files.length} file{data.files.length !== 1 ? 's' : ''}</p>
+                                </div>
+                                <div className="w-8 h-8 rounded-full bg-neutral-50 flex items-center justify-center text-text-muted group-hover:text-accent-500 transition-colors">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                                        <path d="M5 12h14M12 5l7 7-7 7" />
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                <div>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="text-text-muted font-medium">Avg AI Likelihood</span>
+                                        <span className={`font-bold ${aiRisk === 'high' ? 'text-red-600' : aiRisk === 'medium' ? 'text-amber-600' : 'text-green-600'}`}>
+                                            {data.average_ai_likelihood}%
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                                        <div 
+                                            className={`h-full rounded-full ${RISK_BAR_COLORS[aiRisk]}`} 
+                                            style={{ width: `${Math.min(data.average_ai_likelihood, 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="text-text-muted font-medium">Avg Similarity</span>
+                                        <span className={`font-bold ${simRisk === 'high' ? 'text-red-600' : simRisk === 'medium' ? 'text-amber-600' : 'text-green-600'}`}>
+                                            {data.average_similarity}%
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                                        <div 
+                                            className={`h-full rounded-full ${RISK_BAR_COLORS[simRisk]}`} 
+                                            style={{ width: `${Math.min(data.average_similarity, 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 const PageSkeleton = () => (
@@ -334,6 +622,7 @@ const TeacherAssessmentPage = () => {
                     {[
                         { key: 'details', label: 'Assessment Details' },
                         { key: 'submissions', label: `Submissions (${totalSubs})` },
+                        { key: 'plagiarism', label: 'Plagiarism Report' },
                     ].map((tab) => (
                         <button
                             key={tab.key}
@@ -355,6 +644,12 @@ const TeacherAssessmentPage = () => {
                         submitted={submitted}
                         late={late}
                         notSubmitted={not_submitted}
+                        courseId={courseId}
+                        assessmentId={assessmentId}
+                    />
+                )}
+                {activeTab === 'plagiarism' && (
+                    <PlagiarismTab
                         courseId={courseId}
                         assessmentId={assessmentId}
                     />
