@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { useAddAssessment, useCourseAnnouncements } from '../../../hooks/useCourses';
+import { useCreateAssessment } from '../../../hooks/useCourses';
 import TeacherSidebar from '../TeacherSidebar';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -144,44 +144,41 @@ const FileDropzone = ({ files, onChange }) => {
 const AddAssessmentPage = () => {
     const { courseId } = useParams();
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-    const preselectedAnnouncementId = searchParams.get('announcementId') ?? '';
 
-    const { data: announcements = [], isLoading: announcementsLoading } = useCourseAnnouncements(courseId);
-    const { mutate: addAssessment, isPending } = useAddAssessment(courseId);
+    const { mutate: createAssessment, isPending } = useCreateAssessment(courseId);
 
     const [title, setTitle] = useState('');
     const [type, setType] = useState('ASSIGNMENT');
-    const [announcementId, setAnnouncementId] = useState(preselectedAnnouncementId);
     const [instructions, setInstructions] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [files, setFiles] = useState([]);
 
-    const canSubmit = title.trim() && announcementId && !isPending;
+    const canSubmit = title.trim() && !isPending;
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!announcementId) {
-            toast.error('Please select an announcement to link this assessment to.');
-            return;
-        }
 
         const formData = new FormData();
         formData.append('title', title.trim());
         formData.append('type', type);
-        if (instructions.trim()) formData.append('instructions', instructions.trim());
+        // IMPORTANT: announcement must include Instructions:, so send instructions even if empty
+        formData.append('instructions', instructions.toString());
         if (dueDate) formData.append('due_date', new Date(dueDate).toISOString());
         files.forEach((f) => formData.append('files', f));
 
-        addAssessment(
-            { announcementId, formData },
+        createAssessment(
+            { formData },
             {
-                onSuccess: ({ assessment }) => {
-                    toast.success('Assessment created!');
+                onSuccess: ({ assessment, upload_errors }) => {
+                    if (upload_errors?.length) {
+                        toast.success('Assessment created (some files failed to upload).');
+                    } else {
+                        toast.success('Assessment created!');
+                    }
                     navigate(`/teacher/courses/${courseId}/assessments/${assessment.id}`);
                 },
                 onError: (err) => {
-                    const msg = err?.response?.data?.error ?? 'Failed to create assessment.';
+                    const msg = err?.response?.data?.message ?? err?.response?.data?.error ?? 'Failed to create assessment.';
                     toast.error(msg);
                 },
             }
@@ -201,7 +198,7 @@ const AddAssessmentPage = () => {
                         Back
                     </button>
                     <h1 className="text-2xl font-bold text-text-primary">Add Assessment</h1>
-                    <p className="text-sm text-text-secondary mt-1">Create an assessment and optionally attach source materials.</p>
+                    <p className="text-sm text-text-secondary mt-1">Create an assessment. An announcement will be posted automatically.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -240,29 +237,6 @@ const AddAssessmentPage = () => {
                                 </button>
                             ))}
                         </div>
-                    </div>
-
-                    {/* Linked Announcement */}
-                    <div>
-                        <label className="block text-sm font-semibold text-text-primary mb-1.5">
-                            Linked Announcement <span className="text-error">*</span>
-                        </label>
-                        {announcementsLoading ? (
-                            <div className="h-10 rounded-xl bg-neutral-100 animate-pulse" />
-                        ) : announcements.length === 0 ? (
-                            <p className="text-sm text-text-muted italic">No announcements yet. Post one first.</p>
-                        ) : (
-                            <select
-                                value={announcementId}
-                                onChange={(e) => setAnnouncementId(e.target.value)}
-                                className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
-                            >
-                                <option value="">Select an announcement…</option>
-                                {announcements.map((a) => (
-                                    <option key={a.id} value={a.id}>{a.title}</option>
-                                ))}
-                            </select>
-                        )}
                     </div>
 
                     {/* Due Date */}

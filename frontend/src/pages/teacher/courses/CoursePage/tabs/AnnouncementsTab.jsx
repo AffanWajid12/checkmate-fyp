@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useCourseAnnouncements } from '../../../../../hooks/useCourses';
 import { AnnouncementCard } from '../components/AnnouncementCard';
 import { AnnouncementSkeleton } from '../components/AnnouncementSkeleton';
@@ -15,12 +14,7 @@ const PlusIcon = () => (
 
 const AnnouncementsTab = ({ courseId }) => {
     const [showForm, setShowForm] = useState(false);
-    const navigate = useNavigate();
     const { data: announcements = [], isLoading, isError } = useCourseAnnouncements(courseId);
-
-    const handleAddAssessment = (announcementId) => {
-        navigate(`/teacher/courses/${courseId}/add-assessment?announcementId=${announcementId}`);
-    };
 
     return (
         <div className="space-y-4">
@@ -82,7 +76,6 @@ const AnnouncementsTab = ({ courseId }) => {
                             key={a.id}
                             announcement={a}
                             courseId={courseId}
-                            onAddAssessment={handleAddAssessment}
                         />
                     ))}
                 </div>

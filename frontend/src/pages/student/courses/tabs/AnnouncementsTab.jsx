@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useCourseAnnouncements } from '../../../../hooks/useCourses';
 import { AnnouncementComments } from '../../../../components/AnnouncementComments';
 
@@ -24,7 +25,16 @@ const MegaphoneIcon = () => (
     </svg>
 );
 
+const TYPE_META = {
+    QUIZ: { label: 'Quiz', bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200' },
+    ASSIGNMENT: { label: 'Assignment', bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200' },
+    EXAM: { label: 'Exam', bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200' },
+};
+
 const AnnouncementCard = ({ announcement, courseId }) => {
+    const navigate = useNavigate();
+    const assessments = announcement?.assessments ?? [];
+
     return (
         <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-5">
             <div className="flex items-start justify-between gap-4 mb-2">
@@ -33,6 +43,27 @@ const AnnouncementCard = ({ announcement, courseId }) => {
                     {timeAgo(announcement.createdAt)}
                 </span>
             </div>
+
+            {assessments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                    {assessments.map((a) => {
+                        const meta = TYPE_META[a.type] ?? { label: a.type ?? 'Assessment', bg: 'bg-neutral-50', text: 'text-text-secondary', border: 'border-neutral-200' };
+                        return (
+                            <button
+                                key={a.id}
+                                type="button"
+                                onClick={() => navigate(`/student/courses/${courseId}/assessments/${a.id}`)}
+                                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${meta.bg} ${meta.border} ${meta.text} text-xs font-semibold hover:opacity-90 transition`}
+                                title={a.title}
+                            >
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+                                {meta.label}: <span className="truncate max-w-[220px]">{a.title}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
             <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
                 {announcement.description}
             </p>
