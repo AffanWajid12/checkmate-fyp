@@ -3,11 +3,11 @@ import apiClient from "../utils/apiClient.js";
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
 export const courseKeys = {
-    enrolledCourses:   ["courses", "enrolled"],
-    teacherCourses:    ["courses", "teacher"],
-    announcements:     (courseId) => ["courses", courseId, "announcements"],
+    enrolledCourses: ["courses", "enrolled"],
+    teacherCourses: ["courses", "teacher"],
+    announcements: (courseId) => ["courses", courseId, "announcements"],
     studentAttendance: (courseId) => ["courses", courseId, "attendance", "mine"],
-    courseAttendance:  (courseId) => ["courses", courseId, "attendance"],
+    courseAttendance: (courseId) => ["courses", courseId, "attendance"],
     assessmentDetails: (courseId, assessmentId) => ["courses", courseId, "assessments", assessmentId],
     submissionDetails: (courseId, assessmentId, submissionId) => ["courses", courseId, "assessments", assessmentId, "submissions", submissionId],
 };
@@ -448,6 +448,21 @@ export const useDeleteSourceMaterial = (courseId, assessmentId) => {
             queryClient.invalidateQueries({
                 queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
             });
+        },
+    });
+};
+
+/**
+ * POST /api/courses/:courseId/assessments/:assessmentId/plagiarism-check
+ * Triggers the Python AI detection service for all submissions.
+ */
+export const useRunPlagiarismCheck = (courseId, assessmentId) => {
+    return useMutation({
+        mutationFn: async () => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments/${assessmentId}/plagiarism-check`
+            );
+            return data; // { message, results }
         },
     });
 };

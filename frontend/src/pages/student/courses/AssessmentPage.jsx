@@ -96,7 +96,6 @@ const STATUS_META = {
     GRADED:    { label: 'Graded',    color: 'bg-accent-50 text-accent-500' },
 };
 
-const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_SIZE_BYTES = 20 * 1024 * 1024;
 const MAX_FILES = 10;
 
@@ -125,7 +124,6 @@ const MiniDropzone = ({ files, onChange }) => {
     const addFiles = (incoming) => {
         const valid = [];
         for (const f of incoming) {
-            if (!ALLOWED_TYPES.includes(f.type)) { toast.error(`"${f.name}" is not a PDF or image.`); continue; }
             if (f.size > MAX_SIZE_BYTES) { toast.error(`"${f.name}" exceeds 20 MB.`); continue; }
             if (files.length + valid.length >= MAX_FILES) { toast.error(`Max ${MAX_FILES} files.`); break; }
             valid.push(f);
@@ -146,8 +144,8 @@ const MiniDropzone = ({ files, onChange }) => {
             >
                 <UploadIcon />
                 <p className="text-xs text-text-secondary font-medium">Drop files or <span className="text-accent-500">browse</span></p>
-                <p className="text-[11px] text-text-muted">PDF or images · 20 MB max</p>
-                <input ref={inputRef} type="file" multiple accept=".pdf,image/*" className="hidden"
+                <p className="text-[11px] text-text-muted">Any file type · 20 MB max</p>
+                <input ref={inputRef} type="file" multiple className="hidden"
                     onChange={(e) => addFiles(Array.from(e.target.files))} />
             </div>
             {files.length > 0 && (
