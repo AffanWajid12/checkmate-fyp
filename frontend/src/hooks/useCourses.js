@@ -287,6 +287,29 @@ export const useAddAssessment = (courseId) => {
 };
 
 /**
+ * POST /api/courses/:courseId/assessments
+ * Body: multipart/form-data — title*, type*, instructions?, due_date?, files?
+ * Creates an assessment and auto-creates a linked announcement on the backend.
+ */
+export const useCreateAssessment = (courseId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ formData }) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments`,
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } }
+            );
+            return data; // { announcement, assessment, source_materials[], upload_errors? }
+        },
+        onSuccess: () => {
+            // Assessment creation should reflect immediately in announcements + assessments views
+            queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });
+        },
+    });
+};
+
+/**
  * GET /api/courses/:courseId/assessments/:assessmentId
  * Role-aware: teacher gets submitted/late/not_submitted lists; student gets own submission.
  */
