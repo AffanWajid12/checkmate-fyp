@@ -15,8 +15,8 @@ export type RootStackParamList = {
   ViewAssessmentDetail: {
     courseId: string;
     assessmentId: string;
-    assessmentTitle: string;
     courseCode: string;
+    assessmentTitle?: string;
   };
   ViewSubmissionDetail: {
     courseId: string;

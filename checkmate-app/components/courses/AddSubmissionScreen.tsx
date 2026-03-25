@@ -25,6 +25,8 @@ import {
 } from 'react-native';
 import DocumentScanner from 'react-native-document-scanner-plugin';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { createPdf } from 'react-native-images-to-pdf';
+import RNBlobUtil from 'react-native-blob-util';
 
 type AddSubmissionScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -142,22 +144,34 @@ export default function AddSubmissionScreen() {
 
       if (scannedImages && scannedImages.length > 0) {
         console.log(`✅ Scanned ${scannedImages.length} page(s)`);
+        console.log('🧾 scannedImages:', scannedImages);
 
-        // Convert scanned images to files
-        const scannedFiles: Omit<SubmissionFile, '_id' | 'uploadedAt'>[] = scannedImages.map(
-          (imageUri, index) => ({
-            originalName: `scanned_page_${index + 1}.pdf`,
-            fileUrl: imageUri,
-            fileType: 'application/pdf',
-            fileSize: 0, // Will be updated by backend if needed
-          })
-        );
+        const normalizeToFileUri = (p: string) => (p.startsWith('file://') ? p : `file://${p}`);
+        const pages = scannedImages.map((p) => ({ imagePath: normalizeToFileUri(p) }));
 
-        setFiles((prev) => [...prev, ...scannedFiles]);
-        Alert.alert(
-          'Success',
-          `Scanned ${scannedImages.length} page(s) successfully`
-        );
+        // Create a single multi-page PDF from the scanned images
+        const timestamp = Date.now();
+        const outputPath = `file://${RNBlobUtil.fs.dirs.DocumentDir}/scanned_document_${timestamp}.pdf`;
+
+        console.log('🧾 PDF outputPath:', outputPath);
+
+        const pdfPath = await createPdf({
+          pages,
+          outputPath,
+        });
+
+        console.log('✅ PDF created at:', pdfPath);
+
+        const newFile: Omit<SubmissionFile, '_id' | 'uploadedAt'> = {
+          originalName: `scanned_document_${timestamp}.pdf`,
+          fileUrl: pdfPath,
+          fileType: 'application/pdf',
+          fileSize: 0,
+        };
+
+        setFiles((prev) => [...prev, newFile]);
+
+        Alert.alert('Success', 'PDF created from scanned pages successfully');
       }
     } catch (error: any) {
       console.error('❌ Document scanner error:', error);
@@ -169,7 +183,7 @@ export default function AddSubmissionScreen() {
 
       Alert.alert(
         'Scanner Error',
-        'Failed to open document scanner. Please ensure camera permissions are granted.'
+        'Failed to scan and generate PDF. Please ensure camera permissions are granted.'
       );
     }
   };
