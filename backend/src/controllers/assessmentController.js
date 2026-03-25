@@ -9,6 +9,7 @@ import {
     generateSignedUrl,
     signUserAvatar,
 } from "../utils/courseHelpers.js";
+import { buildAssessmentAnnouncement } from "../utils/assessmentAnnouncementTemplates.js";
 
 // POST /api/courses/:courseId/announcements/:announcementId/assessments
 // Body (multipart/form-data): title, type, instructions?, due_date?, files[]
@@ -74,6 +75,175 @@ export const addAssessment = async (req, res) => {
             message: "Assessment created successfully",
             assessment,
             source_materials: uploadedMaterials,
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+// POST /api/courses/:courseId/assessments
+// Creates an announcement automatically, then creates the assessment linked to it.
+// Body (multipart/form-data): title, type, instructions?, due_date?, files[]
+export const createAssessment = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const { title, type, instructions, due_date } = req.body;
+
+        if (!title || !type)
+            return res.status(400).json({ message: "title and type are required" });
+
+        await verifyCourseOwner(courseId, req.user.id);
+
+        const dueDate = due_date ? new Date(due_date) : null;
+        if (due_date && Number.isNaN(dueDate.getTime())) {
+            return res.status(400).json({ message: "due_date must be a valid ISO date" });
+        }
+
+        const announcementPayload = buildAssessmentAnnouncement({
+            type,
+            assessmentTitle: title,
+            dueDate,
+            instructions,
+        });
+
+        // Create announcement + assessment (DB-only) atomically
+        const { announcement, assessment } = await prisma.$transaction(async (tx) => {
+            const announcement = await tx.announcements.create({
+                data: {
+                    title: announcementPayload.title,
+                    description: announcementPayload.description,
+                    course_id: courseId,
+                },
+            });
+
+            const assessment = await tx.assessments.create({
+                data: {
+                    title,
+                    type,
+                    instructions: instructions ?? null,
+                    due_date: dueDate,
+                    announcement_id: announcement.id,
+                },
+            });
+
+            return { announcement, assessment };
+        });
+
+        // Upload any source material files to Supabase Storage.
+        // Per requirement: do NOT roll back assessment/announcement if upload fails.
+        const uploadedMaterials = [];
+        const uploadErrors = [];
+
+        if (req.files && req.files.length > 0) {
+            for (const file of req.files) {
+                try {
+                    const ext = file.originalname.split(".").pop();
+                    const storagePath = `${courseId}/${assessment.id}/${uuidv4()}.${ext}`;
+
+                    const { error: uploadError } = await supabase.storage
+                        .from("source-materials")
+                        .upload(storagePath, file.buffer, {
+                            contentType: file.mimetype,
+                            upsert: false,
+                        });
+
+                    if (uploadError) {
+                        uploadErrors.push({ file_name: file.originalname, message: uploadError.message });
+                        continue;
+                    }
+
+                    const material = await prisma.source_materials.create({
+                        data: {
+                            bucket_path: storagePath,
+                            file_name: file.originalname,
+                            file_size: file.size,
+                            mime_type: file.mimetype,
+                            assessment_id: assessment.id,
+                        },
+                    });
+
+                    uploadedMaterials.push(material);
+                } catch (e) {
+                    uploadErrors.push({ file_name: file?.originalname, message: e?.message ?? "Upload failed" });
+                }
+            }
+        }
+
+        if (uploadErrors.length) {
+            return res.status(201).json({
+                message: "Assessment created successfully (some files failed to upload)",
+                announcement,
+                assessment,
+                source_materials: uploadedMaterials,
+                upload_errors: uploadErrors,
+            });
+        }
+
+        return res.status(201).json({
+            message: "Assessment created successfully",
+            announcement,
+            assessment,
+            source_materials: uploadedMaterials,
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+// POST /api/courses/:courseId/assessments/:assessmentId/source-materials
+// Body (multipart/form-data): files[]
+export const addAssessmentSourceMaterials = async (req, res) => {
+    try {
+        const { courseId, assessmentId } = req.params;
+
+        await verifyCourseOwner(courseId, req.user.id);
+        await verifyAssessmentInCourse(assessmentId, courseId);
+
+        if (!req.files || req.files.length === 0)
+            return res.status(400).json({ message: "At least one file is required" });
+
+        const uploadedMaterials = [];
+        const uploadErrors = [];
+
+        for (const file of req.files) {
+            try {
+                const ext = file.originalname.split(".").pop();
+                const storagePath = `${courseId}/${assessmentId}/${uuidv4()}.${ext}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from("source-materials")
+                    .upload(storagePath, file.buffer, {
+                        contentType: file.mimetype,
+                        upsert: false,
+                    });
+
+                if (uploadError) {
+                    uploadErrors.push({ file_name: file.originalname, message: uploadError.message });
+                    continue;
+                }
+
+                const material = await prisma.source_materials.create({
+                    data: {
+                        bucket_path: storagePath,
+                        file_name: file.originalname,
+                        file_size: file.size,
+                        mime_type: file.mimetype,
+                        assessment_id: assessmentId,
+                    },
+                });
+
+                uploadedMaterials.push(material);
+            } catch (e) {
+                uploadErrors.push({ file_name: file?.originalname, message: e?.message ?? "Upload failed" });
+            }
+        }
+
+        return res.status(201).json({
+            message: uploadErrors.length
+                ? "Source materials uploaded (some files failed)"
+                : "Source materials uploaded successfully",
+            source_materials: uploadedMaterials,
+            upload_errors: uploadErrors,
         });
     } catch (error) {
         return handleError(res, error);

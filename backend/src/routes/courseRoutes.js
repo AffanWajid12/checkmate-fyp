@@ -27,6 +27,8 @@ import {
 
 import {
     addAssessment,
+    createAssessment,
+    addAssessmentSourceMaterials,
     getAssessmentDetails,
     submitAssessment,
     updateSubmission,
@@ -60,7 +62,15 @@ router.get("/:courseId/attendance", verifyUser, verifyUserType("TEACHER"), getCo
 router.delete("/:courseId/attendance/:sessionId", verifyUser, verifyUserType("TEACHER"), deleteAttendanceSession);
 
 // Assessment management (teacher)
+router.post("/:courseId/assessments", verifyUser, verifyUserType("TEACHER"), uploadMultiple, createAssessment);
 router.post("/:courseId/announcements/:announcementId/assessments", verifyUser, verifyUserType("TEACHER"), uploadMultiple, addAssessment);
+router.post(
+    "/:courseId/assessments/:assessmentId/source-materials",
+    verifyUser,
+    verifyUserType("TEACHER"),
+    uploadMultiple,
+    addAssessmentSourceMaterials
+);
 router.post("/:courseId/assessments/:assessmentId/submissions", verifyUser, verifyUserType("TEACHER"), uploadMultiple, teacherCreateSubmission);
 router.patch("/:courseId/assessments/:assessmentId/submissions/:submissionId", verifyUser, verifyUserType("TEACHER"), uploadMultiple, teacherAppendSubmissionFiles);
 router.get("/:courseId/assessments/:assessmentId/submissions/:submissionId", verifyUser, verifyUserType("TEACHER"), getSubmissionDetails);
