@@ -4,7 +4,7 @@ import {
     Student,
     studentService,
     SubmissionFile,
-    submissionService,
+    teacherSubmissionService,
 } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -205,35 +205,28 @@ export default function AddSubmissionScreen() {
 
     try {
       setSubmitting(true);
-      console.log('📤 Creating submission...');
+      console.log('📤 Creating submission (teacher endpoint)...');
 
-      const submission = await submissionService.createSubmission(
+      await teacherSubmissionService.createSubmissionForStudent(
+        courseId,
         assessmentId,
+        selectedStudentId,
+        files.map((f) => ({
+          uri: f.fileUrl,
+          name: f.originalName,
+          type: f.fileType,
+        }))
+      );
+
+      Alert.alert('Success', 'Submission created successfully', [
         {
-          studentId: selectedStudentId,
-          files,
-          notes: notes.trim() || undefined,
-        }
-      );
-
-      console.log('✅ Submission created:', submission._id);
-
-      Alert.alert(
-        'Success',
-        'Submission created successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+          text: 'OK',
+          onPress: () => navigation.goBack(),
+        },
+      ]);
     } catch (error: any) {
       console.error('❌ Error creating submission:', error);
-      Alert.alert(
-        'Error',
-        error.message || 'Failed to create submission'
-      );
+      Alert.alert('Error', error?.response?.data?.message || error.message || 'Failed to create submission');
     } finally {
       setSubmitting(false);
     }

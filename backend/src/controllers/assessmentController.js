@@ -253,6 +253,89 @@ export const submitAssessment = async (req, res) => {
     }
 };
 
+// POST /api/courses/:courseId/assessments/:assessmentId/submissions
+// Teacher creates a submission for a student (scanned pipeline)
+// Body (multipart/form-data): student_id, files[]
+export const teacherCreateSubmission = async (req, res) => {
+    try {
+        const { courseId, assessmentId } = req.params;
+        const { student_id } = req.body;
+
+        if (!student_id)
+            return res.status(400).json({ message: "student_id is required" });
+
+        await verifyCourseOwner(courseId, req.user.id);
+        const assessment = await verifyAssessmentInCourse(assessmentId, courseId);
+
+        // Teacher can only create submissions for students enrolled in this course
+        await verifyStudentEnrolled(courseId, student_id);
+
+        if (!req.files || req.files.length === 0)
+            return res.status(400).json({ message: "At least one file is required" });
+
+        // Check for duplicate submission for that student
+        const existing = await prisma.submissions.findUnique({
+            where: {
+                user_id_assessment_id: {
+                    user_id: student_id,
+                    assessment_id: assessmentId,
+                },
+            },
+        });
+        if (existing)
+            return res.status(409).json({ message: "Student already has a submission. Use teacher add-files endpoint (not yet implemented)." });
+
+        // Determine SUBMITTED vs LATE based on assessment due_date
+        const now = new Date();
+        const isLate = assessment.due_date && now > assessment.due_date;
+        const status = isLate ? "LATE" : "SUBMITTED";
+
+        const submission = await prisma.submissions.create({
+            data: {
+                user_id: student_id,
+                assessment_id: assessmentId,
+                status,
+                submitted_at: now,
+            },
+        });
+
+        const uploadedAttachments = [];
+        for (const file of req.files) {
+            const ext = file.originalname.split(".").pop();
+            const storagePath = `${courseId}/${assessmentId}/${submission.id}/${uuidv4()}.${ext}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from("submission-files")
+                .upload(storagePath, file.buffer, {
+                    contentType: file.mimetype,
+                    upsert: false,
+                });
+
+            if (uploadError)
+                throw { status: 500, message: `File upload failed: ${uploadError.message}` };
+
+            const attachment = await prisma.attachments.create({
+                data: {
+                    bucket_path: storagePath,
+                    file_name: file.originalname,
+                    file_size: file.size,
+                    mime_type: file.mimetype,
+                    submission_id: submission.id,
+                },
+            });
+            uploadedAttachments.push(attachment);
+        }
+
+        return res.status(201).json({
+            message: `Submission created successfully${isLate ? " (late)" : ""}`,
+            submission,
+            attachments: uploadedAttachments,
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
 // PATCH /api/courses/:courseId/assessments/:assessmentId/submit
 // Appends more files to an existing submission; blocked if already GRADED
 export const updateSubmission = async (req, res) => {
@@ -309,6 +392,70 @@ export const updateSubmission = async (req, res) => {
         }
 
         // Touch the updatedAt timestamp
+        const updated = await prisma.submissions.update({
+            where: { id: submission.id },
+            data: { updatedAt: new Date() },
+        });
+
+        return res.status(200).json({
+            message: "Submission updated successfully",
+            submission: updated,
+            new_attachments: uploadedAttachments,
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+// PATCH /api/courses/:courseId/assessments/:assessmentId/submissions/:submissionId
+// Teacher appends more files to an existing submission (scanned pipeline)
+export const teacherAppendSubmissionFiles = async (req, res) => {
+    try {
+        const { courseId, assessmentId, submissionId } = req.params;
+
+        await verifyCourseOwner(courseId, req.user.id);
+        await verifyAssessmentInCourse(assessmentId, courseId);
+
+        if (!req.files || req.files.length === 0)
+            return res.status(400).json({ message: "At least one file is required" });
+
+        const submission = await prisma.submissions.findUnique({
+            where: { id: submissionId },
+        });
+
+        if (!submission || submission.assessment_id !== assessmentId)
+            return res.status(404).json({ message: "Submission not found" });
+
+        if (submission.status === "GRADED")
+            return res.status(403).json({ message: "Submission has been graded and cannot be modified." });
+
+        const uploadedAttachments = [];
+        for (const file of req.files) {
+            const ext = file.originalname.split(".").pop();
+            const storagePath = `${courseId}/${assessmentId}/${submission.id}/${uuidv4()}.${ext}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from("submission-files")
+                .upload(storagePath, file.buffer, {
+                    contentType: file.mimetype,
+                    upsert: false,
+                });
+
+            if (uploadError)
+                throw { status: 500, message: `File upload failed: ${uploadError.message}` };
+
+            const attachment = await prisma.attachments.create({
+                data: {
+                    bucket_path: storagePath,
+                    file_name: file.originalname,
+                    file_size: file.size,
+                    mime_type: file.mimetype,
+                    submission_id: submission.id,
+                },
+            });
+            uploadedAttachments.push(attachment);
+        }
+
         const updated = await prisma.submissions.update({
             where: { id: submission.id },
             data: { updatedAt: new Date() },

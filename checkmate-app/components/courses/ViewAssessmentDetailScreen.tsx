@@ -1,6 +1,6 @@
 import { theme } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/types";
-import { assessmentService } from "@/services/api";
+import { assessmentService, teacherSubmissionService } from "@/services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -18,6 +18,9 @@ import {
   Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as DocumentPicker from "expo-document-picker";
+import DocumentScanner from "react-native-document-scanner-plugin";
+import SubmissionOptionsDrawer from "./SubmissionOptionsDrawer";
 
 type ViewAssessmentDetailScreenRouteProp = RouteProp<RootStackParamList, "ViewAssessmentDetail">;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -46,6 +49,7 @@ type SubmissionLike = {
   id: string;
   name?: string;
   submitted_at?: string;
+  status?: "SUBMITTED" | "LATE" | "GRADED" | string;
   user?: {
     id: string;
     name: string;
@@ -97,6 +101,9 @@ export default function ViewAssessmentDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
 
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<{ id: string; name: string } | null>(null);
+
   const fetchDetails = async (isRefresh = false) => {
     if (!courseId || !assessmentId) {
       Alert.alert("Error", "Course ID or Assessment ID is missing");
@@ -108,8 +115,6 @@ export default function ViewAssessmentDetailScreen() {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      // Frontend calls GET /api/courses/:courseId/assessments/:assessmentId and uses the full payload
-      // { assessment, submitted, late, not_submitted } for teachers.
       const payload: any = await assessmentService.getAssessmentById(courseId, assessmentId);
       setData(payload as TeacherAssessmentDetailsResponse);
     } catch (error: any) {
@@ -164,7 +169,7 @@ export default function ViewAssessmentDetailScreen() {
     if (!meta) return null;
 
     return (
-      <View style={[styles.pill, { backgroundColor: meta.pillBg }]}> 
+      <View style={[styles.pill, { backgroundColor: meta.pillBg }]}>
         <Text style={[styles.pillText, { color: meta.pillText }]}>{meta.label}</Text>
       </View>
     );
@@ -183,9 +188,16 @@ export default function ViewAssessmentDetailScreen() {
   );
 
   const renderSubmissionRow = (item: SubmissionLike, status: keyof typeof STATUS_META) => {
-    const meta = STATUS_META[status];
     const name = item.user?.name ?? item.name ?? "Unknown";
     const initial = (name[0] ?? "?").toUpperCase();
+
+    const isGraded = item.status === "GRADED";
+
+    const chipLabel = status === "NOT_SUBMITTED" ? "Not Submitted" : isGraded ? "Graded" : "Not graded";
+    const chipColor = status === "NOT_SUBMITTED" ? STATUS_META.NOT_SUBMITTED.color : isGraded ? "#16A34A" : "#D97706";
+    const chipBg = status === "NOT_SUBMITTED" ? STATUS_META.NOT_SUBMITTED.bg : isGraded ? "#DCFCE7" : "#FEF3C7";
+
+    const canReview = status !== "NOT_SUBMITTED";
 
     return (
       <View key={item.id} style={styles.submissionRow}>
@@ -194,17 +206,17 @@ export default function ViewAssessmentDetailScreen() {
         </View>
 
         <View style={styles.submissionRowMain}>
-          <Text style={styles.submissionName} numberOfLines={1}>{name}</Text>
-          {item.submitted_at ? (
-            <Text style={styles.submissionSubtext}>{formatDateTime(item.submitted_at)}</Text>
-          ) : null}
+          <Text style={styles.submissionName} numberOfLines={1}>
+            {name}
+          </Text>
+          {item.submitted_at ? <Text style={styles.submissionSubtext}>{formatDateTime(item.submitted_at)}</Text> : null}
         </View>
 
-        <View style={[styles.statusChip, { backgroundColor: meta.bg }]}> 
-          <Text style={[styles.statusChipText, { color: meta.color }]}>{meta.label}</Text>
+        <View style={[styles.statusChip, { backgroundColor: chipBg }]}>
+          <Text style={[styles.statusChipText, { color: chipColor }]}>{chipLabel}</Text>
         </View>
 
-        {item.submitted_at ? (
+        {canReview ? (
           <TouchableOpacity
             onPress={() => {
               navigation.navigate("ViewSubmissionDetail", {
@@ -218,9 +230,86 @@ export default function ViewAssessmentDetailScreen() {
           >
             <Text style={styles.reviewButtonText}>Review →</Text>
           </TouchableOpacity>
-        ) : null}
+        ) : (
+          <TouchableOpacity
+            onPress={() => {
+              const studentId = item.user?.id ?? item.id;
+              if (!studentId) {
+                Alert.alert("Missing student", "Can't create a submission because the student id is missing.");
+                return;
+              }
+              setSelectedStudent({ id: studentId, name });
+              setDrawerVisible(true);
+            }}
+            style={styles.reviewButton}
+          >
+            <Text style={styles.reviewButtonText}>Add</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
+  };
+
+  const pickPdfFiles = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["application/pdf"],
+      multiple: true,
+      copyToCacheDirectory: true,
+    });
+
+    if (result.canceled) return [];
+    return result.assets.map((a) => ({
+      uri: a.uri,
+      name: a.name ?? "submission.pdf",
+      type: a.mimeType ?? "application/pdf",
+    }));
+  };
+
+  const scanToPdfFile = async () => {
+    const result = await DocumentScanner.scanDocument();
+    if (!result?.scannedImages?.length) return null;
+
+    const uri = result.scannedImages[0];
+    return {
+      uri,
+      name: `scan-${Date.now()}.jpg`,
+      type: "image/jpeg",
+    };
+  };
+
+  const handleCreateSubmissionWithFiles = async (files: { uri: string; name: string; type?: string }[]) => {
+    if (!selectedStudent) {
+      Alert.alert("Select a student", "Please choose a student first.");
+      return;
+    }
+    if (!files.length) return;
+
+    try {
+      setDrawerVisible(false);
+      const created = await teacherSubmissionService.createSubmissionForStudent(
+        courseId,
+        assessmentId,
+        selectedStudent.id,
+        files
+      );
+
+      const submissionId = created?.submission?.id ?? created?.id;
+      if (submissionId) {
+        navigation.navigate("ViewSubmissionDetail", {
+          courseId,
+          assessmentId,
+          submissionId,
+          courseCode,
+        });
+      }
+
+      await fetchDetails(true);
+    } catch (error: any) {
+      console.error("❌ Error creating submission:", error);
+      Alert.alert("Error", error.response?.data?.message || "Failed to create submission");
+    } finally {
+      setSelectedStudent(null);
+    }
   };
 
   if (loading) {
@@ -362,7 +451,7 @@ export default function ViewAssessmentDetailScreen() {
 
               <View style={styles.settingRow}>
                 <Text style={styles.settingLabel}>Type</Text>
-                <View style={[styles.settingPill, { backgroundColor: typeMeta.pillBg }]}> 
+                <View style={[styles.settingPill, { backgroundColor: typeMeta.pillBg }]}>
                   <Text style={[styles.settingPillText, { color: typeMeta.pillText }]}>{typeMeta.label}</Text>
                 </View>
               </View>
@@ -451,6 +540,22 @@ export default function ViewAssessmentDetailScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      <SubmissionOptionsDrawer
+        visible={drawerVisible}
+        onClose={() => {
+          setDrawerVisible(false);
+          setSelectedStudent(null);
+        }}
+        onAddFileSubmission={async () => {
+          const files = await pickPdfFiles();
+          await handleCreateSubmissionWithFiles(files);
+        }}
+        onCaptureSubmission={async () => {
+          const f = await scanToPdfFile();
+          await handleCreateSubmissionWithFiles(f ? [f] : []);
+        }}
+      />
     </SafeAreaView>
   );
 }
