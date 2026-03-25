@@ -1,6 +1,8 @@
 import { theme } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/types";
-import { assessmentService, AssessmentType } from "@/services/api";
+import { assessmentService } from "@/services/api";
+// Backend expects: QUIZ | ASSIGNMENT | EXAM
+type BackendAssessmentType = "QUIZ" | "ASSIGNMENT" | "EXAM";
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -31,12 +33,10 @@ interface AttachmentFile {
 type AddAssessmentScreenRouteProp = RouteProp<RootStackParamList, "AddAssessment">;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const ASSESSMENT_TYPES: Array<{ value: AssessmentType; label: string; icon: string }> = [
-  { value: "exam", label: "Exam", icon: "document-text" },
-  { value: "quiz", label: "Quiz", icon: "help-circle" },
-  { value: "homework", label: "Homework", icon: "pencil" },
-  { value: "project", label: "Project", icon: "briefcase" },
-  { value: "assignment", label: "Assignment", icon: "clipboard" },
+const ASSESSMENT_TYPES: Array<{ value: BackendAssessmentType; label: string; icon: string }> = [
+  { value: "EXAM", label: "Exam", icon: "document-text" },
+  { value: "QUIZ", label: "Quiz", icon: "help-circle" },
+  { value: "ASSIGNMENT", label: "Assignment", icon: "clipboard" },
 ];
 
 export default function AddAssessmentScreen() {
@@ -48,7 +48,7 @@ export default function AddAssessmentScreen() {
   
   // Required fields
   const [title, setTitle] = useState("");
-  const [type, setType] = useState<AssessmentType>("assignment");
+  const [type, setType] = useState<BackendAssessmentType>("ASSIGNMENT");
   const [totalPoints, setTotalPoints] = useState("100");
   const [dueDate, setDueDate] = useState("");
   const [dueTime, setDueTime] = useState("");
@@ -175,22 +175,30 @@ export default function AddAssessmentScreen() {
 
     try {
       const dueDateTimeString = `${dueDate}T${dueTime}:00`;
-        const assessmentData = {
+
+      const res = await assessmentService.createAssessment(courseId, {
         title: title.trim(),
         type,
-        totalPoints: parseInt(totalPoints),
-        dueDate: dueDateTimeString,
-        description: description.trim() || undefined,
-        instructions: instructions.trim() || undefined,
-        allowLateSubmissions,
-        latePenalty: allowLateSubmissions ? parseInt(latePenalty) : undefined,
-        visibleToStudents,
-        attachmentFiles: attachmentFiles.length > 0 ? attachmentFiles : undefined,
-      };
+        // always send a string so backend announcement includes Instructions block
+        instructions: (instructions ?? '').toString(),
+        due_date: new Date(dueDateTimeString).toISOString(),
+        files:
+          attachmentFiles.length > 0
+            ? attachmentFiles.map((f) => ({
+                fileName: f.fileName,
+                fileUrl: f.fileUrl,
+                mimeType: f.mimeType,
+              }))
+            : undefined,
+      });
 
-      await assessmentService.createAssessment(courseId, assessmentData);
+      // Backend may return upload_errors for partial failures.
+      const uploadErrors = (res as any)?.upload_errors;
+      const successMsg = uploadErrors?.length
+        ? "Assessment created (some files failed to upload)."
+        : "Assessment created successfully!";
 
-      Alert.alert("Success", "Assessment created successfully!", [
+      Alert.alert("Success", successMsg, [
         {
           text: "OK",
           onPress: () => navigation.goBack(),

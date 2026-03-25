@@ -102,6 +102,13 @@ export default function ViewAnnouncementScreen() {
   const resources = announcement.resources ?? [];
   const comments = useMemo(() => announcement.comments ?? [], [announcement.comments]);
 
+  const assessments = (announcement as any).assessments ?? [];
+  const typeMeta: Record<string, { label: string; bg: string; text: string }> = {
+    QUIZ: { label: 'Quiz', bg: '#DBEAFE', text: '#2563EB' },
+    ASSIGNMENT: { label: 'Assignment', bg: '#EDE9FE', text: '#7C3AED' },
+    EXAM: { label: 'Exam', bg: '#FEF3C7', text: '#D97706' },
+  };
+
   const handleAddComment = async () => {
     const content = commentText.trim();
     if (!content) return;
@@ -184,6 +191,41 @@ export default function ViewAnnouncementScreen() {
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
           <View style={styles.card}>
             <Text style={styles.title}>{announcement.title}</Text>
+
+            {assessments.length > 0 && (
+              <View style={styles.assessmentChipsRow}>
+                {assessments.map((a: any) => {
+                  const meta =
+                    typeMeta[a.type] ??
+                    ({
+                      label: a.type ?? 'Assessment',
+                      bg: theme.colors.border,
+                      text: theme.colors.textSecondary,
+                    } as any);
+
+                  return (
+                    <TouchableOpacity
+                      key={a.id}
+                      style={[styles.assessmentChip, { backgroundColor: meta.bg }]}
+                      activeOpacity={0.85}
+                      onPress={() =>
+                        navigation.navigate('ViewAssessmentDetail', {
+                          courseId,
+                          courseCode,
+                          assessmentId: a.id,
+                        })
+                      }
+                    >
+                      <Ionicons name="document-text-outline" size={14} color={meta.text} />
+                      <Text style={[styles.assessmentChipText, { color: meta.text }]} numberOfLines={1}>
+                        {meta.label}: {a.title}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
             <Text style={styles.description}>{announcement.description}</Text>
 
             {resources.length > 0 && (
@@ -387,4 +429,25 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   commentContent: { flex: 1, color: theme.colors.textPrimary, fontSize: 13 },
+  assessmentChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  assessmentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    maxWidth: '100%',
+  },
+  assessmentChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    flexShrink: 1,
+  },
 });

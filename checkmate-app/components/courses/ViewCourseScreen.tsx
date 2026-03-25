@@ -243,54 +243,92 @@ export default function ViewCourseScreen() {
     );
   };
 
-  const renderAnnouncementItem = (item: ApiAnnouncement) => (
-    <TouchableOpacity
-      key={item.id}
-      style={styles.announcementCard}
-      activeOpacity={0.85}
-      onPress={() => {
-        if (!course) return;
-        navigation.navigate('ViewAnnouncement', {
-          courseId: course.id,
-          courseCode: course.code,
-          courseTitle: course.title,
-          announcement: item,
-        });
-      }}
-    >
-      <View style={styles.announcementContent}>
-        <View style={styles.announcementHeaderRow}>
-          <View style={styles.announcementHeaderLeft}>
-            <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={14} color={theme.colors.textSecondary} />
-            </View>
-            <View style={styles.announcementHeaderText}>
-              <Text style={styles.announcementTitle}>{item.title}</Text>
-              <Text style={styles.announcementMeta}>
-                {course?.title ? `${course.title} • ` : ''}{timeAgo((item as any).createdAt)}
-              </Text>
+  const renderAnnouncementItem = (item: ApiAnnouncement) => {
+    const assessments = (item as any).assessments ?? [];
+
+    const typeMeta: Record<string, { label: string; bg: string; text: string }> = {
+      QUIZ: { label: 'Quiz', bg: '#DBEAFE', text: '#2563EB' },
+      ASSIGNMENT: { label: 'Assignment', bg: '#EDE9FE', text: '#7C3AED' },
+      EXAM: { label: 'Exam', bg: '#FEF3C7', text: '#D97706' },
+    };
+
+    return (
+      <TouchableOpacity
+        key={item.id}
+        style={styles.announcementCard}
+        activeOpacity={0.85}
+        onPress={() => {
+          if (!course) return;
+          navigation.navigate('ViewAnnouncement', {
+            courseId: course.id,
+            courseCode: course.code,
+            courseTitle: course.title,
+            announcement: item,
+          });
+        }}
+      >
+        <View style={styles.announcementContent}>
+          <View style={styles.announcementHeaderRow}>
+            <View style={styles.announcementHeaderLeft}>
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person" size={14} color={theme.colors.textSecondary} />
+              </View>
+              <View style={styles.announcementHeaderText}>
+                <Text style={styles.announcementTitle}>{item.title}</Text>
+                <Text style={styles.announcementMeta}>
+                  {course?.title ? `${course.title} • ` : ''}{timeAgo((item as any).createdAt)}
+                </Text>
+              </View>
             </View>
           </View>
+
+          {assessments.length > 0 && (
+            <View style={styles.assessmentChipsRow}>
+              {assessments.map((a: any) => {
+                const meta = typeMeta[a.type] ?? { label: a.type ?? 'Assessment', bg: theme.colors.border, text: theme.colors.textSecondary };
+                return (
+                  <TouchableOpacity
+                    key={a.id}
+                    style={[styles.assessmentChip, { backgroundColor: meta.bg }]}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      if (!course) return;
+                      navigation.navigate('ViewAssessmentDetail', {
+                        courseId: course.id,
+                        courseCode: course.code,
+                        assessmentId: a.id,
+                      });
+                    }}
+                  >
+                    <Ionicons name="document-text-outline" size={14} color={meta.text} />
+                    <Text style={[styles.assessmentChipText, { color: meta.text }]} numberOfLines={1}>
+                      {meta.label}: {a.title}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          <Text style={styles.announcementDescription} numberOfLines={3}>
+            {item.description}
+          </Text>
+
+          {(item.resources?.length ?? 0) > 0 && (
+            <View style={styles.resourcesBlock}>
+              <Text style={styles.resourcesTitle}>Attachments</Text>
+              <View
+                style={styles.resourcesList}
+                onStartShouldSetResponderCapture={() => true}
+              >
+                {item.resources?.map(renderResourceRow)}
+              </View>
+            </View>
+          )}
         </View>
-
-        <Text style={styles.announcementDescription} numberOfLines={3}>
-          {item.description}
-        </Text>
-
-        {(item.resources?.length ?? 0) > 0 && (
-          <View style={styles.resourcesBlock}>
-            <Text style={styles.resourcesTitle}>Attachments</Text>
-            <View
-              style={styles.resourcesList}
-              onStartShouldSetResponderCapture={() => true}
-            >
-              {item.resources?.map(renderResourceRow)}
-            </View>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   if (loading) {
     return (
@@ -490,6 +528,15 @@ export default function ViewCourseScreen() {
           handleAddCourseMaterial();
         }}
       />
+
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={[styles.fab, { bottom: insets.bottom + 20 }]}
+        onPress={() => setDrawerVisible(true)}
+        activeOpacity={0.9}
+      >
+        <Ionicons name="add" size={28} color={theme.colors.onPrimary} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -692,20 +739,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   fab: {
-    position: "absolute",
+    position: 'absolute',
     right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
     backgroundColor: theme.colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: theme.colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
     shadowRadius: 8,
     elevation: 6,
   },
@@ -757,5 +801,25 @@ const styles = StyleSheet.create({
     flex: 1,
     color: theme.colors.textPrimary,
     fontSize: 13,
+  },
+  assessmentChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  assessmentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    gap: 6,
+  },
+  assessmentChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    maxWidth: 240,
   },
 });
