@@ -26,8 +26,14 @@ const addUser = async (req, res) => {
         });
         if (authError) return res.status(400).json({ message: authError.message });
 
-        const newUser = await prisma.users.findUnique({
-            where: { id: authData.user.id },
+        // Explicitly create the user record in Prisma to ensure immediate visibility
+        const newUser = await prisma.users.create({
+            data: {
+                id: authData.user.id,
+                email: authData.user.email,
+                name: name,
+                role: role || "STUDENT"
+            }
         });
 
         res.status(201).json({

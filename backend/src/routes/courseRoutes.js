@@ -42,6 +42,7 @@ import {
 } from "../controllers/assessmentController.js";
 
 import { runPlagiarismCheck } from "../controllers/plagiarismController.js";
+import { extractQuestions, pairStudentAnswers } from "../controllers/gradingController.js";
 
 const router = Router();
 
@@ -79,6 +80,8 @@ router.get("/:courseId/assessments/:assessmentId/submissions/:submissionId", ver
 router.patch("/:courseId/assessments/:assessmentId/submissions/:submissionId/grade", verifyUser, verifyUserType("TEACHER"), gradeSubmission);
 router.delete("/:courseId/assessments/:assessmentId/source-materials/:materialId", verifyUser, verifyUserType("TEACHER"), deleteSourceMaterial);
 router.post("/:courseId/assessments/:assessmentId/plagiarism-check", verifyUser, verifyUserType("TEACHER"), runPlagiarismCheck);
+router.post("/:courseId/assessments/:assessmentId/extract-questions", verifyUser, verifyUserType("TEACHER"), extractQuestions);
+router.post("/:courseId/assessments/:assessmentId/submissions/:submissionId/pair-answers", verifyUser, verifyUserType("TEACHER"), pairStudentAnswers);
 
 // Attendance (student)
 router.get("/:courseId/my-attendance", verifyUser, verifyUserType("STUDENT"), getStudentAttendance);

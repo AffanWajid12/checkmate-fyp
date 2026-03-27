@@ -13,6 +13,8 @@
   --color-accent-300: #5eead4;
   --color-accent-400: #2dd4bf;
   --color-accent-500: #14b8a6;
+  --color-accent-600: #0d9488;
+  --color-accent-700: #0f766e;
   --color-accent: #2dd4bf;
   
   /* Neutral/Gray Scale */
@@ -62,4 +64,22 @@ input[type="button"],
 button:disabled,
 input:disabled {
   cursor: not-allowed;
-}
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes custom-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-custom-bounce {
+  animation: custom-bounce 1s infinite ease-in-out;
+}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getAvatarUrl } from '../../../../utils/avatarHelper';
 
 const SearchIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-text-muted">
@@ -58,9 +59,9 @@ const StudentsTab = ({ course }) => {
                                 className={`flex items-center gap-4 px-5 py-4 ${idx % 2 === 1 ? 'bg-neutral-50/40' : ''}`}
                             >
                                 <div className="w-10 h-10 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0 overflow-hidden border border-neutral-200">
-                                    {student.profile_picture && student.profile_picture.trim() !== "" ? (
+                                    {student.profile_picture ? (
                                         <img 
-                                            src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profiles/${student.profile_picture}`} 
+                                            src={getAvatarUrl(student.profile_picture)} 
                                             alt={student.name} 
                                             className="w-full h-full object-cover"
                                             onError={(e) => {

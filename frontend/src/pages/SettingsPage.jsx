@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useMe, useUpdateProfile, useUpdateProfilePicture, useChangePassword } from '../hooks/useAuth';
 import { toast } from 'react-hot-toast';
+import { getAvatarUrl } from '../utils/avatarHelper';
 
 const SettingsPage = () => {
     const { data: user } = useMe();
@@ -71,7 +72,7 @@ const SettingsPage = () => {
                             <div className="w-32 h-32 rounded-full overflow-hidden bg-neutral-100 border-4 border-white shadow-md flex items-center justify-center text-4xl font-bold text-neutral-400">
                                 {user?.profile_picture ? (
                                     <img 
-                                        src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profiles/${user.profile_picture}`} 
+                                        src={getAvatarUrl(user.profile_picture)} 
                                         alt="Profile" 
                                         className="w-full h-full object-cover"
                                         onError={(e) => {
