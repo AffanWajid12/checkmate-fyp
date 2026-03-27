@@ -1,0 +1,123 @@
+\documentclass{article}
+\usepackage[landscape, margin=0.5in]{geometry}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{colortbl}
+
+\begin{document}
+
+\section*{Unit Test Results - Backend Utility Functions}
+
+\subsection*{Test Summary}
+\begin{itemize}
+    \item \textbf{Total Tests:} 12
+    \item \textbf{Passed:} 12
+    \item \textbf{Failed:} 0
+    \item \textbf{Success Rate:} 100\%
+\end{itemize}
+
+\subsection*{Test Cases Documentation}
+
+\begin{longtable}{|p{0.8cm}|p{4cm}|p{2cm}|p{2cm}|p{2.5cm}|p{2cm}|p{2cm}|p{2.5cm}|p{0.8cm}|}
+\hline
+\rowcolor{gray!30}
+\textbf{ID} & \textbf{Objective} & \textbf{Pre} & \textbf{Steps} & \textbf{Test Data} & \textbf{Expected} & \textbf{Post} & \textbf{Actual} & \textbf{P/F} \\
+\hline
+\endfirsthead
+
+\multicolumn{9}{c}{\textit{(Continued from previous page)}} \\
+\hline
+\rowcolor{gray!30}
+\textbf{ID} & \textbf{Objective} & \textbf{Pre} & \textbf{Steps} & \textbf{Test Data} & \textbf{Expected} & \textbf{Post} & \textbf{Actual} & \textbf{P/F} \\
+\hline
+\endhead
+
+\hline
+\multicolumn{9}{r}{\textit{(Continued on next page)}} \\
+\endfoot
+
+\hline
+\endlastfoot
+
+% Test 1
+UT-01 & Remove markdown code fences from JSON string & JSON with fence & Call sanitize() & \verb|```json{"key":"val"}```| & Clean JSON string & Fence removed & Returned: \verb|{"key":"value"}| & \cellcolor{green!30} PASS \\
+\hline
+
+% Test 2
+UT-02 & Trim whitespace from JSON string & JSON with spaces & Call sanitize() & \verb|  {"key":"val"}  | & Trimmed JSON & Spaces removed & No leading/trailing & \cellcolor{green!30} PASS \\
+\hline
+
+% Test 3
+UT-03 & Handle None value input & None value & Call sanitize() & None & Empty string & Returns "" & Empty string "" & \cellcolor{green!30} PASS \\
+\hline
+
+% Test 4
+UT-04 & Map basic MCQ question from LLM to model & LLM MCQ dict & Call map\_llm() & MCQ with options & Model schema dict & Normalized MCQ & All fields mapped & \cellcolor{green!30} PASS \\
+\hline
+
+% Test 5
+UT-05 & Convert 'mathematical' type to 'math' & Type=mathematical & Call map\_llm() & Math question & Type='math' & Type normalized & Type='math' & \cellcolor{green!30} PASS \\
+\hline
+
+% Test 6
+UT-06 & Handle camelCase keys from LLM output & camelCase keys & Call map\_llm() & questionText key & snake\_case output & Keys normalized & question\_text key & \cellcolor{green!30} PASS \\
+\hline
+
+% Test 7
+UT-07 & Apply default values for missing fields & Minimal dict & Call map\_llm() & Only text field & Defaults applied & All fields present & Defaults: mcq, 1 mark & \cellcolor{green!30} PASS \\
+\hline
+
+% Test 8
+UT-08 & Normalize difficulty to lowercase & HARD (uppercase) & Call map\_llm() & difficulty=HARD & difficulty='hard' & Lowercase applied & difficulty='hard' & \cellcolor{green!30} PASS \\
+\hline
+
+% Test 9
+UT-09 & Generate unique IDs for each question & Same input twice & Call map\_llm() 2x & Same dict & Different UUIDs & UUID1 != UUID2 & Unique IDs generated & \cellcolor{green!30} PASS \\
+\hline
+
+% Test 10
+UT-10 & Initialize RAG service with default params & No RAG service & RAGService() & Default params & Initialized object & Object created & embeddings \& splitter & \cellcolor{green!30} PASS \\
+\hline
+
+% Test 11
+UT-11 & Get document count returns 0 when empty & Empty RAG & get\_doc\_count() & Empty docs[] & Returns 0 & count = 0 & Returned 0 & \cellcolor{green!30} PASS \\
+\hline
+
+% Test 12
+UT-12 & Clear method resets RAG service state & RAG with data & clear() & docs + db set & Empty state & docs=[], db=None & State reset success & \cellcolor{green!30} PASS \\
+\hline
+
+\end{longtable}
+
+\subsection*{Test Categories}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\rowcolor{gray!30}
+\textbf{Category} & \textbf{Test IDs} & \textbf{Status} \\
+\hline
+JSON Sanitization & UT-01, UT-02, UT-03 & \cellcolor{green!30} 3/3 PASS \\
+\hline
+Question Mapping \& Normalization & UT-04, UT-05, UT-06, UT-07, UT-08, UT-09 & \cellcolor{green!30} 6/6 PASS \\
+\hline
+RAG Service Utilities & UT-10, UT-11, UT-12 & \cellcolor{green!30} 3/3 PASS \\
+\hline
+\textbf{Total} & \textbf{12 Tests} & \cellcolor{green!30} \textbf{12/12 PASS} \\
+\hline
+\end{tabular}
+\caption{Test Results by Category}
+\end{table}
+
+\subsection*{Functions Under Test}
+
+\begin{enumerate}
+    \item \textbf{\_sanitize\_json\_string()} - Removes markdown code fences and trims whitespace from LLM JSON responses
+    \item \textbf{\_map\_llm\_q\_to\_model()} - Normalizes LLM question output to database model schema with type conversions and default values
+    \item \textbf{RAGService} - Manages document vectorization, initialization, and state management for Retrieval-Augmented Generation
+\end{enumerate}
+
+\end{document}
