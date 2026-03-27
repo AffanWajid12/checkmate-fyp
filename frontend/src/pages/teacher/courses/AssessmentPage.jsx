@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAssessmentDetails, useRunPlagiarismCheck } from '../../../hooks/useCourses';
 import TeacherSidebar from '../TeacherSidebar';
+import AIGradingTab from "./AIGradingTab";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -586,9 +587,16 @@ const TeacherAssessmentPage = () => {
     const typeMeta = TYPE_META[assessment.type] ?? TYPE_META.ASSIGNMENT;
     const totalSubs = submitted.length + late.length;
 
+    const tabs = [
+        { key: 'details', label: 'Details' },
+        { key: 'submissions', label: 'Submissions' },
+        { key: 'plagiarism', label: 'Plagiarism' },
+        { key: 'ai-grading', label: 'AI Grading' }
+    ];
+
     return (
         <TeacherSidebar>
-            <div className="max-w-4xl mx-auto pb-16 p-6">
+            <div className={`${activeTab === 'ai-grading' ? 'max-w-7xl' : 'max-w-4xl'} mx-auto pb-16 p-6 transition-all duration-300`}>
                 {/* Back + Header */}
                 <div className="mb-8">
                     <button
@@ -619,11 +627,7 @@ const TeacherAssessmentPage = () => {
 
                 {/* Tabs */}
                 <div className="flex gap-1 mb-6 bg-neutral-100 p-1 rounded-xl w-fit">
-                    {[
-                        { key: 'details', label: 'Assessment Details' },
-                        { key: 'submissions', label: `Submissions (${totalSubs})` },
-                        { key: 'plagiarism', label: 'Plagiarism Report' },
-                    ].map((tab) => (
+                    {tabs.map((tab) => (
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
@@ -652,6 +656,15 @@ const TeacherAssessmentPage = () => {
                     <PlagiarismTab
                         courseId={courseId}
                         assessmentId={assessmentId}
+                    />
+                )}
+                {activeTab === 'ai-grading' && (
+                    <AIGradingTab 
+                        courseId={courseId}
+                        assessmentId={assessmentId}
+                        submitted={submitted}
+                        late={late}
+                        sourceMaterials={assessment.source_materials}
                     />
                 )}
             </div>

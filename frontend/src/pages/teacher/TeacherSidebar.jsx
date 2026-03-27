@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom';
 import { useLogout, useMe } from '../../hooks/useAuth';
 import supabase from '../../utils/supabaseClient';
 import logo from '../../logo.png';
+import { getAvatarUrl } from '../../utils/avatarHelper';
 
 // ── Sidebar nav items ──────────────────────────────────────────
 const navItems = [
@@ -106,9 +107,9 @@ const TeacherSidebar = ({ children }) => {
             {/* Teacher Profile Footer */}
             <div className="border-t border-neutral-100 px-4 py-4 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-accent-500 flex-shrink-0 flex items-center justify-center text-white font-bold text-sm overflow-hidden border border-neutral-200">
-                    {user?.profile_picture && user.profile_picture.trim() !== "" ? (
+                    {user?.profile_picture ? (
                         <img 
-                            src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profiles/${user.profile_picture}`} 
+                            src={getAvatarUrl(user.profile_picture)} 
                             alt="Profile" 
                             className="w-full h-full object-cover"
                             onError={(e) => {

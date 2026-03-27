@@ -35,6 +35,7 @@ export const useAddUser = () => {
             return data.newUser;
         },
         onSuccess: (newUser) => {
+            if (!newUser) return;
             queryClient.setQueryData(userKeys.all, (prev) =>
                 prev ? [newUser, ...prev] : [newUser]
             );

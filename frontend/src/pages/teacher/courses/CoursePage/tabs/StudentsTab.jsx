@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getAvatarUrl } from '../../../../../utils/avatarHelper';
 
 const SearchIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-text-muted">
@@ -59,16 +60,19 @@ const StudentsTab = ({ course }) => {
                             >
                                 <div className="w-10 h-10 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0 overflow-hidden border border-neutral-200">
                                     {student.profile_picture ? (
-                                        <img 
-                                            src={student.profile_picture} 
-                                            alt={student.name} 
+                                        <img
+                                            src={getAvatarUrl(student.profile_picture)}
+                                            alt={student.name}
                                             className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                                e.target.nextSibling.style.display = 'flex';
+                                            }}
                                         />
-                                    ) : (
-                                        <span className="text-sm font-bold text-accent-600">
-                                            {student.name?.charAt(0).toUpperCase() ?? '?'}
-                                        </span>
-                                    )}
+                                    ) : null}
+                                    <span className={`text-sm font-bold text-accent-600 ${student.profile_picture ? 'hidden' : 'flex'}`}>
+                                        {student.name?.charAt(0).toUpperCase() ?? '?'}
+                                    </span>
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold text-text-primary truncate">{student.name}</p>

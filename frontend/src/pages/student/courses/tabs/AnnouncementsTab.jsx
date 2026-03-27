@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useCourseAnnouncements } from '../../../../hooks/useCourses';
 import { AnnouncementComments } from '../../../../components/AnnouncementComments';
-import { useNavigate } from 'react-router-dom';
 
 const formatDate = (iso) => {
     const d = new Date(iso);

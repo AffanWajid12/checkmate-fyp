@@ -466,3 +466,27 @@ export const useRunPlagiarismCheck = (courseId, assessmentId) => {
         },
     });
 };
+
+export const useExtractQuestions = (courseId, assessmentId) => {
+    return useMutation({
+        mutationFn: async ({ isScanned } = {}) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments/${assessmentId}/extract-questions`,
+                { is_scanned: isScanned ? 'yes' : 'no' }
+            );
+            return data;
+        },
+    });
+};
+
+export const usePairStudentAnswers = (courseId, assessmentId) => {
+    return useMutation({
+        mutationFn: async ({ submissionId, questions, isScanned }) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments/${assessmentId}/submissions/${submissionId}/pair-answers`,
+                { questions, is_scanned: isScanned ? 'yes' : 'no' }
+            );
+            return data;
+        },
+    });
+};

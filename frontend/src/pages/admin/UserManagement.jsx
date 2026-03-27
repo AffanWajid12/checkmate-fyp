@@ -128,7 +128,7 @@ const UserManagement = () => {
                                     </tr>
                                 )}
 
-                                {!isLoading && !isError && users.map((user, idx) => (
+                                {!isLoading && !isError && users.filter(Boolean).map((user, idx) => (
                                     <tr
                                         key={user.id}
                                         className={`border-b border-neutral-50 hover:bg-neutral-50 transition-colors ${idx % 2 === 0 ? "" : "bg-neutral-50/40"}`}
