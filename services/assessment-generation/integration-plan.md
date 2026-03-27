@@ -27,6 +27,117 @@ This plan integrates the existing Flask-based `services/assessment-generation` s
 ### Deliverable
 - A written “contract” section (below) that both backend endpoint and microservice endpoint will implement.
 
+## **Generation Contract (backend-facing)**
+
+### **1\) Backend endpoint request (frontend → backend)**
+
+**Endpoint:** `POST /api/assessments/generate`  
+**Content-Type:** `application/json`
+
+**Required fields**
+
+* subject: `string`  
+* `assessmentType`: `"quiz" | "assignment" | "exam"`  
+* difficulty: `"easy" | "medium" | "hard"`  
+* `questionTypeCounts`: object *(hard constraint; sum is total question count)*  
+  * `mcq`: `number`  
+  * `short_text`: `number`  
+  * `essay`: `number`  
+  * `coding`: `number`  
+  * `math`: `number`
+
+**Optional fields**
+
+* instructions: `string`  
+* `referenceMaterialIds`: `string[]` *(UUIDs)*
+
+**Backend responsibilities**
+
+* Validate request (subject present; all counts are ≥ 0; `sum(questionTypeCounts) > 0`).  
+* Resolve `referenceMaterialIds` → bucket\_path → **signed URLs** (short-lived).  
+* Call microservice using the microservice request contract (below).  
+* Persist the resulting questions payload into Postgres in `generated_assessments.question_payload` (JSONB).  
+* Return a frontend-renderable response that includes questions \+ expected answers.
+
+---
+
+### **2\) Microservice endpoint request (backend → microservice)**
+
+**Endpoint:** `POST /generate`  
+**Content-Type:** `application/json`
+
+**Required fields**
+
+* subject: `string`  
+* `assessmentType`: `"quiz" | "assignment" | "exam"`  
+* difficulty: `"easy" | "medium" | "hard"`  
+* `questionTypeCounts`: object *(hard constraint; sum is total)*  
+  * `mcq`: `number`  
+  * `short_text`: `number`  
+  * `essay`: `number`  
+  * `coding`: `number`  
+  * `math`: `number`
+
+**Optional fields**
+
+* instructions: `string`  
+* `referenceMaterials`: array *(RAG-only)*  
+  * `url`: `string` *(signed URL to PDF)*  
+  * `fileName`: `string` *(optional)*
+
+**Microservice responsibilities**
+
+* Use `referenceMaterials` strictly for RAG grounding (optional).  
+* Fetch PDFs by URL when provided (no local path assumption).  
+* Generate output that strictly honors `questionTypeCounts` and schema.  
+* **Do not** persist generated assessments to MongoDB as part of this workflow.  
+* Return JSON only, no Mongo-specific fields/IDs.
+
+---
+
+### **3\) Microservice endpoint response (microservice → backend)**
+
+**Content-Type:** `application/json`
+
+**Required**
+
+* questions: array *(length must equal sum of requested counts)*  
+  * `questionText`: `string`  
+  * `questionType`: `"mcq" | "short_text" | "essay" | "coding" | "math"`  
+  * options: `string[]` *(non-empty only if `questionType === "mcq"`, otherwise `[]`)*  
+  * `expectedAnswer`: `string`  
+  * marks: `number`  
+  * difficulty: `"easy" | "medium" | "hard"`
+
+**Optional (allowed but must not break backend parsing)**
+
+* `warnings`: `string[]`  
+* `profileUsed`: `string` *(prompt profile identifier, e.g., `quiz:easy`)*
+
+---
+
+### **4\) Backend endpoint response (backend → frontend)**
+
+**Content-Type:** `application/json`
+
+* `generatedAssessment`: object  
+  * id: `string` *(UUID)*  
+  * `teacherId`: `string` *(UUID)*  
+  * subject: `string`  
+  * `assessmentType`: `"quiz" | "assignment" | "exam"`  
+  * difficulty: `"easy" | "medium" | "hard"`  
+  * instructions: `string | null`  
+  * `createdAt`: `string` *(ISO timestamp)*  
+  * questions: array *(render-ready)*  
+    * `index`: `number` *(1-based)*  
+    * type: `"mcq" | "short_text" | "essay" | "coding" | "math"`  
+    * text: `string`  
+    * options: `string[]`  
+    * `expectedAnswer`: `string`  
+    * marks: `number`  
+    * difficulty: `"easy" | "medium" | "hard"`
+
+
 ---
 
 ## Phase 1 — Backend-first implementation (schema + endpoints + storage)

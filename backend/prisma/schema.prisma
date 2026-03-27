@@ -8,6 +8,197 @@ datasource db {
   schemas  = ["public"]
 }
 
+model users {
+  id              String                  @id @db.Uuid
+  email           String                  @unique
+  name            String
+  role            Role                    @default(STUDENT)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @default(now()) @updatedAt
+  profile_picture String?
+  comments        announcement_comments[] @relation("UserComments")
+  ownedCourses    courses[]               @relation("TeacherCourses")
+  generatedAssessments generated_assessments[] @relation("TeacherGeneratedAssessments")
+  referenceMaterials   reference_materials[]   @relation("TeacherReferenceMaterials")
+  enrolledCourses enrollments[]           @relation("StudentEnrollments")
+  submissions     submissions[]           @relation("UserSubmissions")
+
+  @@map("users")
+  @@schema("public")
+}
+
+model enrollments {
+  id         String       @id @default(uuid()) @db.Uuid
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @default(now()) @updatedAt
+  course_id  String       @db.Uuid
+  student_id String       @db.Uuid
+  attendance attendance[] @relation("EnrollmentAttendance")
+  course     courses      @relation("CourseEnrollments", fields: [course_id], references: [id], onDelete: Cascade)
+  student    users        @relation("StudentEnrollments", fields: [student_id], references: [id], onDelete: Cascade)
+
+  @@unique([course_id, student_id])
+  @@map("enrollments")
+  @@schema("public")
+}
+
+model courses {
+  id                  String                @id @default(uuid()) @db.Uuid
+  title               String
+  description         String?
+  code                String                @unique
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @default(now()) @updatedAt
+  teacher_id          String                @db.Uuid
+  announcements       announcements[]       @relation("CourseAnnouncements")
+  attendance_sessions attendance_sessions[] @relation("CourseAttendanceSessions")
+  teacher             users                 @relation("TeacherCourses", fields: [teacher_id], references: [id], onDelete: Cascade)
+  students            enrollments[]         @relation("CourseEnrollments")
+
+  @@map("courses")
+  @@schema("public")
+}
+
+model announcements {
+  id          String                   @id @default(uuid()) @db.Uuid
+  title       String
+  description String
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @default(now()) @updatedAt
+  course_id   String                   @db.Uuid
+  comments    announcement_comments[]  @relation("AnnouncementComments")
+  resources   announcement_resources[] @relation("AnnouncementResources")
+  course      courses                  @relation("CourseAnnouncements", fields: [course_id], references: [id], onDelete: Cascade)
+  assessments assessments[]            @relation("AnnouncementAssessments")
+
+  @@map("announcements")
+  @@schema("public")
+}
+
+model announcement_resources {
+  id              String        @id @default(uuid()) @db.Uuid
+  bucket_path     String
+  file_name       String
+  file_size       Int
+  mime_type       String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now()) @updatedAt
+  announcement_id String        @db.Uuid
+  announcement    announcements @relation("AnnouncementResources", fields: [announcement_id], references: [id], onDelete: Cascade)
+
+  @@map("announcement_resources")
+  @@schema("public")
+}
+
+model source_materials {
+  id            String      @id @default(uuid()) @db.Uuid
+  bucket_path   String
+  file_name     String
+  file_size     Int
+  mime_type     String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
+  assessment_id String      @db.Uuid
+  assessment    assessments @relation("AssessmentSourceMaterials", fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("source_materials")
+  @@schema("public")
+}
+
+model announcement_comments {
+  id              String        @id @default(uuid()) @db.Uuid
+  content         String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now()) @updatedAt
+  announcement_id String        @db.Uuid
+  user_id         String        @db.Uuid
+  announcement    announcements @relation("AnnouncementComments", fields: [announcement_id], references: [id], onDelete: Cascade)
+  user            users         @relation("UserComments", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("announcement_comments")
+  @@schema("public")
+}
+
+model assessments {
+  id               String             @id @default(uuid()) @db.Uuid
+  title            String
+  instructions     String?
+  type             AssessmentType     @default(QUIZ)
+  due_date         DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  announcement_id  String             @db.Uuid
+  announcement     announcements      @relation("AnnouncementAssessments", fields: [announcement_id], references: [id], onDelete: Cascade)
+  source_materials source_materials[] @relation("AssessmentSourceMaterials")
+  submissions      submissions[]      @relation("AssessmentSubmissions")
+
+  @@map("assessments")
+  @@schema("public")
+}
+
+model submissions {
+  id            String           @id @default(uuid()) @db.Uuid
+  status        SubmissionStatus @default(SUBMITTED)
+  submitted_at  DateTime         @default(now())
+  grade         Float?
+  feedback      String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @default(now()) @updatedAt
+  user_id       String           @db.Uuid
+  assessment_id String           @db.Uuid
+  attachments   attachments[]    @relation("SubmissionAttachments")
+  assessment    assessments      @relation("AssessmentSubmissions", fields: [assessment_id], references: [id], onDelete: Cascade)
+  user          users            @relation("UserSubmissions", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, assessment_id])
+  @@map("submissions")
+  @@schema("public")
+}
+
+model attachments {
+  id            String      @id @default(uuid()) @db.Uuid
+  bucket_path   String
+  file_name     String
+  file_size     Int
+  mime_type     String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
+  submission_id String      @db.Uuid
+  submission    submissions @relation("SubmissionAttachments", fields: [submission_id], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+  @@schema("public")
+}
+
+model attendance_sessions {
+  id        String       @id @default(uuid()) @db.Uuid
+  title     String?
+  date      DateTime     @db.Date
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @default(now()) @updatedAt
+  course_id String       @db.Uuid
+  records   attendance[] @relation("SessionAttendance")
+  course    courses      @relation("CourseAttendanceSessions", fields: [course_id], references: [id], onDelete: Cascade)
+
+  @@map("attendance_sessions")
+  @@schema("public")
+}
+
+model attendance {
+  id            String              @id @default(uuid()) @db.Uuid
+  status        AttendanceStatus    @default(ABSENT)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @default(now()) @updatedAt
+  enrollment_id String              @db.Uuid
+  session_id    String              @db.Uuid
+  enrollment    enrollments         @relation("EnrollmentAttendance", fields: [enrollment_id], references: [id], onDelete: Cascade)
+  session       attendance_sessions @relation("SessionAttendance", fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@unique([enrollment_id, session_id])
+  @@map("attendance")
+  @@schema("public")
+}
+
 enum Role {
   STUDENT
   TEACHER
@@ -40,223 +231,56 @@ enum SubmissionStatus {
   @@schema("public")
 }
 
-model users {
-  id              String            @id @db.Uuid // This matches the ID from auth.users
-  email           String            @unique
-  name            String
-  role            Role              @default(STUDENT)
-  profile_picture String?           // Path or URL to profile picture
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt @default(now())
-
-  // For Teacher
-  ownedCourses    courses[]         @relation("TeacherCourses")
-
-  // for Student
-  enrolledCourses enrollments[] @relation("StudentEnrollments")
-
-  //for student submissions
-  submissions submissions[] @relation("UserSubmissions")
-
-  // for announcement comments
-  comments announcement_comments[] @relation("UserComments")
-
-  @@map("users")
-  @@schema("public")
-}
-
-model enrollments {
-  id          String  @id @db.Uuid @default(uuid())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt @default(now())
-
-  course_id  String @db.Uuid
-  course    courses @relation("CourseEnrollments", fields: [course_id], references: [id], onDelete: Cascade)
-  student_id String @db.Uuid
-  student   users    @relation("StudentEnrollments", fields: [student_id], references: [id], onDelete: Cascade)
-
-  // attendance records for this enrollment
-  attendance attendance[] @relation("EnrollmentAttendance")
-
-  @@unique([course_id, student_id])
-  @@map("enrollments")
-  @@schema("public")
-}
-
-
-model courses {
-  id          String   @id @db.Uuid @default(uuid())
-  title       String
-  description String?
-  code        String   @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt @default(now())
-
-  //teacher relations
-  teacher_id   String @db.Uuid
-  teacher     users     @relation("TeacherCourses", fields: [teacher_id], references: [id], onDelete: Cascade)
-
-  //relation to enrollment middle
-  students    enrollments[] @relation("CourseEnrollments")
-
-  announcements announcements[] @relation("CourseAnnouncements")
-  attendance_sessions attendance_sessions[] @relation("CourseAttendanceSessions")
-
-  @@map("courses")
-  @@schema("public")
-}
-
-model announcements {
-  id            String  @id @db.Uuid @default(uuid())
-  title         String
-  description   String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt @default(now())
-
-  course_id  String @db.Uuid
-  course    courses @relation("CourseAnnouncements", fields: [course_id], references: [id], onDelete: Cascade)
-
-  assessments assessments[] @relation("AnnouncementAssessments")
-  resources   announcement_resources[] @relation("AnnouncementResources")
-  comments    announcement_comments[] @relation("AnnouncementComments")
-
-  @@map("announcements")
-  @@schema("public")
-}
-
-model announcement_resources {
-  id            String  @id @db.Uuid @default(uuid())
-  bucket_path   String
-  file_name     String
-  file_size     Int
-  mime_type     String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt @default(now())
-
-  announcement_id  String @db.Uuid
-  announcement    announcements @relation("AnnouncementResources", fields: [announcement_id], references: [id], onDelete: Cascade)
-
-  @@map("announcement_resources")
-  @@schema("public")
-}
-
-model source_materials {
-  id            String  @id @db.Uuid @default(uuid())
-  bucket_path   String
-  file_name     String
-  file_size     Int
-  mime_type     String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt @default(now())
-
-  assessment_id  String @db.Uuid
-  assessment    assessments @relation("AssessmentSourceMaterials", fields: [assessment_id], references: [id], onDelete: Cascade)
-
-  @@map("source_materials")
-  @@schema("public")
-}
-
-model announcement_comments {
+model generated_assessments {
   id              String   @id @db.Uuid @default(uuid())
-  content         String
+  title           String?
+  subject         String
+  assessment_type AssessmentType @default(QUIZ)
+  difficulty      String
+  instructions    String?
+  question_count  Int?
+  question_payload Json
+  status          String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt @default(now())
 
-  announcement_id String @db.Uuid
-  announcement    announcements @relation("AnnouncementComments", fields: [announcement_id], references: [id], onDelete: Cascade)
+  teacher_id      String @db.Uuid
+  teacher         users  @relation("TeacherGeneratedAssessments", fields: [teacher_id], references: [id], onDelete: Cascade)
 
-  user_id         String @db.Uuid
-  user            users @relation("UserComments", fields: [user_id], references: [id], onDelete: Cascade)
+  reference_materials generated_assessment_reference_materials[] @relation("GeneratedAssessmentReferences")
 
-  @@map("announcement_comments")
+  @@map("generated_assessments")
   @@schema("public")
 }
 
-model assessments {
-  id            String  @id @db.Uuid @default(uuid())
-  title         String
-  instructions  String?
-  type          AssessmentType @default(QUIZ)
-  due_date      DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  announcement_id  String @db.Uuid
-  announcement    announcements @relation("AnnouncementAssessments", fields: [announcement_id], references: [id], onDelete: Cascade)
-
-  submissions      submissions[]    @relation("AssessmentSubmissions")
-  source_materials source_materials[] @relation("AssessmentSourceMaterials")
-
-  @@map("assessments")
-  @@schema("public")
-}
-
-model submissions {
-  id            String           @id @db.Uuid @default(uuid())
-  status        SubmissionStatus @default(SUBMITTED)
-  submitted_at  DateTime         @default(now())
-  grade         Float?
-  feedback      String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt @default(now())
-
-  user_id      String @db.Uuid
-  user         users @relation("UserSubmissions", fields: [user_id], references: [id], onDelete: Cascade)
-
-  assessment_id  String @db.Uuid
-  assessment    assessments @relation("AssessmentSubmissions", fields: [assessment_id], references: [id], onDelete: Cascade)
-
-  attachments attachments[] @relation("SubmissionAttachments")
-
-  @@unique([user_id, assessment_id])
-  @@map("submissions")
-  @@schema("public")
-}
-
-model attachments {
-  id            String  @id @db.Uuid @default(uuid())
-  bucket_path   String
-  file_name     String
-  file_size     Int
-  mime_type     String
-  createdAt     DateTime @default(now())
+model reference_materials {
+  id          String   @id @db.Uuid @default(uuid())
+  bucket_path String
+  file_name   String
+  file_size   Int
+  mime_type   String
+  createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt @default(now())
-  submission_id  String @db.Uuid
-  submission    submissions @relation("SubmissionAttachments", fields: [submission_id], references: [id], onDelete: Cascade)
 
-  @@map("attachments")
+  teacher_id  String @db.Uuid
+  teacher     users  @relation("TeacherReferenceMaterials", fields: [teacher_id], references: [id], onDelete: Cascade)
+
+  generated_assessments generated_assessment_reference_materials[] @relation("ReferenceMaterialGeneratedAssessments")
+
+  @@map("reference_materials")
   @@schema("public")
 }
 
-model attendance_sessions {
-  id        String   @id @db.Uuid @default(uuid())
-  title     String?
-  date      DateTime @db.Date
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+model generated_assessment_reference_materials {
+  id                      String @id @db.Uuid @default(uuid())
+  
+  generated_assessment_id String @db.Uuid
+  generated_assessment    generated_assessments @relation("GeneratedAssessmentReferences", fields: [generated_assessment_id], references: [id], onDelete: Cascade)
 
-  course_id String  @db.Uuid
-  course    courses @relation("CourseAttendanceSessions", fields: [course_id], references: [id], onDelete: Cascade)
+  reference_material_id   String @db.Uuid
+  reference_material      reference_materials   @relation("ReferenceMaterialGeneratedAssessments", fields: [reference_material_id], references: [id], onDelete: Cascade)
 
-  records   attendance[] @relation("SessionAttendance")
-
-  @@map("attendance_sessions")
-  @@schema("public")
-}
-
-model attendance {
-  id            String           @id @db.Uuid @default(uuid())
-  status        AttendanceStatus @default(ABSENT)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt @default(now())
-
-  enrollment_id String      @db.Uuid
-  enrollment    enrollments @relation("EnrollmentAttendance", fields: [enrollment_id], references: [id], onDelete: Cascade)
-
-  session_id String              @db.Uuid
-  session    attendance_sessions @relation("SessionAttendance", fields: [session_id], references: [id], onDelete: Cascade)
-
-  @@unique([enrollment_id, session_id])
-  @@map("attendance")
+  @@unique([generated_assessment_id, reference_material_id])
+  @@map("generated_assessment_reference_materials")
   @@schema("public")
 }
