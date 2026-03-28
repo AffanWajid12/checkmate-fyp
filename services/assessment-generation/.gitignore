@@ -1,0 +1,72 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.pyc
+*$py.class
+
+# --- Virtual Environment ---
+venv/
+env/
+.venv/
+ENV/
+
+# --- Environment & Config Files ---
+.env
+*.env
+config.json
+instance/
+
+# --- IDE / Editor Files ---
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# --- OS Files ---
+.DS_Store
+Thumbs.db
+
+# --- Logs & Caches ---
+*.log
+*.out
+*.pid
+logs/
+.cache/
+.pytest_cache/
+coverage/
+.tox/
+
+# --- Build Artifacts ---
+build/
+dist/
+*.egg-info/
+*.egg
+
+# --- Flask / Web ---
+*.db
+*.sqlite3
+migrations/
+
+# --- Jupyter / Notebooks ---
+.ipynb_checkpoints/
+*.ipynb
+
+# --- Docker ---
+docker-compose.override.yml
+.dockerignore
+
+# --- Tests ---
+tests/__pycache__/
+test-results/
+coverage.xml
+
+# --- Backup or Temp Files ---
+*.bak
+*.swp
+*.tmp
+*.orig
+
+.github

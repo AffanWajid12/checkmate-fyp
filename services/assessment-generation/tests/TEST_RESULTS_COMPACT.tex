@@ -1,0 +1,81 @@
+\documentclass{article}
+\usepackage[landscape, margin=0.3in]{geometry}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage[fontsize=9pt]{scrextend}
+
+\begin{document}
+
+\section*{Backend Unit Test Results - Non-LLM Utility Functions}
+
+\noindent\textbf{Summary:} Total=12 | Passed=12 | Failed=0 | Success Rate=100\%
+
+\vspace{0.3cm}
+
+\begin{longtable}{|c|p{3.5cm}|p{1.8cm}|p{1.8cm}|p{2cm}|p{1.8cm}|p{1.8cm}|p{2cm}|c|}
+\hline
+\rowcolor{blue!20}
+\textbf{ID} & \textbf{Objective} & \textbf{Pre} & \textbf{Steps} & \textbf{Test Data} & \textbf{Expected} & \textbf{Post} & \textbf{Actual} & \textbf{P/F} \\
+\hline
+\endfirsthead
+
+\multicolumn{9}{c}{\textit{Continued from previous page}} \\
+\hline
+\rowcolor{blue!20}
+\textbf{ID} & \textbf{Objective} & \textbf{Pre} & \textbf{Steps} & \textbf{Test Data} & \textbf{Expected} & \textbf{Post} & \textbf{Actual} & \textbf{P/F} \\
+\hline
+\endhead
+
+\hline
+\multicolumn{9}{r}{\textit{Continued on next page}} \\
+\endfoot
+
+\hline
+\endlastfoot
+
+UT-01 & Remove markdown code fences from JSON string & JSON with fence & Call sanitize() & \texttt{```json\{"key":"val"\}```} & Clean JSON string & Fence removed & Returned: \texttt{\{"key":"value"\}} & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+UT-02 & Trim whitespace from JSON string & JSON with spaces & Call sanitize() & \texttt{\ \ \{"key":"val"\}\ \ } & Trimmed JSON & Spaces removed & No leading/trailing & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+UT-03 & Handle None value input & None value & Call sanitize() & None & Empty string & Returns "" & Empty string "" & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+UT-04 & Map basic MCQ question from LLM to model & LLM MCQ dict & Call map\_llm() & MCQ with options & Model schema dict & Normalized MCQ & All fields mapped & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+UT-05 & Convert 'mathematical' type to 'math' & Type= mathematical & Call map\_llm() & Math question & Type='math' & Type normalized & Type='math' & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+UT-06 & Handle camelCase keys from LLM output & camelCase keys & Call map\_llm() & questionText key & snake\_case output & Keys normalized & question\_text key & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+UT-07 & Apply default values for missing fields & Minimal dict & Call map\_llm() & Only text field & Defaults applied & All fields present & Defaults: mcq, 1 mark & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+UT-08 & Normalize difficulty to lowercase & HARD (uppercase) & Call map\_llm() & difficulty=HARD & difficulty= 'hard' & Lowercase applied & difficulty='hard' & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+UT-09 & Generate unique IDs for each question & Same input twice & Call map\_llm() 2x & Same dict & Different UUIDs & UUID1 != UUID2 & Unique IDs generated & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+UT-10 & Initialize RAG service with default params & No RAG service & RAGService() & Default params & Initialized object & Object created & embeddings \& splitter & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+UT-11 & Get document count returns 0 when empty & Empty RAG & get\_doc\_ count() & Empty docs[] & Returns 0 & count = 0 & Returned 0 & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+UT-12 & Clear method resets RAG service state & RAG with data & clear() & docs + db set & Empty state & docs=[], db=None & State reset success & \cellcolor{green!40} \textbf{P} \\
+\hline
+
+\end{longtable}
+
+\vspace{0.3cm}
+
+\noindent\textbf{Note:} P = Pass, F = Fail. All tests executed successfully with 100\% pass rate.
+
+\end{document}
