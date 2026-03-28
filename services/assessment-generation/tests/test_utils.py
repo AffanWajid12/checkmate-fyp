@@ -11,7 +11,7 @@ import unittest
 # Add parent directory to path to import app modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.services.assessment_service import _sanitize_json_string, _map_llm_q_to_model
+from app.services.assessment_service import _sanitize_json_string, _normalize_llm_question
 from app.services.rag_service import RAGService, RAGResult
 
 # Print table header once
@@ -117,10 +117,10 @@ class TestMapLlmQuestionToModel(unittest.TestCase):
                 "correct_answer": "4",
                 "marks": 1
             }
-            result = _map_llm_q_to_model(llm_q)
+            result = _normalize_llm_question(llm_q, default_difficulty="medium")
             
-            self.assertEqual(result["question_text"], "What is 2+2?")
-            self.assertEqual(result["question_type"], "mcq")
+            self.assertEqual(result["questionText"], "What is 2+2?")
+            self.assertEqual(result["questionType"], "mcq")
             self.assertEqual(result["marks"], 1)
             
             post = "Normalized MCQ"
@@ -148,8 +148,8 @@ class TestMapLlmQuestionToModel(unittest.TestCase):
                 "question_type": "mathematical",
                 "marks": 2
             }
-            result = _map_llm_q_to_model(llm_q)
-            self.assertEqual(result["question_type"], "math")
+            result = _normalize_llm_question(llm_q, default_difficulty="medium")
+            self.assertEqual(result["questionType"], "math")
             
             post = "Type normalized"
             actual = "Type='math'"
@@ -176,10 +176,10 @@ class TestMapLlmQuestionToModel(unittest.TestCase):
                 "type": "essay",
                 "answer": "Sample answer"
             }
-            result = _map_llm_q_to_model(llm_q)
+            result = _normalize_llm_question(llm_q, default_difficulty="medium")
             
-            self.assertEqual(result["question_text"], "Essay question")
-            self.assertEqual(result["question_type"], "essay")
+            self.assertEqual(result["questionText"], "Essay question")
+            self.assertEqual(result["questionType"], "essay")
             
             post = "Keys normalized"
             actual = "question_text key"
@@ -202,10 +202,10 @@ class TestMapLlmQuestionToModel(unittest.TestCase):
         
         try:
             llm_q = {"text": "Minimal question"}
-            result = _map_llm_q_to_model(llm_q)
+            result = _normalize_llm_question(llm_q, default_difficulty="medium")
             
-            self.assertEqual(result["question_text"], "Minimal question")
-            self.assertEqual(result["question_type"], "mcq")  # default
+            self.assertEqual(result["questionText"], "Minimal question")
+            self.assertEqual(result["questionType"], "mcq")  # default
             self.assertEqual(result["marks"], 1)  # default
             
             post = "All fields present"
@@ -230,9 +230,10 @@ class TestMapLlmQuestionToModel(unittest.TestCase):
         try:
             llm_q = {
                 "question_text": "Test",
+                "expectedAnswer": "Ans",
                 "difficulty": "HARD"
             }
-            result = _map_llm_q_to_model(llm_q)
+            result = _normalize_llm_question(llm_q, default_difficulty="medium")
             self.assertEqual(result["difficulty"], "hard")
             
             post = "Lowercase applied"
@@ -245,23 +246,22 @@ class TestMapLlmQuestionToModel(unittest.TestCase):
         
         print(f"{test_id:<8} | {objective:<45} | {pre:<18} | {steps:<18} | {test_data:<22} | {expected:<18} | {post:<18} | {actual:<22} | {status:<5}")
 
-    def test_09_unique_question_ids(self):
-        """Generate unique IDs for each question"""
+    def test_09_options_normalization(self):
+        """Normalize options and enforce empty options for non-mcq"""
         test_id = "UT-09"
-        objective = "Generate unique IDs for each question"
-        pre = "Same input twice"
-        steps = "Call map_llm() 2x"
-        test_data = "Same dict"
-        expected = "Different UUIDs"
+        objective = "Normalize options and enforce empty options for non-mcq"
+        pre = "Non-mcq with options"
+        steps = "Call normalize()"
+        test_data = "essay with options"
+        expected = "options=[]"
         
         try:
-            llm_q = {"question_text": "Test"}
-            result1 = _map_llm_q_to_model(llm_q)
-            result2 = _map_llm_q_to_model(llm_q)
-            self.assertNotEqual(result1["question_id"], result2["question_id"])
-            
-            post = "UUID1 != UUID2"
-            actual = "Unique IDs generated"
+            llm_q = {"questionText": "Write an essay", "questionType": "essay", "options": ["A"], "expectedAnswer": "..."}
+            result = _normalize_llm_question(llm_q, default_difficulty="medium")
+            self.assertEqual(result["options"], [])
+
+            post = "options emptied"
+            actual = "options=[]"
             status = "PASS"
         except Exception as e:
             post = "Error occurred"
@@ -285,13 +285,12 @@ class TestRAGService(unittest.TestCase):
         
         try:
             rag = RAGService()
-            self.assertIsNotNone(rag.embeddings)
             self.assertIsNotNone(rag.text_splitter)
-            self.assertIsNone(rag.db)
+            self.assertIsNone(rag._bm25)
             self.assertEqual(rag.documents, [])
             
             post = "Object created"
-            actual = "embeddings & splitter"
+            actual = "splitter ready"
             status = "PASS"
         except Exception as e:
             post = "Error occurred"
@@ -336,12 +335,12 @@ class TestRAGService(unittest.TestCase):
         try:
             rag = RAGService()
             rag.documents = ["doc1", "doc2"]
-            rag.db = "some_db"
+            rag._bm25 = "some_index"
             
             rag.clear()
             
             self.assertEqual(rag.documents, [])
-            self.assertIsNone(rag.db)
+            self.assertIsNone(rag._bm25)
             
             post = "docs=[], db=None"
             actual = "State reset success"

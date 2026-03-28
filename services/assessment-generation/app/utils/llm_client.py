@@ -1,30 +1,28 @@
 import os
-from openai import OpenAI
+from typing import Optional
+
+import requests
 
 
-def query_llm(prompt):
-    """
-    Query the Groq API using the OpenAI-compatible chat completions endpoint.
-    
-    Args:
-        prompt: The prompt string to send to the LLM
-        
-    Returns:
-        The LLM response text as a string
-    """
-    client = OpenAI(
-        api_key=os.environ.get("GROQ_API_KEY"),
-        base_url="https://api.groq.com/openai/v1",
-    )
+def query_llm(prompt: str, *, system_prompt: Optional[str] = None, model: Optional[str] = None, timeout_s: int = 120) -> str:
+    """Call the repository's `services/llm` HTTP API and return raw text output."""
+    base_url = (os.environ.get("LLM_SERVICE_URL") or "http://localhost:5003").rstrip("/")
+    url = f"{base_url}/api/generate"
+    payload = {"prompt": prompt}
+    if system_prompt:
+        payload["system_prompt"] = system_prompt
+    if model:
+        payload["model"] = model
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.7,
-        max_tokens=4096,
-    )
-    
-    # Extract the response content from the chat completion
-    return response.choices[0].message.content
+    resp = requests.post(url, json=payload, timeout=timeout_s)
+    try:
+        data = resp.json()
+    except Exception:
+        resp.raise_for_status()
+        raise
+
+    if resp.status_code >= 400:
+        raise ValueError(data.get("error") or "LLM service error")
+    if "response" not in data:
+        raise ValueError("LLM service returned no response")
+    return data["response"]

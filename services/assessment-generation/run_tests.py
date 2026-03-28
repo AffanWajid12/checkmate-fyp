@@ -1,12 +1,14 @@
-"""
-Simple test runner - just runs the test file
-"""
-import sys
+"""Simple test runner for the microservice test suite."""
+
 import os
+import sys
+import unittest
 
-# Add current directory to path
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-# Import and run the test file
 if __name__ == "__main__":
-    import tests.test_utils
+    # Ensure service root is importable
+    sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+    suite = unittest.defaultTestLoader.discover("tests", pattern="test_*.py")
+    runner = unittest.TextTestRunner(verbosity=2)
+    result = runner.run(suite)
+    sys.exit(0 if result.wasSuccessful() else 1)

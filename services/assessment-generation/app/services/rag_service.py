@@ -1,11 +1,13 @@
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.docstore.document import Document
 from langchain_community.document_loaders import PyPDFLoader, UnstructuredPDFLoader
+try:
+    from rank_bm25 import BM25Okapi
+except Exception:  # pragma: no cover
+    BM25Okapi = None
 
 import os
-from typing import List, Dict, Any, Optional
+import re
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 
 
@@ -20,19 +22,21 @@ class RAGResult:
 class RAGService:
     """Service for handling PDF document processing and RAG functionality"""
     
-    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2", chunk_size: int = 500, chunk_overlap: int = 100):
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name=model_name,
-            model_kwargs={"device": "cpu"}
-        )
+    def __init__(self, chunk_size: int = 500, chunk_overlap: int = 100):
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             length_function=len,
             is_separator_regex=False
         )
-        self.db = None
-        self.documents = []
+        self._bm25: Optional[BM25Okapi] = None
+        self._tokenized_docs: List[List[str]] = []
+        self.documents: List[Any] = []
+
+    def _tokenize(self, text: str) -> List[str]:
+        # Simple, dependency-free tokenizer suitable for BM25.
+        # Keeps alphanumerics; lowercases.
+        return re.findall(r"[a-zA-Z0-9]+", (text or "").lower())
 
     def _load_texts_via_langchain(self, pdf_paths: List[str]) -> List[str]:
         """Load and process PDF files into text chunks"""
@@ -91,50 +95,50 @@ class RAGService:
         print("\nSplitting texts into chunks...")
         self.documents = self.text_splitter.create_documents(texts)
         print(f"Created {len(self.documents)} chunks")
-        
-        # Create FAISS vectorstore
-        self.db = FAISS.from_documents(self.documents, self.embeddings)
-        print("Vector store created successfully")
+
+        # Build BM25 index (optional dependency)
+        self._tokenized_docs = [self._tokenize(d.page_content) for d in self.documents]
+        if BM25Okapi is None:
+            self._bm25 = None
+            print("BM25 unavailable (rank-bm25 not installed); RAG search disabled")
+        else:
+            self._bm25 = BM25Okapi(self._tokenized_docs)
+            print("BM25 index created successfully")
 
     def add_texts(self, texts: List[str]) -> None:
         """Add additional texts to the RAG knowledge base"""
         new_documents = self.text_splitter.create_documents(texts)
-        if self.db is None:
-            self.db = FAISS.from_documents(new_documents, self.embeddings)
-        else:
-            self.db.add_documents(new_documents)
         self.documents.extend(new_documents)
+
+        # Rebuild BM25 index (simple and fine for expected scale)
+        self._tokenized_docs = [self._tokenize(d.page_content) for d in self.documents]
+        if BM25Okapi is None:
+            self._bm25 = None
+        else:
+            self._bm25 = BM25Okapi(self._tokenized_docs)
 
     def search(self, query: str, k: int = 3) -> List[RAGResult]:
         """
         Search the vector store for relevant content.
         Returns list of RAGResult objects containing content and similarity scores.
         """
-        if not self.db:
+        if not self._bm25:
             raise ValueError("No documents have been loaded yet.")
-            
-        try:
-            results = self.db.similarity_search_with_score(query, k=k)
-            return [
+
+        tokens = self._tokenize(query)
+        scores = self._bm25.get_scores(tokens)
+        ranked = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)[:k]
+        out: List[RAGResult] = []
+        for idx, score in ranked:
+            doc = self.documents[idx]
+            out.append(
                 RAGResult(
                     content=doc.page_content,
-                    score=score,
-                    metadata=doc.metadata if hasattr(doc, 'metadata') else None
+                    score=float(score),
+                    metadata=doc.metadata if hasattr(doc, "metadata") else None,
                 )
-                for doc, score in results
-            ]
-        except Exception as e:
-            print(f"Error during similarity search: {str(e)}")
-            # Fallback to basic retrieval
-            retriever = self.db.as_retriever(search_kwargs={"k": k})
-            docs = retriever.get_relevant_documents(query)
-            return [
-                RAGResult(
-                    content=doc.page_content,
-                    metadata=doc.metadata if hasattr(doc, 'metadata') else None
-                )
-                for doc in docs[:k]
-            ]
+            )
+        return out
 
     def get_document_count(self) -> int:
         """Return the number of document chunks in the knowledge base"""
@@ -143,7 +147,8 @@ class RAGService:
     def clear(self) -> None:
         """Clear all documents from the knowledge base"""
         self.documents = []
-        self.db = None
+        self._tokenized_docs = []
+        self._bm25 = None
 
 
 # Example usage
