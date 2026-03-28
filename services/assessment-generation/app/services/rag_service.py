@@ -138,6 +138,7 @@ class RAGService:
                     metadata=doc.metadata if hasattr(doc, "metadata") else None,
                 )
             )
+        print("relevant chunks", out)
         return out
 
     def get_document_count(self) -> int:

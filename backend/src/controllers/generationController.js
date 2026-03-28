@@ -3,6 +3,124 @@ import prisma from "../config/prismaClient.js";
 import supabase from "../config/supabaseClient.js";
 import { v4 as uuidv4 } from "uuid";
 import { handleError, generateSignedUrl } from "../utils/courseHelpers.js";
+import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+
+const _safeFilename = (name) => {
+    const base = String(name ?? "")
+        .trim()
+        .replace(/[\\/:*?"<>|]+/g, "-")
+        .replace(/\s+/g, " ")
+        .slice(0, 80);
+    return base || "generated-assessment";
+};
+
+const _getExportQuestions = (questionPayload) => {
+    if (Array.isArray(questionPayload)) return questionPayload;
+    if (questionPayload && typeof questionPayload === "object" && Array.isArray(questionPayload.questions)) {
+        return questionPayload.questions;
+    }
+    return [];
+};
+
+const _renderText = (value) => String(value ?? "").toString();
+
+const _buildDocxFromGeneratedAssessment = (assessment) => {
+    const title = assessment.title || `${assessment.subject} - ${assessment.difficulty} ${assessment.assessment_type}`;
+    const questions = _getExportQuestions(assessment.question_payload);
+
+    const children = [];
+
+    children.push(
+        new Paragraph({
+            text: title,
+            heading: HeadingLevel.HEADING_1,
+        })
+    );
+
+    children.push(
+        new Paragraph({
+            children: [
+                new TextRun({ text: `Subject: ${_renderText(assessment.subject)}  ` }),
+                new TextRun({ text: `Type: ${_renderText(assessment.assessment_type)}  ` }),
+                new TextRun({ text: `Difficulty: ${_renderText(assessment.difficulty)}` }),
+            ],
+        })
+    );
+
+    if (assessment.instructions) {
+        children.push(
+            new Paragraph({
+                text: "Instructions",
+                heading: HeadingLevel.HEADING_2,
+            })
+        );
+        children.push(new Paragraph({ text: _renderText(assessment.instructions) }));
+    }
+
+    children.push(
+        new Paragraph({
+            text: "Questions",
+            heading: HeadingLevel.HEADING_2,
+        })
+    );
+
+    questions.forEach((q, idx) => {
+        const index = q.index ?? idx + 1;
+        const type = q.type ?? q.questionType ?? "mcq";
+        const marks = q.marks ?? 1;
+        const difficulty = q.difficulty ?? assessment.difficulty;
+        const text = q.text ?? q.questionText ?? "";
+
+        children.push(
+            new Paragraph({
+                children: [
+                    new TextRun({ text: `Q${index}. `, bold: true }),
+                    new TextRun({ text: _renderText(text) }),
+                ],
+            })
+        );
+
+        children.push(
+            new Paragraph({
+                children: [
+                    new TextRun({
+                        text: `Type: ${_renderText(type)}  Marks: ${_renderText(marks)}  Difficulty: ${_renderText(difficulty)}`,
+                        italics: true,
+                    }),
+                ],
+            })
+        );
+
+        const options = q.options;
+        if ((type === "mcq" || type === "MCQ") && Array.isArray(options) && options.length) {
+            options.forEach((opt, i) => {
+                const label = String.fromCharCode(65 + i);
+                children.push(
+                    new Paragraph({
+                        text: `${label}. ${_renderText(opt)}`,
+                        bullet: { level: 0 },
+                    })
+                );
+            });
+        }
+
+        const expectedAnswer = q.expectedAnswer ?? q.expected_answer ?? q.answer ?? "";
+        children.push(
+            new Paragraph({
+                children: [
+                    new TextRun({ text: "Expected answer: ", bold: true }),
+                    new TextRun({ text: _renderText(expectedAnswer) }),
+                ],
+            })
+        );
+
+        children.push(new Paragraph({ text: "" }));
+    });
+
+    return new Document({
+        sections: [{ properties: {}, children }],
+    });
+};
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
@@ -510,11 +628,16 @@ export const exportAssessmentDocx = async (req, res) => {
             return res.status(403).json({ message: "Forbidden" });
         }
 
-        // TODO: Implement DOCX generation (Phase 3)
-        // For now, return a placeholder
-        return res.status(501).json({
-            message: "DOCX export is not yet implemented",
-        });
+        const doc = _buildDocxFromGeneratedAssessment(assessment);
+        const buffer = await Packer.toBuffer(doc);
+
+        const filename = `${_safeFilename(assessment.title || assessment.subject)}.docx`;
+        res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        );
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        return res.status(200).send(buffer);
     } catch (error) {
         return handleError(res, error);
     }
