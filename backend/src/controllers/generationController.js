@@ -5,6 +5,188 @@ import { v4 as uuidv4 } from "uuid";
 import { handleError, generateSignedUrl } from "../utils/courseHelpers.js";
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 
+const _stripOuterMathDelimiters = (value) => {
+    let t = String(value ?? "");
+    t = t.replace(/\r\n/g, "\n");
+    const trimmed = t.trim();
+    if ((trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) || (trimmed.startsWith("\\[") && trimmed.endsWith("\\]"))) {
+        return trimmed.slice(2, -2);
+    }
+    if (trimmed.startsWith("$$") && trimmed.endsWith("$$")) {
+        return trimmed.slice(2, -2);
+    }
+    if (trimmed.startsWith("$") && trimmed.endsWith("$")) {
+        return trimmed.slice(1, -1);
+    }
+    return t;
+};
+
+const _latexToUnicode = (value) => {
+    let s = _stripOuterMathDelimiters(value);
+
+    // Normalize some common LaTeX formatting to plain text.
+    s = s
+        .replace(/\\left\s*/g, "")
+        .replace(/\\right\s*/g, "")
+        .replace(/\\,/g, " ")
+        .replace(/\\;/g, " ")
+        .replace(/\\!/g, "")
+        .replace(/\\\\/g, "\n");
+
+    // Unwrap common text wrappers.
+    for (let pass = 0; pass < 4; pass++) {
+        const next = s.replace(/\\(text|mathrm|mathbf|mathit|mathbb|mathcal)\{([^{}]*)\}/g, "$2");
+        if (next === s) break;
+        s = next;
+    }
+
+    // Common commands → Unicode.
+    const replacements = new Map([
+        ["\\times", "×"],
+        ["\\cdot", "·"],
+        ["\\pm", "±"],
+        ["\\leq", "≤"],
+        ["\\geq", "≥"],
+        ["\\neq", "≠"],
+        ["\\approx", "≈"],
+        ["\\to", "→"],
+        ["\\rightarrow", "→"],
+        ["\\leftarrow", "←"],
+        ["\\infty", "∞"],
+        ["\\degree", "°"],
+        ["\\alpha", "α"],
+        ["\\beta", "β"],
+        ["\\gamma", "γ"],
+        ["\\delta", "δ"],
+        ["\\epsilon", "ε"],
+        ["\\theta", "θ"],
+        ["\\lambda", "λ"],
+        ["\\mu", "μ"],
+        ["\\pi", "π"],
+        ["\\sigma", "σ"],
+        ["\\phi", "φ"],
+        ["\\omega", "ω"],
+        ["\\Delta", "Δ"],
+        ["\\Theta", "Θ"],
+        ["\\Lambda", "Λ"],
+        ["\\Pi", "Π"],
+        ["\\Sigma", "Σ"],
+        ["\\Phi", "Φ"],
+        ["\\Omega", "Ω"],
+        ["\\sin", "sin"],
+        ["\\cos", "cos"],
+        ["\\tan", "tan"],
+    ]);
+    for (const [k, v] of replacements) {
+        s = s.split(k).join(v);
+    }
+
+    // Fractions: \frac{a}{b} → a/b (and a few common single-char Unicode fractions)
+    s = s.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, (_, a, b) => {
+        const aa = String(a).trim();
+        const bb = String(b).trim();
+        const key = `${aa}/${bb}`;
+        const fracMap = {
+            "1/2": "½",
+            "1/4": "¼",
+            "3/4": "¾",
+        };
+        return fracMap[key] ?? `${aa}/${bb}`;
+    });
+
+    // Square root: \sqrt{a} → √(a)
+    s = s.replace(/\\sqrt\{([^{}]+)\}/g, (_, a) => `√(${String(a).trim()})`);
+
+    const superMap = {
+        0: "⁰",
+        1: "¹",
+        2: "²",
+        3: "³",
+        4: "⁴",
+        5: "⁵",
+        6: "⁶",
+        7: "⁷",
+        8: "⁸",
+        9: "⁹",
+        "+": "⁺",
+        "-": "⁻",
+        "=": "⁼",
+        "(": "⁽",
+        ")": "⁾",
+        n: "ⁿ",
+        i: "ⁱ",
+    };
+    const subMap = {
+        0: "₀",
+        1: "₁",
+        2: "₂",
+        3: "₃",
+        4: "₄",
+        5: "₅",
+        6: "₆",
+        7: "₇",
+        8: "₈",
+        9: "₉",
+        "+": "₊",
+        "-": "₋",
+        "=": "₌",
+        "(": "₍",
+        ")": "₎",
+        a: "ₐ",
+        e: "ₑ",
+        h: "ₕ",
+        i: "ᵢ",
+        j: "ⱼ",
+        k: "ₖ",
+        l: "ₗ",
+        m: "ₘ",
+        n: "ₙ",
+        o: "ₒ",
+        p: "ₚ",
+        r: "ᵣ",
+        s: "ₛ",
+        t: "ₜ",
+        u: "ᵤ",
+        v: "ᵥ",
+        x: "ₓ",
+    };
+
+    const toMapped = (input, map) => {
+        const chars = String(input);
+        let out = "";
+        for (const ch of chars) {
+            if (!Object.prototype.hasOwnProperty.call(map, ch)) return null;
+            out += map[ch];
+        }
+        return out;
+    };
+
+    // Superscripts: x^{12} or x^2
+    s = s.replace(/\^\{([^{}]+)\}/g, (_, exp) => {
+        const mapped = toMapped(exp.trim(), superMap);
+        return mapped ?? `^(${exp.trim()})`;
+    });
+    s = s.replace(/\^([0-9A-Za-z+\-=()])/g, (_, exp) => superMap[exp] ?? `^${exp}`);
+
+    // Subscripts: x_{12} or x_2
+    s = s.replace(/_\{([^{}]+)\}/g, (_, sub) => {
+        const mapped = toMapped(sub.trim(), subMap);
+        return mapped ?? `_(${sub.trim()})`;
+    });
+    s = s.replace(/_([0-9A-Za-z+\-=()])/g, (_, sub) => subMap[sub] ?? `_${sub}`);
+
+    // Remove remaining inline/block delimiters that might appear mid-string.
+    s = s
+        .replace(/\$\$/g, "")
+        .replace(/\$/g, "")
+        .replace(/\\\[/g, "")
+        .replace(/\\\]/g, "")
+        .replace(/\\\(/g, "")
+        .replace(/\\\)/g, "");
+
+    return s;
+};
+
 const _safeFilename = (name) => {
     const base = String(name ?? "")
         .trim()
@@ -22,7 +204,19 @@ const _getExportQuestions = (questionPayload) => {
     return [];
 };
 
-const _renderText = (value) => String(value ?? "").toString();
+const _renderText = (value) => _latexToUnicode(String(value ?? "")).toString();
+
+const _renderRuns = (value, opts = {}) => {
+    const { italics = false, bold = false } = opts;
+    const text = _renderText(value);
+    const lines = String(text).replace(/\r\n/g, "\n").split("\n");
+    const runs = [];
+    lines.forEach((line, i) => {
+        if (i > 0) runs.push(new TextRun({ text: "", break: 1 }));
+        runs.push(new TextRun({ text: line, italics, bold }));
+    });
+    return runs;
+};
 
 const _buildDocxFromGeneratedAssessment = (assessment) => {
     const title = assessment.title || `${assessment.subject} - ${assessment.difficulty} ${assessment.assessment_type}`;
@@ -54,7 +248,11 @@ const _buildDocxFromGeneratedAssessment = (assessment) => {
                 heading: HeadingLevel.HEADING_2,
             })
         );
-        children.push(new Paragraph({ text: _renderText(assessment.instructions) }));
+        children.push(
+            new Paragraph({
+                children: _renderRuns(assessment.instructions),
+            })
+        );
     }
 
     children.push(
@@ -73,10 +271,7 @@ const _buildDocxFromGeneratedAssessment = (assessment) => {
 
         children.push(
             new Paragraph({
-                children: [
-                    new TextRun({ text: `Q${index}. `, bold: true }),
-                    new TextRun({ text: _renderText(text) }),
-                ],
+                children: [new TextRun({ text: `Q${index}. `, bold: true }), ..._renderRuns(text)],
             })
         );
 
@@ -97,7 +292,7 @@ const _buildDocxFromGeneratedAssessment = (assessment) => {
                 const label = String.fromCharCode(65 + i);
                 children.push(
                     new Paragraph({
-                        text: `${label}. ${_renderText(opt)}`,
+                        children: [new TextRun({ text: `${label}. `, bold: true }), ..._renderRuns(opt)],
                         bullet: { level: 0 },
                     })
                 );
@@ -107,10 +302,7 @@ const _buildDocxFromGeneratedAssessment = (assessment) => {
         const expectedAnswer = q.expectedAnswer ?? q.expected_answer ?? q.answer ?? "";
         children.push(
             new Paragraph({
-                children: [
-                    new TextRun({ text: "Expected answer: ", bold: true }),
-                    new TextRun({ text: _renderText(expectedAnswer) }),
-                ],
+                children: [new TextRun({ text: "Expected answer: ", bold: true }), ..._renderRuns(expectedAnswer)],
             })
         );
 
