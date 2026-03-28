@@ -1,10 +1,9 @@
-// filepath: c:\Users\Administrator\Desktop\FYP\checkmate-fyp\backend\docs\GENERATION-API-REFERENCE.md
 
 # Assessment Generation API Reference
 
 ## Overview
 
-This document describes the Phase 1.2 backend endpoints for assessment generation and reference material management.
+This document describes the complete contract for assessment generation across the backend, microservice, and frontend layers. It implements **Phase 1: Backend-first implementation** (sections 1.2, 1.3, 1.4) of the Integration Plan.
 
 ### Architecture
 
