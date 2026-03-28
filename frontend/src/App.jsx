@@ -20,6 +20,8 @@ import StudentAssessmentPage from "./pages/student/courses/AssessmentPage.jsx";
 import TeacherDashboard from "./pages/teacher/TeacherDashboard.jsx";
 import TeacherAttendanceOverview from "./pages/teacher/attendance/AttendanceOverview.jsx";
 import TeacherAssignmentsOverview from "./pages/teacher/assignments/AssignmentsOverview.jsx";
+import TeacherGenerationsPage from "./pages/teacher/generations/GenerationsPage.jsx";
+import TeacherGenerateAssessmentPage from "./pages/teacher/generations/GenerateAssessmentPage.jsx";
 import TeacherCoursePage from "./pages/teacher/courses/CoursePage/index.jsx";
 import AddAssessmentPage from "./pages/teacher/courses/AddAssessmentPage.jsx";
 import TeacherAssessmentPage from "./pages/teacher/courses/AssessmentPage.jsx";
@@ -145,6 +147,22 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={["TEACHER"]}>
                     <TeacherAssignmentsOverview />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/generations"
+                element={
+                  <RoleProtectedRoute allowedRoles={["TEACHER"]}>
+                    <TeacherGenerationsPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/generations/new"
+                element={
+                  <RoleProtectedRoute allowedRoles={["TEACHER"]}>
+                    <TeacherGenerateAssessmentPage />
                   </RoleProtectedRoute>
                 }
               />
