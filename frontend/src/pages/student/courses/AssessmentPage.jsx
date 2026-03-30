@@ -85,15 +85,15 @@ const formatDateTime = (iso) => {
 };
 
 const TYPE_META = {
-    QUIZ:       { label: 'Quiz',       color: 'bg-blue-50 text-blue-600 border-blue-200' },
+    QUIZ: { label: 'Quiz', color: 'bg-blue-50 text-blue-600 border-blue-200' },
     ASSIGNMENT: { label: 'Assignment', color: 'bg-purple-50 text-purple-600 border-purple-200' },
-    EXAM:       { label: 'Exam',       color: 'bg-amber-50 text-amber-600 border-amber-200' },
+    EXAM: { label: 'Exam', color: 'bg-amber-50 text-amber-600 border-amber-200' },
 };
 
 const STATUS_META = {
     SUBMITTED: { label: 'Submitted', color: 'bg-success-light text-success' },
-    LATE:      { label: 'Late',      color: 'bg-amber-50 text-amber-600' },
-    GRADED:    { label: 'Graded',    color: 'bg-accent-50 text-accent-500' },
+    LATE: { label: 'Late', color: 'bg-amber-50 text-amber-600' },
+    GRADED: { label: 'Graded', color: 'bg-accent-50 text-accent-500' },
 };
 
 const MAX_SIZE_BYTES = 20 * 1024 * 1024;
@@ -437,72 +437,72 @@ const StudentAssessmentPage = () => {
                 {/* Back */}
                 <button
                     onClick={() => navigate(-1)}
-                    className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-6"
+                    className="flex items-center bg-black p-2 text-sm rounded-xl text-white font-bold gap-1.5 transition-colors mb-4 cursor-pointer"
                 >
                     <BackIcon />
                     Back to Course
                 </button>
 
-            {/* Two-column layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left column: details */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Title + badge */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${typeMeta.color}`}>
-                                {typeMeta.label}
-                            </span>
-                            {assessment.due_date && (
-                                <span className={`flex items-center gap-1 text-xs ${new Date(assessment.due_date) < new Date() ? 'text-error' : 'text-text-muted'}`}>
-                                    <ClockIcon />
-                                    Due {formatDateTime(assessment.due_date)}
+                {/* Two-column layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left column: details */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Title + badge */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${typeMeta.color}`}>
+                                    {typeMeta.label}
                                 </span>
+                                {assessment.due_date && (
+                                    <span className={`flex items-center gap-1 text-xs ${new Date(assessment.due_date) < new Date() ? 'text-error' : 'text-text-muted'}`}>
+                                        <ClockIcon />
+                                        Due {formatDateTime(assessment.due_date)}
+                                    </span>
+                                )}
+                            </div>
+                            <h1 className="text-2xl font-bold text-text-primary">{assessment.title}</h1>
+                        </div>
+
+                        {/* Instructions */}
+                        <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-6">
+                            <h2 className="text-sm font-bold text-text-primary mb-3">Instructions</h2>
+                            {assessment.instructions ? (
+                                <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
+                                    {assessment.instructions}
+                                </p>
+                            ) : (
+                                <p className="text-sm text-text-muted italic">No instructions provided.</p>
                             )}
                         </div>
-                        <h1 className="text-2xl font-bold text-text-primary">{assessment.title}</h1>
-                    </div>
 
-                    {/* Instructions */}
-                    <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-6">
-                        <h2 className="text-sm font-bold text-text-primary mb-3">Instructions</h2>
-                        {assessment.instructions ? (
-                            <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
-                                {assessment.instructions}
-                            </p>
-                        ) : (
-                            <p className="text-sm text-text-muted italic">No instructions provided.</p>
+                        {/* Source Materials */}
+                        {assessment.source_materials?.length > 0 && (
+                            <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-6">
+                                <h2 className="text-sm font-bold text-text-primary mb-3">
+                                    Source Materials
+                                    <span className="ml-2 text-xs font-normal text-text-muted">
+                                        ({assessment.source_materials.length} file{assessment.source_materials.length !== 1 ? 's' : ''})
+                                    </span>
+                                </h2>
+                                <div className="flex flex-wrap gap-2">
+                                    {assessment.source_materials.map((m) => (
+                                        <MaterialChip key={m.id} material={m} />
+                                    ))}
+                                </div>
+                            </div>
                         )}
                     </div>
 
-                    {/* Source Materials */}
-                    {assessment.source_materials?.length > 0 && (
-                        <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-6">
-                            <h2 className="text-sm font-bold text-text-primary mb-3">
-                                Source Materials
-                                <span className="ml-2 text-xs font-normal text-text-muted">
-                                    ({assessment.source_materials.length} file{assessment.source_materials.length !== 1 ? 's' : ''})
-                                </span>
-                            </h2>
-                            <div className="flex flex-wrap gap-2">
-                                {assessment.source_materials.map((m) => (
-                                    <MaterialChip key={m.id} material={m} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    {/* Right column: submission portal */}
+                    <div>
+                        <SubmissionPortal
+                            assessment={assessment}
+                            submission={submission ?? null}
+                            courseId={courseId}
+                            assessmentId={assessmentId}
+                        />
+                    </div>
                 </div>
-
-                {/* Right column: submission portal */}
-                <div>
-                    <SubmissionPortal
-                        assessment={assessment}
-                        submission={submission ?? null}
-                        courseId={courseId}
-                        assessmentId={assessmentId}
-                    />
-                </div>
-            </div>
             </div>
         </StudentSidebar>
     );

@@ -16,6 +16,8 @@ import {
     getCourseAnnouncements,
     addAnnouncementComment,
     deleteAnnouncementComment,
+    updateAnnouncement,
+    deleteAnnouncement,
 } from "../controllers/announcementController.js";
 
 import {
@@ -28,6 +30,7 @@ import {
 import {
     addAssessment,
     createAssessment,
+    updateAssessment,
     addAssessmentSourceMaterials,
     getAssessmentDetails,
     submitAssessment,
@@ -39,6 +42,7 @@ import {
     deleteSourceMaterial,
     teacherCreateSubmission,
     teacherAppendSubmissionFiles,
+    deleteAssessment,
 } from "../controllers/assessmentController.js";
 
 import { runPlagiarismCheck } from "../controllers/plagiarismController.js";
@@ -58,6 +62,8 @@ router.delete("/:id", verifyUser, verifyUserType("TEACHER"), deleteCourse);
 
 // Announcements
 router.post("/:courseId/announcements", verifyUser, verifyUserType("TEACHER"), uploadMultiple, addAnnouncement);
+router.patch("/:courseId/announcements/:announcementId", verifyUser, verifyUserType("TEACHER"), uploadMultiple, updateAnnouncement);
+router.delete("/:courseId/announcements/:announcementId", verifyUser, verifyUserType("TEACHER"), deleteAnnouncement);
 
 // Attendance
 router.post("/:courseId/attendance", verifyUser, verifyUserType("TEACHER"), markAttendance);
@@ -67,6 +73,8 @@ router.delete("/:courseId/attendance/:sessionId", verifyUser, verifyUserType("TE
 // Assessment management (teacher)
 router.post("/:courseId/assessments", verifyUser, verifyUserType("TEACHER"), uploadMultiple, createAssessment);
 router.post("/:courseId/announcements/:announcementId/assessments", verifyUser, verifyUserType("TEACHER"), uploadMultiple, addAssessment);
+router.patch("/:courseId/assessments/:assessmentId", verifyUser, verifyUserType("TEACHER"), updateAssessment);
+router.delete("/:courseId/assessments/:assessmentId", verifyUser, verifyUserType("TEACHER"), deleteAssessment);
 router.post(
     "/:courseId/assessments/:assessmentId/source-materials",
     verifyUser,

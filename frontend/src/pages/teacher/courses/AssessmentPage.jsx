@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAssessmentDetails, useRunPlagiarismCheck } from '../../../hooks/useCourses';
+import { useAssessmentDetails, useRunPlagiarismCheck, useDeleteAssessment, useUpdateAssessment } from '../../../hooks/useCourses';
 import TeacherSidebar from '../TeacherSidebar';
 import AIGradingTab from "./AIGradingTab";
+import { TrashIcon, PencilIcon, XMarkIcon } from '../courses/CoursePage/components/Icons';
+import toast from 'react-hot-toast';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -565,14 +567,147 @@ const PageSkeleton = () => (
     </div>
 );
 
+// ─── Edit Modal ──────────────────────────────────────────────────────────────
+
+const EditAssessmentModal = ({ assessment, courseId, onClose }) => {
+    const [title, setTitle] = useState(assessment.title);
+    const [type, setType] = useState(assessment.type);
+    const [instructions, setInstructions] = useState(assessment.instructions || '');
+    const [dueDate, setDueDate] = useState(assessment.due_date ? assessment.due_date.split('T')[0] : '');
+    const [dueTime, setDueTime] = useState(assessment.due_date ? new Date(assessment.due_date).toTimeString().slice(0, 5) : '23:59');
+
+    const { mutateAsync: updateAsmt, isPending } = useUpdateAssessment(courseId);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        let finalDueDate = null;
+        if (dueDate) {
+            finalDueDate = new Date(`${dueDate}T${dueTime}:00`).toISOString();
+        }
+
+        try {
+            await updateAsmt({
+                assessmentId: assessment.id,
+                title: title.trim(),
+                type,
+                instructions: instructions.trim(),
+                due_date: finalDueDate,
+            });
+            toast.success('Assessment settings updated');
+            onClose();
+        } catch (error) {
+            console.error('Update failed:', error);
+            toast.error(error.response?.data?.message || 'Failed to update assessment');
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-neutral-200">
+                <div className="flex items-center justify-between p-6 border-b border-neutral-100">
+                    <h3 className="text-lg font-bold text-text-primary">Edit Assessment Settings</h3>
+                    <button onClick={onClose} className="p-2 rounded-xl hover:bg-neutral-100 transition-colors"><XMarkIcon /></button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-text-muted uppercase mb-1">Title</label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            required
+                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-text-muted uppercase mb-1">Type</label>
+                        <select
+                            value={type}
+                            onChange={(e) => setType(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none"
+                        >
+                            <option value="ASSIGNMENT">Assignment</option>
+                            <option value="QUIZ">Quiz</option>
+                            <option value="EXAM">Exam</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-text-muted uppercase mb-1">Instructions</label>
+                        <textarea
+                            value={instructions}
+                            onChange={(e) => setInstructions(e.target.value)}
+                            rows={4}
+                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none resize-none"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-text-muted uppercase mb-1">Due Date</label>
+                            <input
+                                type="date"
+                                value={dueDate}
+                                onChange={(e) => setDueDate(e.target.value)}
+                                className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-text-muted uppercase mb-1">Due Time</label>
+                            <input
+                                type="time"
+                                value={dueTime}
+                                onChange={(e) => setDueTime(e.target.value)}
+                                className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 px-4 py-3 rounded-xl border border-neutral-200 text-sm font-bold text-text-secondary hover:bg-neutral-50 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isPending}
+                            className="flex-1 px-4 py-3 rounded-xl bg-primary text-text-inverse text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                        >
+                            {isPending ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const TeacherAssessmentPage = () => {
     const { courseId, assessmentId } = useParams();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('details');
+    const [showEditModal, setShowEditModal] = useState(false);
 
     const { data, isLoading, isError } = useAssessmentDetails(courseId, assessmentId);
+    const { mutateAsync: deleteAsmt, isPending: isDeleting } = useDeleteAssessment(courseId);
+
+    const handleDelete = async () => {
+        if (!window.confirm('Are you sure you want to delete this assessment? All student submissions and attachments will be permanently deleted.')) {
+            return;
+        }
+
+        try {
+            await deleteAsmt(assessmentId);
+            toast.success('Assessment deleted successfully');
+            navigate(`/teacher/courses/${courseId}`);
+        } catch (error) {
+            console.error('Delete failed:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete assessment');
+        }
+    };
 
     if (isLoading) return <TeacherSidebar><div className="max-w-4xl mx-auto p-6"><PageSkeleton /></div></TeacherSidebar>;
     if (isError || !data) return (
@@ -602,14 +737,14 @@ const TeacherAssessmentPage = () => {
                     <button
                         onClick={() => navigate(-1)}
                         className="flex items-center bg-black p-2 text-sm rounded-xl text-white font-bold gap-1.5 transition-colors mb-4 cursor-pointer"
+
                     >
                         <BackIcon />
                         Back to Course
                     </button>
 
-                    <div className="flex flex-col sm:flex-row sm:items-start border border-neutral-200 shadow-sm sm:justify-between gap-3 bg-white p-6 rounded-2xl">
+                    <div className="flex flex-col sm:flex-row sm:items-center border border-neutral-200 shadow-sm sm:justify-between gap-4 bg-white p-6 rounded-2xl">
                         <div>
-
                             <h1 className="text-2xl font-bold text-text-primary mb-2">{assessment.title}</h1>
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${typeMeta.color}`}>
@@ -620,11 +755,52 @@ const TeacherAssessmentPage = () => {
                                 )}
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                            <span className="text-sm text-text-secondary font-medium">{totalSubs} submission{totalSubs !== 1 ? 's' : ''}</span>
+                        <div className="flex flex-col items-end gap-3 flex-shrink-0">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setShowEditModal(true)}
+                                    className="px-4 py-2 rounded-xl text-text-muted hover:text-accent-500 hover:bg-neutral-50 transition-all cursor-pointer border border-neutral-200 hover:border-accent-400"
+                                    title="Edit Assessment Settings"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <PencilIcon size={14} />
+                                        <span className="text-xs font-semibold uppercase tracking-wider">Edit Settings</span>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    disabled={isDeleting}
+                                    className="p-2 rounded-xl text-text-muted hover:text-error hover:bg-error/10 transition-all disabled:opacity-50 cursor-pointer border border-neutral-100 hover:border-error/20"
+                                    title="Delete Assessment"
+                                >
+                                    {isDeleting ? (
+                                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        </svg>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <TrashIcon size={14} />
+                                            <span className="text-xs font-semibold uppercase tracking-wider">Delete</span>
+                                        </div>
+                                    )}
+                                </button>
+                            </div>
+                            <span className="text-xs text-text-secondary font-bold bg-neutral-50 px-3 py-1 rounded-full border border-neutral-100">
+                                {totalSubs} submission{totalSubs !== 1 ? 's' : ''}
+                            </span>
                         </div>
                     </div>
                 </div>
+
+                {/* Edit Modal */}
+                {showEditModal && (
+                    <EditAssessmentModal
+                        assessment={assessment}
+                        courseId={courseId}
+                        onClose={() => setShowEditModal(false)}
+                    />
+                )}
 
                 {/* Tabs */}
                 <div className="flex gap-2 mb-6 bg-neutral-100 p-1 rounded-xl w-fit">

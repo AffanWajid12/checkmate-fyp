@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { useTeacherCourses } from '../../../hooks/useCourses';
+import { useTeacherCourses, useDeleteAssessment } from '../../../hooks/useCourses';
 import TeacherSidebar from '../TeacherSidebar';
+import { TrashIcon } from '../courses/CoursePage/components/Icons';
+import toast from 'react-hot-toast';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -21,23 +23,60 @@ const TYPE_META = {
 
 const AssignmentCard = ({ assessment, course }) => {
     const navigate = useNavigate();
+    const { mutateAsync: deleteAsmt, isPending: isDeleting } = useDeleteAssessment(course.id);
     const typeMeta = TYPE_META[assessment.type] ?? TYPE_META.ASSIGNMENT;
     const isPastDue = assessment.due_date && new Date(assessment.due_date) < new Date();
+
+    const handleDelete = async (e) => {
+        e.stopPropagation();
+        if (!window.confirm('Are you sure you want to delete this assessment? All student submissions and attachments will be permanently deleted.')) {
+            return;
+        }
+
+        try {
+            await deleteAsmt(assessment.id);
+            toast.success('Assessment deleted successfully');
+        } catch (error) {
+            console.error('Delete failed:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete assessment');
+        }
+    };
 
     return (
         <div
             onClick={() => navigate(`/teacher/courses/${course.id}/assessments/${assessment.id}`)}
-            className="bg-background rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer p-5 flex flex-col gap-3 group"
+            className="bg-background rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer p-5 flex flex-col gap-3 group relative"
         >
             {/* Header: Course + Type */}
             <div className="flex justify-between items-start gap-3">
-                <p className="text-xs font-semibold text-text-secondary uppercase tracking-widest truncate">
-                    {course.code}
-                </p>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${typeMeta.color}`}>
-                    {typeMeta.label}
-                </span>
+                <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-text-secondary uppercase tracking-widest truncate">
+                        {course.code}
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${typeMeta.color}`}>
+                        {typeMeta.label}
+                    </span>
+                </div>
             </div>
+
+            {/* Absolute Delete Button - Top Right */}
+            <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="absolute -top-2 -right-2 p-2 rounded-xl bg-white shadow-sm border border-neutral-200 text-text-muted hover:text-error hover:border-error/20 hover:bg-error/5 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50 cursor-pointer z-10"
+                title="Delete Assessment"
+            >
+                {isDeleting ? (
+                    <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                ) : (
+                    <TrashIcon size={14} />
+                )}
+            </button>
 
             {/* Title */}
             <div>

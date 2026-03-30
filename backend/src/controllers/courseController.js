@@ -41,7 +41,11 @@ export const getTeacherCourses = async (req, res) => {
                 students: {
                     include: { student: true },
                 },
-                announcements: true,
+                announcements: {
+                    include: {
+                        assessments: true,
+                    },
+                },
             },
         });
 
@@ -110,6 +114,17 @@ export const getEnrolledCourses = async (req, res) => {
                         teacher: true,
                         students: {
                             include: { student: true },
+                        },
+                        announcements: {
+                            include: {
+                                assessments: {
+                                    include: {
+                                        submissions: {
+                                            where: { user_id: req.user.id },
+                                        },
+                                    },
+                                },
+                            },
                         },
                     },
                 },

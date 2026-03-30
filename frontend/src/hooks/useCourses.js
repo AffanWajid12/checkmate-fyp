@@ -168,6 +168,23 @@ export const useAddAnnouncement = (courseId) => {
 };
 
 /**
+ * DELETE /api/courses/:courseId/announcements/:announcementId
+ * Deletes an announcement and all related data (cascade assessment delete).
+ */
+export const useDeleteAnnouncement = (courseId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (announcementId) => {
+            const { data } = await apiClient.delete(`/api/courses/${courseId}/announcements/${announcementId}`);
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });
+        },
+    });
+};
+
+/**
  * POST /api/courses/:courseId/announcements/:announcementId/comments
  * Body: { content: string }
  * Adds a comment to a specific announcement.
@@ -304,6 +321,24 @@ export const useCreateAssessment = (courseId) => {
         },
         onSuccess: () => {
             // Assessment creation should reflect immediately in announcements + assessments views
+            queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });
+        },
+    });
+};
+
+/**
+ * DELETE /api/courses/:courseId/assessments/:assessmentId
+ * Deletes an assessment by teacher.
+ */
+export const useDeleteAssessment = (courseId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (assessmentId) => {
+            const { data } = await apiClient.delete(`/api/courses/${courseId}/assessments/${assessmentId}`);
+            return data;
+        },
+        onSuccess: () => {
+            // Assessment deletion should reflect in announcements + assessments
             queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });
         },
     });
@@ -578,6 +613,48 @@ export const useClearGradingResources = () => {
         },
         onSuccess: (_, assessmentId) => {
             queryClient.setQueryData(["grading-resources", assessmentId], []);
+        },
+    });
+};
+
+/**
+ * PATCH /api/courses/:courseId/announcements/:announcementId
+ * Updates an announcement's title/description and appends resources.
+ */
+export const useUpdateAnnouncement = (courseId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ announcementId, formData }) => {
+            const { data } = await apiClient.patch(
+                `/api/courses/${courseId}/announcements/${announcementId}`,
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } }
+            );
+            return data.announcement;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });
+        },
+    });
+};
+
+/**
+ * PATCH /api/courses/:courseId/assessments/:assessmentId
+ * Updates assessment settings (title, type, instructions, due_date).
+ */
+export const useUpdateAssessment = (courseId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ assessmentId, ...updateData }) => {
+            const { data } = await apiClient.patch(
+                `/api/courses/${courseId}/assessments/${assessmentId}`,
+                updateData
+            );
+            return data.assessment;
+        },
+        onSuccess: (_, { assessmentId }) => {
+            queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });
+            queryClient.invalidateQueries({ queryKey: courseKeys.assessmentDetails(courseId, assessmentId) });
         },
     });
 };

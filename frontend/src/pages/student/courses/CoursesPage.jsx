@@ -19,15 +19,15 @@ const CARD_COLORS = [
 
 // Student avatar icon (generic person silhouette or image)
 const AvatarIcon = ({ className = '', src, name }) => (
-    <div className={`rounded-full overflow-hidden border-2 border-white/60 bg-neutral-200 flex items-center justify-center ${className}`}>
+    <div className={`rounded-full overflow-hidden border-2 border-[#ccfbf1] bg-neutral-200 flex items-center justify-center ${className}`}>
         {src && src.trim() !== "" ? (
             <img 
-                src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/profiles/${src}`} 
+                src={src} 
                 alt={name} 
                 className="w-full h-full object-cover"
                 onError={(e) => {
                     e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
+                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
                 }}
             />
         ) : null}
