@@ -128,7 +128,7 @@ const TeacherCoursePage = () => {
                 {/* Back */}
                 <button
                     onClick={() => navigate('/teacher/dashboard')}
-                    className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4 cursor-pointer"
+                    className="flex items-center bg-black p-2 text-sm rounded-xl text-white font-bold gap-1.5 transition-colors mb-4 cursor-pointer"
                 >
                     <BackIcon />
                     Back to Courses
@@ -195,11 +195,6 @@ const TeacherCoursePage = () => {
                             </div>
                         </div>
 
-                        {/* Right side */}
-                        <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-neutral-200 text-sm font-semibold text-text-secondary hover:bg-neutral-50 hover:text-text-primary transition-colors cursor-pointer">
-                            <EditIcon />
-                            Edit Course
-                        </button>
                     </div>
                 </div>
 

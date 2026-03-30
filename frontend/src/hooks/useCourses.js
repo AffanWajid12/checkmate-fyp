@@ -490,3 +490,94 @@ export const usePairStudentAnswers = (courseId, assessmentId) => {
         },
     });
 };
+export const useGenerateRubric = () => {
+    return useMutation({
+        mutationFn: async ({ question, points, columns, criteria, path }) => {
+            const { data } = await apiClient.post("/api/grading/generate-rubric", {
+                question,
+                points,
+                columns,
+                criteria,
+                path
+            });
+            return data;
+        },
+    });
+};
+
+export const useGenerateRubricsBulk = () => {
+    return useMutation({
+        mutationFn: async ({ student_exam, columns, force }) => {
+            const { data } = await apiClient.post("/api/grading/generate-rubrics-bulk", {
+                student_exam,
+                columns,
+                force
+            });
+            return data;
+        },
+    });
+};
+
+export const useGradeExam = () => {
+    return useMutation({
+        mutationFn: async ({ student_exam, strictness_level, course_material, additional_instructions, text_instructions, math_instructions, coding_instructions }) => {
+            const { data } = await apiClient.post("/api/grading/grade", {
+                student_exam,
+                strictness_level,
+                course_material,
+                additional_instructions,
+                text_instructions,
+                math_instructions,
+                coding_instructions
+            });
+            return data;
+        },
+    });
+};
+/**
+ * AI Grading Resources (RAG)
+ */
+/**
+ * AI Grading Resources (RAG)
+ */
+export const useUploadGradingResource = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ assessmentId, file }) => {
+            const formData = new FormData();
+            formData.append("assessmentId", assessmentId);
+            formData.append("file", file);
+            const response = await apiClient.post("/api/grading/upload-resource", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            return response.data;
+        },
+        onSuccess: (_, { assessmentId }) => {
+            queryClient.invalidateQueries(["grading-resources", assessmentId]);
+        },
+    });
+};
+
+export const useGetGradingResources = (assessmentId) => {
+    return useQuery({
+        queryKey: ["grading-resources", assessmentId],
+        queryFn: async () => {
+            const response = await apiClient.get(`/api/grading/resources/${assessmentId}`);
+            return response.data;
+        },
+        enabled: !!assessmentId,
+    });
+};
+
+export const useClearGradingResources = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (assessmentId) => {
+            const response = await apiClient.post("/api/grading/clear-resources", { assessmentId });
+            return response.data;
+        },
+        onSuccess: (_, assessmentId) => {
+            queryClient.setQueryData(["grading-resources", assessmentId], []);
+        },
+    });
+};

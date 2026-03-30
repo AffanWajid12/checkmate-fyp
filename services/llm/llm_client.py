@@ -3,6 +3,7 @@ import requests
 import json
 from dotenv import load_dotenv
 from google import genai
+from groq import Groq
 load_dotenv()
 
 class LLMClient:
@@ -14,7 +15,7 @@ class LLMClient:
     """
     def __init__(self):
         self.provider = os.getenv("LLM_PROVIDER", "ollama").lower()
-        
+        print("Provider: ",self.provider)
         # Default models based on provider
         if self.provider == "ollama":
             self.default_model = os.getenv("LLM_MODEL", "gemma3")
@@ -22,7 +23,10 @@ class LLMClient:
             self.client = genai.Client()
             self.default_model = "gemini-3.1-flash-lite-preview"
         elif self.provider == "groq":
-            self.default_model = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
+            self.client = Groq(
+                api_key=os.environ.get("GROQ_API_KEY"),
+            )
+            self.default_model = os.getenv("LLM_MODEL", "groq")
         else:
             self.default_model = os.getenv("LLM_MODEL", "unknown")
 
@@ -41,12 +45,28 @@ class LLMClient:
         if self.provider == "ollama":
             return self._call_ollama(prompt, system_prompt, model)
         elif self.provider == "gemini":
+            config = None
+            if system_prompt:
+                from google.genai import types
+                config = types.GenerateContentConfig(system_instruction=system_prompt)
+            
             response = self.client.models.generate_content(
-                model="gemini-3.1-flash-lite-preview", contents=prompt
+                model=model if model != "gemini" and model != "unknown" else "gemini-2.0-flash", 
+                contents=prompt,
+                config=config
             )
             return response.text
         elif self.provider == "groq":
-            return self._call_groq(prompt, system_prompt, model)
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
+            chat_completion = self.client.chat.completions.create(
+                messages=messages,
+                model="openai/gpt-oss-120b"
+            )   
+            return chat_completion.choices[0].message.content
         else:
             raise ValueError(f"Unknown LLM_PROVIDER: {self.provider}")
 
@@ -67,32 +87,4 @@ class LLMClient:
         response.raise_for_status()
         return response.json().get("response", "")
 
-  
-    def _call_groq(self, prompt, system_prompt, model):
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        
-        messages.append({"role": "user", "content": prompt})
-
-        payload = {
-            "model": model,
-            "messages": messages,
-            "temperature": 0.2
-        }
-
-        headers = {
-            "Authorization": f"Bearer {self.groq_api_key}",
-            "Content-Type": "application/json"
-        }
-
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
-
-        data = response.json()
-        try:
-            return data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError):
-            return ""
+ 
