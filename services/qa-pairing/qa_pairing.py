@@ -60,8 +60,9 @@ def pair_questions_and_answers(questions_json, student_text):
     The "Questions JSON Template" provided below is a **SACRED SKELETON**.
     1. **NO SCHEMA MUTATION**: You are strictly forbidden from adding new objects or subparts.
     2. **STRICT KEY PRESERVATION**: If `subparts` is `[]` in the template, it **MUST** remain `[]` in your output. Never create a subpart (like 'a' or 'b') if it doesn't already exist.
-    3. **NO DUPLICATION**: Never create a subpart that repeats the "text" of the parent question. 
-    4. **EXACT COUNT**: The output array must have the exact same number of objects, in the same order, and hierarchy as the input template.
+    3. **PRESERVE METADATA**: You must preserve all extra fields in the input objects (like `path`, `type`, `points`, `total_marks`, etc.). DO NOT REMOVE THEM.
+    4. **NO DUPLICATION**: Never create a subpart that repeats the "text" of the parent question. 
+    5. **EXACT COUNT**: The output array must have the exact same number of objects, in the same order, and hierarchy as the input template.
 
     ### ❗ MAPPING LOGIC
     - **LEAF NODES ONLY**: Only "leaf nodes" (questions where `subparts` is `[]`) should receive a "student_answer". 
@@ -70,26 +71,6 @@ def pair_questions_and_answers(questions_json, student_text):
     - **NULL HANDLING**: If no answer is found for a specific leaf node, "student_answer" MUST be null.
     - **OLLAMA FORMAT**: Output ONLY valid JSON. No markdown blocks (like ```json), no conversational text, no commentary.
 
-    ### ❌ WRONG OUTPUT (DO NOT DO THIS)
-    [
-      {{
-        "label": "Q1",
-        "text": "What is AI?",
-        "subparts": [ {{ "label": "a", "text": "What is AI?", "student_answer": "..." }} ] 
-      }}
-    ]
-    (Reason: You created a subpart 'a' when the template had an empty list, and duplicated the text. This is a severe violation.)
-
-    ### ✅ CORRECT OUTPUT (DO THIS)
-    [
-      {{
-        "label": "Q1",
-        "text": "What is AI?",
-        "student_answer": "...",
-        "subparts": []
-      }}
-    ]
-
     ### 🎯 TARGET DATA TO PROCESS
     Questions JSON Template:
     {json.dumps(questions_json)}
@@ -97,7 +78,7 @@ def pair_questions_and_answers(questions_json, student_text):
     Student Exam Text (OCR Evidence):
     {student_text}
 
-    Output accurately mapped JSON with "student_answer" fields:
+    Output accurately mapped JSON with "student_answer" fields and ALL original metadata preserved:
     """
 
     response = call_llm(prompt)

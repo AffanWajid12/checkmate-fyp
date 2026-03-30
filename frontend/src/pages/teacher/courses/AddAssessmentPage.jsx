@@ -97,7 +97,7 @@ const FileDropzone = ({ files, onChange }) => {
                 onDragLeave={() => setDragging(false)}
                 onDrop={onDrop}
                 onClick={() => inputRef.current?.click()}
-                className={`flex flex-col items-center justify-center gap-2 px-6 py-10 rounded-2xl border-2 border-dashed cursor-pointer transition-colors ${dragging ? 'border-accent-400 bg-accent-50' : 'border-neutral-200 bg-neutral-50 hover:border-accent-300 hover:bg-accent-50'}`}
+                className={`flex bg-white flex-col items-center justify-center gap-2 px-6 py-10 rounded-2xl border-2 border-dashed cursor-pointer transition-colors ${dragging ? 'border-accent-400 bg-accent-50' : 'border-neutral-200 bg-neutral-50 hover:border-accent-300 hover:bg-accent-50'}`}
             >
                 <UploadIcon />
                 <p className="text-sm font-medium text-text-secondary">
@@ -187,12 +187,12 @@ const AddAssessmentPage = () => {
 
     return (
         <TeacherSidebar>
-            <div className="max-w-2xl mx-auto pb-16 p-6">
+            <div className="max-w-3xl mx-auto pb-16 p-6">
                 {/* Header */}
                 <div className="mb-8">
                     <button
                         onClick={() => navigate(-1)}
-                        className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4"
+                        className="flex items-center bg-black p-2 text-sm rounded-xl text-white font-bold gap-1.5 transition-colors mb-4 cursor-pointer"
                     >
                         <BackIcon />
                         Back
@@ -212,7 +212,7 @@ const AddAssessmentPage = () => {
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="e.g. Midterm Exam, Problem Set 3…"
-                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
+                            className="w-full bg-white px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
                         />
                     </div>
 
@@ -228,7 +228,7 @@ const AddAssessmentPage = () => {
                                     type="button"
                                     data-active={type === opt.value}
                                     onClick={() => setType(opt.value)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${type === opt.value
+                                    className={` bg-white px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${type === opt.value
                                         ? opt.color.replace('data-[active=true]:', '')
                                         : 'border-neutral-200 text-text-secondary hover:bg-neutral-100'
                                         }`}
@@ -248,7 +248,7 @@ const AddAssessmentPage = () => {
                             type="datetime-local"
                             value={dueDate}
                             onChange={(e) => setDueDate(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
+                            className="w-full bg-white px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
                         />
                     </div>
 
@@ -262,7 +262,7 @@ const AddAssessmentPage = () => {
                             onChange={(e) => setInstructions(e.target.value)}
                             placeholder="Describe what students need to do…"
                             rows={5}
-                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all resize-none"
+                            className="w-full bg-white px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all resize-none"
                         />
                     </div>
 

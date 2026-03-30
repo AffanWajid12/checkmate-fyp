@@ -356,7 +356,7 @@ const PlagiarismTab = ({ courseId, assessmentId }) => {
                 <h3 className="font-bold text-lg mb-2">Backend Restart Required</h3>
                 <p className="text-sm max-w-md mx-auto text-red-600 space-y-2">
                     <span>The plagiarism detection format has been upgraded to a student-wise report, but your Python backend is still returning the old format because it needs to be restarted.</span>
-                    <br/><br/>
+                    <br /><br />
                     <strong className="block text-red-800 bg-red-100 py-2 rounded-lg">Please stop and restart your Python plagiarism service (<code>python app.py</code>)</strong>
                 </p>
                 <button
@@ -493,10 +493,10 @@ const PlagiarismTab = ({ courseId, assessmentId }) => {
                 {entries.map(([studentName, data]) => {
                     const aiRisk = data.average_ai_likelihood >= 70 ? 'high' : data.average_ai_likelihood >= 40 ? 'medium' : 'low';
                     const simRisk = data.average_similarity >= 70 ? 'high' : data.average_similarity >= 40 ? 'medium' : 'low';
-                    
+
                     return (
-                        <div 
-                            key={studentName} 
+                        <div
+                            key={studentName}
                             onClick={() => setDetailedStudent(studentName)}
                             className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-4 hover:border-accent-300 hover:shadow-md transition-all cursor-pointer group"
                         >
@@ -516,7 +516,7 @@ const PlagiarismTab = ({ courseId, assessmentId }) => {
                                     </svg>
                                 </div>
                             </div>
-                            
+
                             <div className="space-y-3">
                                 <div>
                                     <div className="flex justify-between text-xs mb-1">
@@ -526,8 +526,8 @@ const PlagiarismTab = ({ courseId, assessmentId }) => {
                                         </span>
                                     </div>
                                     <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full rounded-full ${RISK_BAR_COLORS[aiRisk]}`} 
+                                        <div
+                                            className={`h-full rounded-full ${RISK_BAR_COLORS[aiRisk]}`}
                                             style={{ width: `${Math.min(data.average_ai_likelihood, 100)}%` }}
                                         />
                                     </div>
@@ -540,8 +540,8 @@ const PlagiarismTab = ({ courseId, assessmentId }) => {
                                         </span>
                                     </div>
                                     <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full rounded-full ${RISK_BAR_COLORS[simRisk]}`} 
+                                        <div
+                                            className={`h-full rounded-full ${RISK_BAR_COLORS[simRisk]}`}
                                             style={{ width: `${Math.min(data.average_similarity, 100)}%` }}
                                         />
                                     </div>
@@ -596,20 +596,22 @@ const TeacherAssessmentPage = () => {
 
     return (
         <TeacherSidebar>
-            <div className={`${activeTab === 'ai-grading' ? 'max-w-7xl' : 'max-w-4xl'} mx-auto pb-16 p-6 transition-all duration-300`}>
+            <div className={`${activeTab === 'ai-grading' ? 'max-w-6xl' : 'max-w-6xl'} mx-auto pb-16 p-6 transition-all duration-300`}>
                 {/* Back + Header */}
                 <div className="mb-8">
                     <button
                         onClick={() => navigate(-1)}
-                        className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4"
+                        className="flex items-center bg-black p-2 text-sm rounded-xl text-white font-bold gap-1.5 transition-colors mb-4 cursor-pointer"
                     >
                         <BackIcon />
                         Back to Course
                     </button>
 
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start border border-neutral-200 shadow-sm sm:justify-between gap-3 bg-white p-6 rounded-2xl">
                         <div>
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+
+                            <h1 className="text-2xl font-bold text-text-primary mb-2">{assessment.title}</h1>
+                            <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${typeMeta.color}`}>
                                     {typeMeta.label}
                                 </span>
@@ -617,7 +619,6 @@ const TeacherAssessmentPage = () => {
                                     <span className="text-xs text-text-muted">Due {formatDateTime(assessment.due_date)}</span>
                                 )}
                             </div>
-                            <h1 className="text-2xl font-bold text-text-primary">{assessment.title}</h1>
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
                             <span className="text-sm text-text-secondary font-medium">{totalSubs} submission{totalSubs !== 1 ? 's' : ''}</span>
@@ -626,7 +627,7 @@ const TeacherAssessmentPage = () => {
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-1 mb-6 bg-neutral-100 p-1 rounded-xl w-fit">
+                <div className="flex gap-2 mb-6 bg-neutral-100 p-1 rounded-xl w-fit">
                     {tabs.map((tab) => (
                         <button
                             key={tab.key}
@@ -659,7 +660,7 @@ const TeacherAssessmentPage = () => {
                     />
                 )}
                 {activeTab === 'ai-grading' && (
-                    <AIGradingTab 
+                    <AIGradingTab
                         courseId={courseId}
                         assessmentId={assessmentId}
                         submitted={submitted}
