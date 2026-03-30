@@ -837,3 +837,90 @@ export const deleteSourceMaterial = async (req, res) => {
         return handleError(res, error);
     }
 };
+
+// DELETE /api/courses/:courseId/assessments/:assessmentId
+export const deleteAssessment = async (req, res) => {
+    try {
+        const { courseId, assessmentId } = req.params;
+
+        await verifyCourseOwner(courseId, req.user.id);
+        const assessment = await verifyAssessmentInCourse(assessmentId, courseId);
+
+        // Fetch with all dependent relations for storage cleanup
+        const assessmentWithData = await prisma.assessments.findUnique({
+            where: { id: assessmentId },
+            include: {
+                source_materials: true,
+                submissions: {
+                    include: { attachments: true }
+                }
+            }
+        });
+
+        const materialPaths = (assessmentWithData.source_materials || []).map(m => m.bucket_path);
+        const attachmentPaths = [];
+        (assessmentWithData.submissions || []).forEach(s => {
+            (s.attachments || []).forEach(att => attachmentPaths.push(att.bucket_path));
+        });
+
+        // Cleanup Supabase Storage
+        if (materialPaths.length > 0) {
+            await supabase.storage.from("source-materials").remove(materialPaths);
+        }
+        if (attachmentPaths.length > 0) {
+            await supabase.storage.from("submission-files").remove(attachmentPaths);
+        }
+
+        // Delete from Prisma (CASCADE handles all related DB records)
+        await prisma.assessments.delete({
+            where: { id: assessmentId }
+        });
+
+        return res.status(200).json({ message: "Assessment and related data deleted successfully" });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+// PATCH /api/courses/:courseId/assessments/:assessmentId
+export const updateAssessment = async (req, res) => {
+    try {
+        const { courseId, assessmentId } = req.params;
+        const { title, type, instructions, due_date } = req.body;
+
+        await verifyCourseOwner(courseId, req.user.id);
+
+        const assessment = await prisma.assessments.findUnique({
+            where: { id: assessmentId },
+        });
+
+        if (!assessment || assessment.announcement?.course_id !== courseId) {
+            // Re-verify relationship as redundant check
+            const exists = await prisma.assessments.findFirst({
+                where: { id: assessmentId, announcement: { course_id: courseId } }
+            });
+            if (!exists) return res.status(404).json({ message: "Assessment not found" });
+        }
+
+        const dueDate = due_date ? new Date(due_date) : undefined;
+        if (due_date && Number.isNaN(dueDate.getTime())) {
+            return res.status(400).json({ message: "due_date must be a valid ISO date" });
+        }
+
+        const updated = await prisma.assessments.update({
+            where: { id: assessmentId },
+            data: {
+                title: title ?? assessment.title,
+                type: type ?? assessment.type,
+                instructions: instructions ?? assessment.instructions,
+                due_date: due_date !== undefined ? dueDate : assessment.due_date,
+            },
+            include: {
+                source_materials: true,
+            },
+        });
+
+        return res.status(200).json({ message: "Assessment updated successfully", assessment: updated });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};

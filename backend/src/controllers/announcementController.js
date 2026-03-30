@@ -191,3 +191,123 @@ export const deleteAnnouncementComment = async (req, res) => {
         return handleError(res, error);
     }
 };
+
+// DELETE /api/courses/:courseId/announcements/:announcementId
+export const deleteAnnouncement = async (req, res) => {
+    try {
+        const { courseId, announcementId } = req.params;
+
+        await verifyCourseOwner(courseId, req.user.id);
+
+        const announcement = await prisma.announcements.findUnique({
+            where: { id: announcementId },
+            include: {
+                resources: true,
+                assessments: {
+                    include: {
+                        source_materials: true,
+                        submissions: {
+                            include: { attachments: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!announcement || announcement.course_id !== courseId)
+            return res.status(404).json({ message: "Announcement not found" });
+
+        // Collect all storage paths to cleanup
+        const resourcePaths = (announcement.resources || []).map(r => r.bucket_path);
+        
+        const materialPaths = [];
+        const attachmentPaths = [];
+
+        (announcement.assessments || []).forEach(asmt => {
+            (asmt.source_materials || []).forEach(m => materialPaths.push(m.bucket_path));
+            (asmt.submissions || []).forEach(s => {
+                (s.attachments || []).forEach(att => attachmentPaths.push(att.bucket_path));
+            });
+        });
+
+        // Cleanup Supabase Storage
+        if (resourcePaths.length > 0) {
+            await supabase.storage.from("source-materials").remove(resourcePaths);
+        }
+        if (materialPaths.length > 0) {
+            await supabase.storage.from("source-materials").remove(materialPaths);
+        }
+        if (attachmentPaths.length > 0) {
+            await supabase.storage.from("submission-files").remove(attachmentPaths);
+        }
+
+        // Delete from Prisma (CASCADE handles all related DB records)
+        await prisma.announcements.delete({
+            where: { id: announcementId }
+        });
+
+        return res.status(200).json({ message: "Announcement and related data deleted successfully" });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+// PATCH /api/courses/:courseId/announcements/:announcementId
+export const updateAnnouncement = async (req, res) => {
+    try {
+        const { courseId, announcementId } = req.params;
+        const { title, description } = req.body;
+
+        await verifyCourseOwner(courseId, req.user.id);
+
+        const announcement = await prisma.announcements.findUnique({
+            where: { id: announcementId },
+        });
+
+        if (!announcement || announcement.course_id !== courseId)
+            return res.status(404).json({ message: "Announcement not found" });
+
+        // Handle new file uploads
+        const newResources = [];
+        if (req.files && req.files.length > 0) {
+            for (const file of req.files) {
+                const ext = file.originalname.split(".").pop();
+                const storagePath = `${courseId}/announcements/${uuidv4()}.${ext}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from("source-materials")
+                    .upload(storagePath, file.buffer, {
+                        contentType: file.mimetype,
+                        upsert: false,
+                    });
+
+                if (uploadError)
+                    throw { status: 500, message: `File upload failed: ${uploadError.message}` };
+
+                newResources.push({
+                    bucket_path: storagePath,
+                    file_name: file.originalname,
+                    file_size: file.size,
+                    mime_type: file.mimetype,
+                });
+            }
+        }
+
+        const updated = await prisma.announcements.update({
+            where: { id: announcementId },
+            data: {
+                title: title ?? announcement.title,
+                description: description ?? announcement.description,
+                resources: {
+                    create: newResources,
+                },
+            },
+            include: {
+                resources: true,
+            },
+        });
+
+        return res.status(200).json({ message: "Announcement updated successfully", announcement: updated });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};

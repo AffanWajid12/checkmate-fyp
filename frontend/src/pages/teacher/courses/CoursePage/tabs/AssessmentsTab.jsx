@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { useCourseAnnouncements } from '../../../../../hooks/useCourses';
+import { useCourseAnnouncements, useDeleteAssessment } from '../../../../../hooks/useCourses';
+import { TrashIcon, PencilIcon } from '../components/Icons';
+import toast from 'react-hot-toast';
 
 const TYPE_META = {
     QUIZ: { label: 'Quiz', color: 'bg-blue-50 text-blue-600 border-blue-200' },
@@ -16,21 +18,70 @@ const formatDateTime = (iso) => {
 
 const AssessmentCard = ({ assessment, courseId }) => {
     const navigate = useNavigate();
+    const { mutateAsync: deleteAssessment, isPending: isDeleting } = useDeleteAssessment(courseId);
     const typeMeta = TYPE_META[assessment.type] ?? TYPE_META.ASSIGNMENT;
     const isPastDue = assessment.due_date && new Date(assessment.due_date) < new Date();
+
+    const handleDelete = async (e) => {
+        e.stopPropagation();
+        if (!window.confirm('Are you sure you want to delete this assessment? All student submissions and attachments will be permanently deleted.')) {
+            return;
+        }
+
+        try {
+            await deleteAssessment(assessment.id);
+            toast.success('Assessment deleted successfully');
+        } catch (error) {
+            console.error('Delete failed:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete assessment');
+        }
+    };
 
     return (
         <div
             onClick={() => navigate(`/teacher/courses/${courseId}/assessments/${assessment.id}`)}
-            className="bg-white rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer p-5 flex flex-col gap-3 group"
+            className="bg-white rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer p-5 flex flex-col gap-3 group relative"
         >
             <div className="flex justify-between items-start gap-3">
-                <h3 className="text-sm font-bold text-text-primary leading-tight group-hover:text-accent-600 transition-colors line-clamp-2">
-                    {assessment.title}
-                </h3>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider flex-shrink-0 ${typeMeta.color}`}>
-                    {typeMeta.label}
-                </span>
+                <div className="flex-1">
+                    <h3 className="text-sm font-bold text-text-primary leading-tight group-hover:text-accent-600 transition-colors line-clamp-2">
+                        {assessment.title}
+                    </h3>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${typeMeta.color}`}>
+                        {typeMeta.label}
+                    </span>
+                </div>
+            </div>
+
+            {/* Action Buttons - Top Right */}
+            <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/teacher/courses/${courseId}/assessments/${assessment.id}`);
+                    }}
+                    className="p-2 rounded-xl bg-white shadow-sm border border-neutral-200 text-text-muted hover:text-accent-500 hover:border-accent-200 hover:bg-accent-50 transition-all cursor-pointer"
+                    title="Edit Assessment"
+                >
+                    <PencilIcon size={14} />
+                </button>
+                <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="p-2 rounded-xl bg-white shadow-sm border border-neutral-200 text-text-muted hover:text-error hover:border-error/20 hover:bg-error/5 transition-all disabled:opacity-50 cursor-pointer"
+                    title="Delete Assessment"
+                >
+                    {isDeleting ? (
+                        <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                    ) : (
+                        <TrashIcon size={14} />
+                    )}
+                </button>
             </div>
 
             <div className="mt-auto pt-3 border-t border-neutral-100 flex items-center justify-between text-xs">

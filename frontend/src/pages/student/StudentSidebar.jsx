@@ -7,16 +7,7 @@ import { getAvatarUrl } from '../../utils/avatarHelper';
 
 // ── Sidebar nav items ──────────────────────────────────────────
 const navItems = [
-    {
-        to: '/student/dashboard',
-        label: 'Dashboard',
-        icon: (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-        ),
-    },
+
     {
         to: '/student/courses',
         label: 'My Courses',
@@ -39,19 +30,7 @@ const navItems = [
                 <path d="M9 16l2 2 4-4" />
             </svg>
         ),
-    },
-    {
-        to: '/student/assignments',
-        label: 'Assignments',
-        icon: (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
-        ),
-    },
+    }
 ];
 
 const SettingsIcon = () => (
@@ -119,9 +98,9 @@ const StudentSidebar = ({ children }) => {
             <div className="border-t border-neutral-100 px-4 py-4 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-orange-400 flex-shrink-0 flex items-center justify-center text-white font-bold text-sm overflow-hidden border border-neutral-200">
                     {user?.profile_picture ? (
-                        <img 
-                            src={getAvatarUrl(user.profile_picture)} 
-                            alt="Profile" 
+                        <img
+                            src={getAvatarUrl(user.profile_picture)}
+                            alt="Profile"
                             className="w-full h-full object-cover"
                             onError={(e) => {
                                 e.target.style.display = 'none';

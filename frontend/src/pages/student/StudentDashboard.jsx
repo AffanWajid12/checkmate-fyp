@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import CoursesPage from './courses/CoursesPage';
 import AttendanceOverview from './attendance/AttendanceOverview';
 import StudentSidebar from './StudentSidebar';
+import StudentAssignmentsOverview from './assignments/AssignmentsOverview';
 
 // ── Placeholder pages for other tabs ──────────────────────────
 const PlaceholderPage = ({ title }) => (
@@ -32,7 +33,7 @@ const StudentDashboard = ({ defaultTab = 'courses' }) => {
             case 'attendance':
                 return <AttendanceOverview />;
             case 'assignments':
-                return <PlaceholderPage title="Assignments" />;
+                return <StudentAssignmentsOverview />;
             case 'grades':
                 return <PlaceholderPage title="Grades" />;
             default:

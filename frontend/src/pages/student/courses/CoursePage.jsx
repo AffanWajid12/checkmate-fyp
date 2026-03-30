@@ -25,11 +25,26 @@ const CopyIcon = () => (
     </svg>
 );
 
-const BookIcon = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-7 h-7 text-accent-500">
-        <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-    </svg>
+const TeacherPFP = ({ src, name }) => (
+    <div className="w-12 h-12 rounded-xl border border-[#ccfbf1] bg-accent-50 flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
+        {src ? (
+            <img
+                src={src}
+                alt={name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                    e.target.style.display = 'none';
+                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                }}
+            />
+        ) : null}
+        <div className={`w-full h-full items-center justify-center ${src ? 'hidden' : 'flex'}`}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-accent-500">
+                <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+            </svg>
+        </div>
+    </div>
 );
 
 const DashboardIcon = () => (
@@ -114,7 +129,7 @@ const StudentCoursePage = () => {
                 {/* Back */}
                 <button
                     onClick={() => navigate('/student/dashboard')}
-                    className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4 cursor-pointer"
+                    className="flex items-center bg-black p-2 text-sm rounded-xl text-white font-bold gap-1.5 transition-colors mb-4 cursor-pointer"
                 >
                     <BackIcon />
                     Back to My Courses
@@ -123,9 +138,7 @@ const StudentCoursePage = () => {
                 {/* ── Course Header Card ─────────────────────────── */}
                 <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 mb-0">
                     <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-accent-50 border border-accent-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <BookIcon />
-                        </div>
+                        <TeacherPFP src={course?.teacher?.profile_picture} name={course?.teacher?.name} />
                         <div>
                             {/* Code + Section */}
                             <div className="flex items-center gap-2 mb-1">
@@ -187,11 +200,10 @@ const StudentCoursePage = () => {
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-                                    activeTab === tab.key
+                                className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap cursor-pointer ${activeTab === tab.key
                                         ? 'border-accent-500 text-accent-500'
                                         : 'border-transparent text-text-secondary hover:text-text-primary hover:border-neutral-300'
-                                }`}
+                                    }`}
                             >
                                 <span className={activeTab === tab.key ? 'text-accent-500' : 'text-text-muted'}>
                                     {tab.icon}
