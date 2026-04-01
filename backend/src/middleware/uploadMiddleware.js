@@ -20,3 +20,10 @@ export const uploadMultiple = multer({
     storage,
     limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB per file
 }).array("files", 10);
+
+// uploadMultipleLarge — accepts up to 10 files under the field name "files"
+// Used for submission uploads that may exceed 20MB (e.g., multi-page scanned PDFs).
+export const uploadMultipleLarge = multer({
+    storage,
+    limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB per file
+}).array("files", 10);

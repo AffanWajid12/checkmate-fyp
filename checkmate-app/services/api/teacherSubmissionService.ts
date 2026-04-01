@@ -36,7 +36,10 @@ class TeacherSubmissionService {
     const response = await apiClient.post(
       `/api/courses/${courseId}/assessments/${assessmentId}/submissions`,
       formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120000,
+      }
     );
 
     return response.data;
@@ -64,7 +67,10 @@ class TeacherSubmissionService {
     const response = await apiClient.patch(
       `/api/courses/${courseId}/assessments/${assessmentId}/submissions/${submissionId}`,
       formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120000,
+      }
     );
 
     return response.data;

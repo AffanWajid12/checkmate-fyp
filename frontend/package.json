@@ -37,9 +37,9 @@
     "vite": "^7.2.4"
   },
   "overrides": {
-    "axios": "1.14.0"
+    "axios": "1.13.0"
   },
   "resolutions": {
-    "axios": "1.14.0"
+    "axios": "1.13.0"
   }
 }

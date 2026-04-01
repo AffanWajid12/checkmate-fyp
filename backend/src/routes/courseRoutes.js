@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser, verifyUserType } from "../middleware/authMiddleware.js";
-import { uploadMultiple } from "../middleware/uploadMiddleware.js";
+import { uploadMultiple, uploadMultipleLarge } from "../middleware/uploadMiddleware.js";
 
 import {
     createCourse,
@@ -82,8 +82,8 @@ router.post(
     uploadMultiple,
     addAssessmentSourceMaterials
 );
-router.post("/:courseId/assessments/:assessmentId/submissions", verifyUser, verifyUserType("TEACHER"), uploadMultiple, teacherCreateSubmission);
-router.patch("/:courseId/assessments/:assessmentId/submissions/:submissionId", verifyUser, verifyUserType("TEACHER"), uploadMultiple, teacherAppendSubmissionFiles);
+router.post("/:courseId/assessments/:assessmentId/submissions", verifyUser, verifyUserType("TEACHER"), uploadMultipleLarge, teacherCreateSubmission);
+router.patch("/:courseId/assessments/:assessmentId/submissions/:submissionId", verifyUser, verifyUserType("TEACHER"), uploadMultipleLarge, teacherAppendSubmissionFiles);
 router.get("/:courseId/assessments/:assessmentId/submissions/:submissionId", verifyUser, verifyUserType("TEACHER"), getSubmissionDetails);
 router.patch("/:courseId/assessments/:assessmentId/submissions/:submissionId/grade", verifyUser, verifyUserType("TEACHER"), gradeSubmission);
 router.delete("/:courseId/assessments/:assessmentId/source-materials/:materialId", verifyUser, verifyUserType("TEACHER"), deleteSourceMaterial);
@@ -95,8 +95,8 @@ router.post("/:courseId/assessments/:assessmentId/submissions/:submissionId/pair
 router.get("/:courseId/my-attendance", verifyUser, verifyUserType("STUDENT"), getStudentAttendance);
 
 // Assessment submissions (student) — includes Turn In, Add Files, Unsubmit, Remove File
-router.post("/:courseId/assessments/:assessmentId/submit", verifyUser, verifyUserType("STUDENT"), uploadMultiple, submitAssessment);
-router.patch("/:courseId/assessments/:assessmentId/submit", verifyUser, verifyUserType("STUDENT"), uploadMultiple, updateSubmission);
+router.post("/:courseId/assessments/:assessmentId/submit", verifyUser, verifyUserType("STUDENT"), uploadMultipleLarge, submitAssessment);
+router.patch("/:courseId/assessments/:assessmentId/submit", verifyUser, verifyUserType("STUDENT"), uploadMultipleLarge, updateSubmission);
 router.delete("/:courseId/assessments/:assessmentId/submit", verifyUser, verifyUserType("STUDENT"), unsubmitAssessment);
 router.delete("/:courseId/assessments/:assessmentId/attachments/:attachmentId", verifyUser, verifyUserType("STUDENT"), removeAttachment);
 
