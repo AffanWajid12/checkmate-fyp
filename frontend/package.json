@@ -35,5 +35,11 @@
     "react-katex": "^3.1.0",
     "tailwindcss": "^4.1.18",
     "vite": "^7.2.4"
+  },
+  "overrides": {
+    "axios": "1.14.0"
+  },
+  "resolutions": {
+    "axios": "1.14.0"
   }
 }

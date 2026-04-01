@@ -29,5 +29,11 @@
     "dotenv": "^17.3.1",
     "nodemon": "^3.1.11",
     "prisma": "^7.5.0"
+  },
+  "overrides": {
+    "axios": "1.13.0"
+  },
+  "resolutions": {
+    "axios": "1.13.0"
   }
 }
