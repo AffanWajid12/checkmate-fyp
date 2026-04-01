@@ -15,7 +15,7 @@
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.3.0",
     "@supabase/supabase-js": "^2.98.0",
-    "axios": "^1.14.0",
+    "axios": "1.13.0",
     "cors": "^2.8.5",
     "docx": "^9.6.1",
     "express": "^5.2.1",
