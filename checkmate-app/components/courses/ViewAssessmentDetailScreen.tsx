@@ -13,6 +13,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -114,6 +115,14 @@ export default function ViewAssessmentDetailScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ViewAssessmentDetailScreenRouteProp>();
   const { courseId, assessmentId, courseCode } = route.params;
+
+  type ProcessingStep = "compress" | "create_pdf" | "upload";
+  const [processingVisible, setProcessingVisible] = useState(false);
+  const [processingStep, setProcessingStep] = useState<ProcessingStep | null>(
+    null,
+  );
+  const yieldToUi = () =>
+    new Promise<void>((resolve) => setTimeout(resolve, 50));
 
   const [activeTab, setActiveTab] = useState<"details" | "submissions">(
     "details",
@@ -337,10 +346,18 @@ export default function ViewAssessmentDetailScreen() {
   };
 
   const scanToPdfFile = async () => {
-    const result = await DocumentScanner.scanDocument({
-      maxNumDocuments: 10,
-      croppedImageQuality: 75,
-    });
+    let result: { scannedImages?: string[] } | undefined;
+    try {
+      result = await DocumentScanner.scanDocument({
+        maxNumDocuments: 10,
+        croppedImageQuality: 75,
+      });
+    } catch (e: any) {
+      if (e?.message && e.message.includes("User cancelled")) {
+        return null;
+      }
+      throw e;
+    }
     if (!result?.scannedImages?.length) return null;
 
     const normalizeToFileUri = (p: string) =>
@@ -388,99 +405,116 @@ export default function ViewAssessmentDetailScreen() {
       }),
     );
 
-    const compressedImages = await compressImagesForPdf(normalizedImages);
+    try {
+      setProcessingVisible(true);
+      setProcessingStep("compress");
+      await yieldToUi();
 
-    // Diagnostics: log compressed image sizes and dimensions
-    await Promise.all(
-      compressedImages.map(async (uri) => {
-        try {
-          const filePath = uri.replace(/^file:\/\//, "");
-          const stat = await RNBlobUtil.fs.stat(filePath);
-          const size = Number(stat?.size) || 0;
+      const compressedImages = await compressImagesForPdf(normalizedImages);
 
-          await new Promise<void>((resolve) => {
-            Image.getSize(
+      // Diagnostics: log compressed image sizes and dimensions
+      await Promise.all(
+        compressedImages.map(async (uri) => {
+          try {
+            const filePath = uri.replace(/^file:\/\//, "");
+            const stat = await RNBlobUtil.fs.stat(filePath);
+            const size = Number(stat?.size) || 0;
+
+            await new Promise<void>((resolve) => {
+              Image.getSize(
+                uri,
+                (width, height) => {
+                  console.log("🧾 Scan image (compressed):", {
+                    uri,
+                    size,
+                    width,
+                    height,
+                  });
+                  resolve();
+                },
+                () => {
+                  console.log("🧾 Scan image (compressed):", {
+                    uri,
+                    size,
+                    width: null,
+                    height: null,
+                  });
+                  resolve();
+                },
+              );
+            });
+          } catch (e: any) {
+            console.log("⚠️ Could not stat compressed scan image", {
               uri,
-              (width, height) => {
-                console.log("🧾 Scan image (compressed):", {
-                  uri,
-                  size,
-                  width,
-                  height,
-                });
-                resolve();
-              },
-              () => {
-                console.log("🧾 Scan image (compressed):", {
-                  uri,
-                  size,
-                  width: null,
-                  height: null,
-                });
-                resolve();
-              },
-            );
-          });
-        } catch (e: any) {
-          console.log("⚠️ Could not stat compressed scan image", {
-            uri,
-            message: e?.message,
-          });
-        }
-      }),
-    );
-    const pages = compressedImages.map((p) => ({ imagePath: p }));
-
-    const timestamp = Date.now();
-    const outputPath = `file://${RNBlobUtil.fs.dirs.DocumentDir}/scan-${timestamp}.pdf`;
-
-    let created: any;
-    try {
-      created = await createPdfFromJpegs({
-        imageUris: compressedImages,
-        outputPath,
-      });
-    } catch (e: any) {
-      console.log(
-        "⚠️ pdf-lib PDF generation failed; falling back to native createPdf",
-        {
-          message: e?.message,
-        },
+              message: e?.message,
+            });
+          }
+        }),
       );
-      created = await createPdf({
-        pages,
-        outputPath,
-      });
-    }
 
-    const pdfUri =
-      typeof created === "string"
-        ? created
-        : created?.filePath || created?.path || created?.pdfPath || outputPath;
+      setProcessingStep("create_pdf");
+      await yieldToUi();
 
-    const normalizedPdfUri = pdfUri.startsWith("file://")
-      ? pdfUri
-      : `file://${pdfUri}`;
+      const pages = compressedImages.map((p) => ({ imagePath: p }));
 
-    try {
-      const filePath = normalizedPdfUri.replace(/^file:\/\//, "");
-      const stat = await RNBlobUtil.fs.stat(filePath);
-      console.log("📄 Created PDF:", {
+      const timestamp = Date.now();
+      const outputPath = `file://${RNBlobUtil.fs.dirs.DocumentDir}/scan-${timestamp}.pdf`;
+
+      let created: any;
+      try {
+        created = await createPdfFromJpegs({
+          imageUris: compressedImages,
+          outputPath,
+        });
+      } catch (e: any) {
+        console.log(
+          "⚠️ pdf-lib PDF generation failed; falling back to native createPdf",
+          {
+            message: e?.message,
+          },
+        );
+        created = await createPdf({
+          pages,
+          outputPath,
+        });
+      }
+
+      const pdfUri =
+        typeof created === "string"
+          ? created
+          : created?.filePath ||
+            created?.path ||
+            created?.pdfPath ||
+            outputPath;
+
+      const normalizedPdfUri = pdfUri.startsWith("file://")
+        ? pdfUri
+        : `file://${pdfUri}`;
+
+      try {
+        const filePath = normalizedPdfUri.replace(/^file:\/\//, "");
+        const stat = await RNBlobUtil.fs.stat(filePath);
+        console.log("📄 Created PDF:", {
+          uri: normalizedPdfUri,
+          size: stat?.size,
+        });
+      } catch (e: any) {
+        console.log("⚠️ Could not stat created PDF", {
+          uri: normalizedPdfUri,
+          message: e?.message,
+        });
+      }
+
+      return {
         uri: normalizedPdfUri,
-        size: stat?.size,
-      });
-    } catch (e: any) {
-      console.log("⚠️ Could not stat created PDF", {
-        uri: normalizedPdfUri,
-        message: e?.message,
-      });
+        name: `scan-${timestamp}.pdf`,
+        type: "application/pdf",
+      };
+    } catch (e) {
+      setProcessingVisible(false);
+      setProcessingStep(null);
+      throw e;
     }
-
-    return {
-      uri: normalizedPdfUri,
-      name: `scan-${timestamp}.pdf`,
-      type: "application/pdf",
-    };
   };
 
   const handleCreateSubmissionWithFiles = async (
@@ -494,6 +528,11 @@ export default function ViewAssessmentDetailScreen() {
 
     try {
       setDrawerVisible(false);
+
+      setProcessingVisible(true);
+      setProcessingStep("upload");
+      await yieldToUi();
+
       const created = await teacherSubmissionService.createSubmissionForStudent(
         courseId,
         assessmentId,
@@ -519,6 +558,8 @@ export default function ViewAssessmentDetailScreen() {
         error.response?.data?.message || "Failed to create submission",
       );
     } finally {
+      setProcessingVisible(false);
+      setProcessingStep(null);
       setSelectedStudent(null);
     }
   };
@@ -892,6 +933,100 @@ export default function ViewAssessmentDetailScreen() {
           await handleCreateSubmissionWithFiles(f ? [f] : []);
         }}
       />
+
+      <Modal
+        visible={processingVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          // Non-cancelable by design during file ops.
+        }}
+      >
+        <View style={styles.processingOverlay}>
+          <View style={styles.processingCard}>
+            <Ionicons
+              name={
+                processingStep === "compress"
+                  ? "images-outline"
+                  : processingStep === "create_pdf"
+                    ? "document-text-outline"
+                    : processingStep === "upload"
+                      ? "cloud-upload-outline"
+                      : "hourglass-outline"
+              }
+              size={44}
+              color={theme.colors.primary}
+              style={styles.processingHeaderIcon}
+            />
+            <Text style={styles.processingTitle}>Preparing submission…</Text>
+
+            {(
+              [
+                {
+                  key: "compress" as const,
+                  label: "Compressing images",
+                  icon: "images-outline" as const,
+                },
+                {
+                  key: "create_pdf" as const,
+                  label: "Creating PDF",
+                  icon: "document-text-outline" as const,
+                },
+                {
+                  key: "upload" as const,
+                  label: "Uploading submission",
+                  icon: "cloud-upload-outline" as const,
+                },
+              ] as const
+            ).map((s) => {
+              const order: ProcessingStep[] = [
+                "compress",
+                "create_pdf",
+                "upload",
+              ];
+              const currentIndex = processingStep
+                ? order.indexOf(processingStep)
+                : -1;
+              const stepIndex = order.indexOf(s.key);
+              const isDone = currentIndex !== -1 && stepIndex < currentIndex;
+              const isActive = processingStep === s.key;
+
+              return (
+                <View key={s.key} style={styles.processingStepRow}>
+                  {isDone ? (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={theme.colors.primary}
+                    />
+                  ) : isActive ? (
+                    <Ionicons
+                      name={s.icon}
+                      size={18}
+                      color={theme.colors.primary}
+                    />
+                  ) : (
+                    <Ionicons
+                      name={s.icon}
+                      size={18}
+                      color={theme.colors.textSecondary}
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.processingStepText,
+                      isActive ? styles.processingStepTextActive : null,
+                      isDone ? styles.processingStepTextDone : null,
+                    ]}
+                  >
+                    {s.label}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -929,6 +1064,54 @@ const styles = StyleSheet.create({
   headerRightPlaceholder: { width: 40 },
 
   scrollView: { flex: 1 },
+
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.38)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: theme.spacing.lg,
+  },
+  processingCard: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    alignItems: "center",
+    ...theme.shadows.md,
+  },
+  processingHeaderIcon: {
+    marginBottom: theme.spacing.sm,
+  },
+  processingTitle: {
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    fontSize: 16,
+    fontWeight: "700",
+    color: theme.colors.textPrimary,
+  },
+  processingStepRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: theme.spacing.sm,
+  },
+  processingStepProcessIcon: {
+    marginLeft: theme.spacing.sm,
+  },
+  processingStepText: {
+    marginLeft: theme.spacing.xs,
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  processingStepTextActive: {
+    color: theme.colors.textPrimary,
+    fontWeight: "600",
+  },
+  processingStepTextDone: {
+    color: theme.colors.textPrimary,
+  },
 
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: {

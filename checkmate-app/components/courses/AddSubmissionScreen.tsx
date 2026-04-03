@@ -41,6 +41,15 @@ export default function AddSubmissionScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<AddSubmissionScreenRouteProp>();
   const { assessmentId, assessmentTitle, courseId } = route.params;
+
+  type ProcessingStep = "compress" | "create_pdf" | "upload";
+  const [processingVisible, setProcessingVisible] = useState(false);
+  const [processingStep, setProcessingStep] = useState<ProcessingStep | null>(
+    null,
+  );
+  const yieldToUi = () =>
+    new Promise<void>((resolve) => setTimeout(resolve, 50));
+
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [showStudentPicker, setShowStudentPicker] = useState(false);
@@ -149,6 +158,10 @@ export default function AddSubmissionScreen() {
       });
 
       if (scannedImages && scannedImages.length > 0) {
+        setProcessingVisible(true);
+        setProcessingStep("compress");
+        await yieldToUi();
+
         console.log(`✅ Scanned ${scannedImages.length} page(s)`);
         console.log("🧾 scannedImages:", scannedImages);
 
@@ -197,6 +210,9 @@ export default function AddSubmissionScreen() {
         );
 
         const compressedImages = await compressImagesForPdf(normalizedImages);
+
+        setProcessingStep("create_pdf");
+        await yieldToUi();
 
         // Diagnostics: log compressed image sizes and dimensions
         await Promise.all(
@@ -300,10 +316,16 @@ export default function AddSubmissionScreen() {
 
         setFiles((prev) => [...prev, newFile]);
 
+        setProcessingVisible(false);
+        setProcessingStep(null);
+
         Alert.alert("Success", "PDF created from scanned pages successfully");
       }
     } catch (error: any) {
       console.error("❌ Document scanner error:", error);
+
+      setProcessingVisible(false);
+      setProcessingStep(null);
 
       if (error.message && error.message.includes("User cancelled")) {
         console.log("ℹ️ User cancelled scanning");
@@ -344,6 +366,10 @@ export default function AddSubmissionScreen() {
 
     try {
       setSubmitting(true);
+
+      setProcessingVisible(true);
+      setProcessingStep("upload");
+      await yieldToUi();
       console.log("📤 Creating submission (teacher endpoint)...");
 
       await teacherSubmissionService.createSubmissionForStudent(
@@ -373,6 +399,9 @@ export default function AddSubmissionScreen() {
       );
     } finally {
       setSubmitting(false);
+
+      setProcessingVisible(false);
+      setProcessingStep(null);
     }
   };
 
@@ -648,6 +677,99 @@ export default function AddSubmissionScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      <Modal
+        visible={processingVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          // Non-cancelable by design during file ops.
+        }}
+      >
+        <View style={styles.processingOverlay}>
+          <View style={styles.processingCard}>
+            <Ionicons
+              name={
+                processingStep === "compress"
+                  ? "images-outline"
+                  : processingStep === "create_pdf"
+                    ? "document-text-outline"
+                    : processingStep === "upload"
+                      ? "cloud-upload-outline"
+                      : "hourglass-outline"
+              }
+              size={44}
+              color={theme.colors.primary}
+              style={styles.processingHeaderIcon}
+            />
+            <Text style={styles.processingTitle}>Preparing submission…</Text>
+
+            {(
+              [
+                {
+                  key: "compress" as const,
+                  label: "Compressing images",
+                  icon: "images-outline" as const,
+                },
+                {
+                  key: "create_pdf" as const,
+                  label: "Creating PDF",
+                  icon: "document-text-outline" as const,
+                },
+                {
+                  key: "upload" as const,
+                  label: "Uploading submission",
+                  icon: "cloud-upload-outline" as const,
+                },
+              ] as const
+            ).map((s) => {
+              const order: ProcessingStep[] = [
+                "compress",
+                "create_pdf",
+                "upload",
+              ];
+              const currentIndex = processingStep
+                ? order.indexOf(processingStep)
+                : -1;
+              const stepIndex = order.indexOf(s.key);
+              const isDone = currentIndex !== -1 && stepIndex < currentIndex;
+              const isActive = processingStep === s.key;
+
+              return (
+                <View key={s.key} style={styles.processingStepRow}>
+                  {isDone ? (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={theme.colors.primary}
+                    />
+                  ) : isActive ? (
+                    <Ionicons
+                      name={s.icon}
+                      size={18}
+                      color={theme.colors.primary}
+                    />
+                  ) : (
+                    <Ionicons
+                      name={s.icon}
+                      size={18}
+                      color={theme.colors.textSecondary}
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.processingStepText,
+                      isActive ? styles.processingStepTextActive : null,
+                      isDone ? styles.processingStepTextDone : null,
+                    ]}
+                  >
+                    {s.label}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -656,6 +778,54 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.38)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: theme.spacing.lg,
+  },
+  processingCard: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    alignItems: "center",
+    ...theme.shadows.md,
+  },
+  processingHeaderIcon: {
+    marginBottom: theme.spacing.sm,
+  },
+  processingTitle: {
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    fontSize: 16,
+    fontWeight: "700",
+    color: theme.colors.textPrimary,
+  },
+  processingStepRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: theme.spacing.sm,
+  },
+  processingStepProcessIcon: {
+    marginLeft: theme.spacing.sm,
+  },
+  processingStepText: {
+    marginLeft: theme.spacing.xs,
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  processingStepTextActive: {
+    color: theme.colors.textPrimary,
+    fontWeight: "600",
+  },
+  processingStepTextDone: {
+    color: theme.colors.textPrimary,
   },
   loadingContainer: {
     flex: 1,
