@@ -1,0 +1,46 @@
+# EAS Build upload ignore rules
+
+# This prevents large local folders/caches from being included in the project archive.
+
+# Dependencies
+
+node_modules/
+
+# Expo/Metro caches
+
+.expo/
+.metro-health-check\*
+
+# Web builds
+
+web-build/
+dist/
+
+# Native folders (generated)
+
+android/
+ios/
+
+# Logs
+
+npm-debug._
+yarn-debug._
+yarn-error.\*
+\*.log
+
+# Large binaries / archives (common accidental commits/downloads)
+
+**/\*.apk
+**/_.aab
+\*\*/_.ipa
+**/\*.zip
+**/_.7z
+\*\*/_.tar
+**/\*.tar.gz
+**/\*.tgz
+
+# Large media (avoid accidentally bundling recordings)
+
+**/\*.mp4
+**/_.mov
+\*\*/_.mkv

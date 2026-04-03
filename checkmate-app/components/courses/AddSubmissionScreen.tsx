@@ -1,36 +1,39 @@
-import { theme } from '@/constants/theme';
-import { RootStackParamList } from '@/navigation/types';
+import { theme } from "@/constants/theme";
+import { RootStackParamList } from "@/navigation/types";
 import {
-    Student,
-    studentService,
-    SubmissionFile,
-    teacherSubmissionService,
-} from '@/services/api';
-import { Ionicons } from '@expo/vector-icons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as DocumentPicker from 'expo-document-picker';
-import React, { useEffect, useState } from 'react';
+  Student,
+  studentService,
+  SubmissionFile,
+  teacherSubmissionService,
+} from "@/services/api";
+import { Ionicons } from "@expo/vector-icons";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as DocumentPicker from "expo-document-picker";
+import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import DocumentScanner from 'react-native-document-scanner-plugin';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { createPdf } from 'react-native-images-to-pdf';
-import RNBlobUtil from 'react-native-blob-util';
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Image,
+} from "react-native";
+import DocumentScanner from "react-native-document-scanner-plugin";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { createPdf } from "react-native-images-to-pdf";
+import RNBlobUtil from "react-native-blob-util";
+import { compressImagesForPdf } from "@/utils/scanToCompressedPdf";
+import { createPdfFromJpegs } from "@/utils/pdfLibImagesToPdf";
 
 type AddSubmissionScreenRouteProp = RouteProp<
   RootStackParamList,
-  'AddSubmission'
+  "AddSubmission"
 >;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -39,18 +42,22 @@ export default function AddSubmissionScreen() {
   const route = useRoute<AddSubmissionScreenRouteProp>();
   const { assessmentId, assessmentTitle, courseId } = route.params;
   const [students, setStudents] = useState<Student[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [showStudentPicker, setShowStudentPicker] = useState(false);
-  const [files, setFiles] = useState<Omit<SubmissionFile, '_id' | 'uploadedAt'>[]>([]);
-  const [notes, setNotes] = useState('');
+  const [files, setFiles] = useState<
+    Omit<SubmissionFile, "_id" | "uploadedAt">[]
+  >([]);
+  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchEnrolledStudents();
-  }, [courseId]);  const fetchEnrolledStudents = async () => {
-    try {      setLoading(true);
-      console.log('📚 Fetching enrolled students for course:', courseId);
+  }, [courseId]);
+  const fetchEnrolledStudents = async () => {
+    try {
+      setLoading(true);
+      console.log("📚 Fetching enrolled students for course:", courseId);
 
       // Fetch first page to get total count
       const firstPage = await studentService.getEnrolledStudents({
@@ -59,7 +66,10 @@ export default function AddSubmissionScreen() {
         limit: 100, // Maximum allowed by backend
       });
 
-      console.log('📦 First page response:', JSON.stringify(firstPage, null, 2));
+      console.log(
+        "📦 First page response:",
+        JSON.stringify(firstPage, null, 2),
+      );
 
       let allStudents = firstPage.students || [];
       const totalPages = firstPage.pagination?.totalPages || 1;
@@ -74,11 +84,11 @@ export default function AddSubmissionScreen() {
               courseId,
               page,
               limit: 100,
-            })
+            }),
           );
         }
         const remainingPages = await Promise.all(pagePromises);
-        remainingPages.forEach(pageData => {
+        remainingPages.forEach((pageData) => {
           allStudents = [...allStudents, ...(pageData.students || [])];
         });
       }
@@ -86,21 +96,17 @@ export default function AddSubmissionScreen() {
       setStudents(allStudents);
       console.log(`✅ Loaded ${allStudents.length} students`);
     } catch (error: any) {
-      console.error('❌ Error fetching students:', error);
-      Alert.alert(
-        'Error',
-        error.message || 'Failed to load students',
-        [
-          {
-            text: 'Go Back',
-            onPress: () => navigation.goBack(),
-          },
-          {
-            text: 'Retry',
-            onPress: fetchEnrolledStudents,
-          },
-        ]
-      );
+      console.error("❌ Error fetching students:", error);
+      Alert.alert("Error", error.message || "Failed to load students", [
+        {
+          text: "Go Back",
+          onPress: () => navigation.goBack(),
+        },
+        {
+          text: "Retry",
+          onPress: fetchEnrolledStudents,
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -109,117 +115,236 @@ export default function AddSubmissionScreen() {
   const handleAttachFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
+        type: "*/*",
         copyToCacheDirectory: true,
         multiple: false,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
-        
-        const newFile: Omit<SubmissionFile, '_id' | 'uploadedAt'> = {
+
+        const newFile: Omit<SubmissionFile, "_id" | "uploadedAt"> = {
           originalName: file.name,
           fileUrl: file.uri,
-          fileType: file.mimeType || 'application/octet-stream',
+          fileType: file.mimeType || "application/octet-stream",
           fileSize: file.size || 0,
         };
 
         setFiles((prev) => [...prev, newFile]);
-        console.log('📎 File attached:', newFile.originalName);
+        console.log("📎 File attached:", newFile.originalName);
       }
     } catch (error) {
-      console.error('❌ Error picking document:', error);
-      Alert.alert('Error', 'Failed to attach file');
+      console.error("❌ Error picking document:", error);
+      Alert.alert("Error", "Failed to attach file");
     }
   };
 
   const handleCaptureFile = async () => {
     try {
-      console.log('📸 Opening document scanner...');
+      console.log("📸 Opening document scanner...");
 
       const { scannedImages } = await DocumentScanner.scanDocument({
         maxNumDocuments: 10,
-        croppedImageQuality: 100,
+        croppedImageQuality: 75,
       });
 
       if (scannedImages && scannedImages.length > 0) {
         console.log(`✅ Scanned ${scannedImages.length} page(s)`);
-        console.log('🧾 scannedImages:', scannedImages);
+        console.log("🧾 scannedImages:", scannedImages);
 
-        const normalizeToFileUri = (p: string) => (p.startsWith('file://') ? p : `file://${p}`);
-        const pages = scannedImages.map((p) => ({ imagePath: normalizeToFileUri(p) }));
+        const normalizeToFileUri = (p: string) =>
+          p.startsWith("file://") ? p : `file://${p}`;
+        const normalizedImages = scannedImages.map(normalizeToFileUri);
+
+        // Diagnostics: log original scan sizes and dimensions
+        await Promise.all(
+          normalizedImages.map(async (uri) => {
+            try {
+              const filePath = uri.replace(/^file:\/\//, "");
+              const stat = await RNBlobUtil.fs.stat(filePath);
+              const size = Number(stat?.size) || 0;
+
+              await new Promise<void>((resolve) => {
+                Image.getSize(
+                  uri,
+                  (width, height) => {
+                    console.log("🧾 Scan image (original):", {
+                      uri,
+                      size,
+                      width,
+                      height,
+                    });
+                    resolve();
+                  },
+                  () => {
+                    console.log("🧾 Scan image (original):", {
+                      uri,
+                      size,
+                      width: null,
+                      height: null,
+                    });
+                    resolve();
+                  },
+                );
+              });
+            } catch (e: any) {
+              console.log("⚠️ Could not stat original scan image", {
+                uri,
+                message: e?.message,
+              });
+            }
+          }),
+        );
+
+        const compressedImages = await compressImagesForPdf(normalizedImages);
+
+        // Diagnostics: log compressed image sizes and dimensions
+        await Promise.all(
+          compressedImages.map(async (uri) => {
+            try {
+              const filePath = uri.replace(/^file:\/\//, "");
+              const stat = await RNBlobUtil.fs.stat(filePath);
+              const size = Number(stat?.size) || 0;
+
+              await new Promise<void>((resolve) => {
+                Image.getSize(
+                  uri,
+                  (width, height) => {
+                    console.log("🧾 Scan image (compressed):", {
+                      uri,
+                      size,
+                      width,
+                      height,
+                    });
+                    resolve();
+                  },
+                  () => {
+                    console.log("🧾 Scan image (compressed):", {
+                      uri,
+                      size,
+                      width: null,
+                      height: null,
+                    });
+                    resolve();
+                  },
+                );
+              });
+            } catch (e: any) {
+              console.log("⚠️ Could not stat compressed scan image", {
+                uri,
+                message: e?.message,
+              });
+            }
+          }),
+        );
+
+        const pages = compressedImages.map((p) => ({ imagePath: p }));
 
         // Create a single multi-page PDF from the scanned images
         const timestamp = Date.now();
         const outputPath = `file://${RNBlobUtil.fs.dirs.DocumentDir}/scanned_document_${timestamp}.pdf`;
 
-        console.log('🧾 PDF outputPath:', outputPath);
+        console.log("🧾 PDF outputPath:", outputPath);
 
-        const pdfPath = await createPdf({
-          pages,
-          outputPath,
-        });
+        let pdfUri: string;
+        try {
+          pdfUri = await createPdfFromJpegs({
+            imageUris: compressedImages,
+            outputPath,
+          });
+        } catch (e: any) {
+          console.log(
+            "⚠️ pdf-lib PDF generation failed; falling back to native createPdf",
+            {
+              message: e?.message,
+            },
+          );
 
-        console.log('✅ PDF created at:', pdfPath);
+          const created: any = await createPdf({
+            pages,
+            outputPath,
+          });
 
-        const newFile: Omit<SubmissionFile, '_id' | 'uploadedAt'> = {
+          pdfUri =
+            typeof created === "string"
+              ? created
+              : created?.filePath ||
+                created?.path ||
+                created?.pdfPath ||
+                outputPath;
+        }
+        const normalizedPdfUri = pdfUri.startsWith("file://")
+          ? pdfUri
+          : `file://${pdfUri}`;
+
+        let fileSize = 0;
+        try {
+          const filePath = normalizedPdfUri.replace(/^file:\/\//, "");
+          const stat = await RNBlobUtil.fs.stat(filePath);
+          fileSize = Number(stat?.size) || 0;
+        } catch (e: any) {
+          console.log("⚠️ Could not stat created PDF", {
+            uri: normalizedPdfUri,
+            message: e?.message,
+          });
+        }
+
+        console.log("✅ PDF created at:", normalizedPdfUri, "size:", fileSize);
+
+        const newFile: Omit<SubmissionFile, "_id" | "uploadedAt"> = {
           originalName: `scanned_document_${timestamp}.pdf`,
-          fileUrl: pdfPath,
-          fileType: 'application/pdf',
-          fileSize: 0,
+          fileUrl: normalizedPdfUri,
+          fileType: "application/pdf",
+          fileSize,
         };
 
         setFiles((prev) => [...prev, newFile]);
 
-        Alert.alert('Success', 'PDF created from scanned pages successfully');
+        Alert.alert("Success", "PDF created from scanned pages successfully");
       }
     } catch (error: any) {
-      console.error('❌ Document scanner error:', error);
+      console.error("❌ Document scanner error:", error);
 
-      if (error.message && error.message.includes('User cancelled')) {
-        console.log('ℹ️ User cancelled scanning');
+      if (error.message && error.message.includes("User cancelled")) {
+        console.log("ℹ️ User cancelled scanning");
         return;
       }
 
       Alert.alert(
-        'Scanner Error',
-        'Failed to scan and generate PDF. Please ensure camera permissions are granted.'
+        "Scanner Error",
+        "Failed to scan and generate PDF. Please ensure camera permissions are granted.",
       );
     }
   };
 
   const handleRemoveFile = (index: number) => {
-    Alert.alert(
-      'Remove File',
-      'Are you sure you want to remove this file?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => {
-            setFiles((prev) => prev.filter((_, i) => i !== index));
-          },
+    Alert.alert("Remove File", "Are you sure you want to remove this file?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          setFiles((prev) => prev.filter((_, i) => i !== index));
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleSubmit = async () => {
     // Validation
     if (!selectedStudentId) {
-      Alert.alert('Validation Error', 'Please select a student');
+      Alert.alert("Validation Error", "Please select a student");
       return;
     }
 
     if (files.length === 0) {
-      Alert.alert('Validation Error', 'Please attach at least one file');
+      Alert.alert("Validation Error", "Please attach at least one file");
       return;
     }
 
     try {
       setSubmitting(true);
-      console.log('📤 Creating submission (teacher endpoint)...');
+      console.log("📤 Creating submission (teacher endpoint)...");
 
       await teacherSubmissionService.createSubmissionForStudent(
         courseId,
@@ -229,41 +354,46 @@ export default function AddSubmissionScreen() {
           uri: f.fileUrl,
           name: f.originalName,
           type: f.fileType,
-        }))
+        })),
       );
 
-      Alert.alert('Success', 'Submission created successfully', [
+      Alert.alert("Success", "Submission created successfully", [
         {
-          text: 'OK',
+          text: "OK",
           onPress: () => navigation.goBack(),
         },
       ]);
     } catch (error: any) {
-      console.error('❌ Error creating submission:', error);
-      Alert.alert('Error', error?.response?.data?.message || error.message || 'Failed to create submission');
+      console.error("❌ Error creating submission:", error);
+      Alert.alert(
+        "Error",
+        error?.response?.data?.message ||
+          error.message ||
+          "Failed to create submission",
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   const getFileIcon = (fileType: string) => {
-    if (fileType.includes('pdf')) return 'document-text';
-    if (fileType.includes('image')) return 'image';
-    if (fileType.includes('video')) return 'videocam';
-    return 'document-attach';
+    if (fileType.includes("pdf")) return "document-text";
+    if (fileType.includes("image")) return "image";
+    if (fileType.includes("video")) return "videocam";
+    return "document-attach";
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) return "0 B";
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${Math.round(bytes / Math.pow(k, i) * 100) / 100} ${sizes[i]}`;
+    return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
@@ -287,7 +417,7 @@ export default function AddSubmissionScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -304,31 +434,35 @@ export default function AddSubmissionScreen() {
           <Text style={styles.headerSubtitle}>{assessmentTitle}</Text>
         </View>
         <View style={styles.placeholder} />
-      </View>      <ScrollView style={styles.content}>
+      </View>{" "}
+      <ScrollView style={styles.content}>
         {/* Student Selection */}
         <View style={styles.section}>
           <Text style={styles.label}>
-            Select Student 
+            Select Student
             <Text style={styles.required}>*</Text>
-          </Text>          
+          </Text>
           <TouchableOpacity
             style={styles.dropdownButton}
             onPress={() => setShowStudentPicker(true)}
             disabled={submitting}
           >
-            <Text style={[
-              styles.dropdownButtonText,
-              !selectedStudentId && styles.dropdownPlaceholder
-            ]}>
+            <Text
+              style={[
+                styles.dropdownButtonText,
+                !selectedStudentId && styles.dropdownPlaceholder,
+              ]}
+            >
               {selectedStudentId
                 ? (() => {
-                    const student = students.find(s => s.id === selectedStudentId);
+                    const student = students.find(
+                      (s) => s.id === selectedStudentId,
+                    );
                     return student
                       ? `${student.firstName} ${student.lastName} (${student.studentNumber})`
-                      : '-- Select a student --';
+                      : "-- Select a student --";
                   })()
-                : '-- Select a student --'
-              }
+                : "-- Select a student --"}
             </Text>
             <Ionicons
               name="chevron-down"
@@ -350,7 +484,11 @@ export default function AddSubmissionScreen() {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Select Student</Text>
                 <TouchableOpacity onPress={() => setShowStudentPicker(false)}>
-                  <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
+                  <Ionicons
+                    name="close"
+                    size={24}
+                    color={theme.colors.textPrimary}
+                  />
                 </TouchableOpacity>
               </View>
               <FlatList
@@ -360,7 +498,8 @@ export default function AddSubmissionScreen() {
                   <TouchableOpacity
                     style={[
                       styles.studentItem,
-                      selectedStudentId === item.id && styles.studentItemSelected
+                      selectedStudentId === item.id &&
+                        styles.studentItemSelected,
                     ]}
                     onPress={() => {
                       setSelectedStudentId(item.id);
@@ -369,14 +508,17 @@ export default function AddSubmissionScreen() {
                   >
                     <View style={styles.studentAvatar}>
                       <Text style={styles.studentAvatarText}>
-                        {item.firstName[0]}{item.lastName[0]}
+                        {item.firstName[0]}
+                        {item.lastName[0]}
                       </Text>
                     </View>
                     <View style={styles.studentInfo}>
                       <Text style={styles.studentName}>
                         {item.firstName} {item.lastName}
                       </Text>
-                      <Text style={styles.studentNumber}>{item.studentNumber}</Text>
+                      <Text style={styles.studentNumber}>
+                        {item.studentNumber}
+                      </Text>
                     </View>
                     {selectedStudentId === item.id && (
                       <Ionicons
@@ -389,7 +531,9 @@ export default function AddSubmissionScreen() {
                 )}
                 ListEmptyComponent={
                   <View style={styles.emptyList}>
-                    <Text style={styles.emptyListText}>No students enrolled in this course</Text>
+                    <Text style={styles.emptyListText}>
+                      No students enrolled in this course
+                    </Text>
                   </View>
                 }
               />
@@ -434,9 +578,7 @@ export default function AddSubmissionScreen() {
         {/* Files List */}
         {files.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.label}>
-              Attached Files ({files.length})
-            </Text>
+            <Text style={styles.label}>Attached Files ({files.length})</Text>
             {files.map((file, index) => (
               <View key={index} style={styles.fileItem}>
                 <View style={styles.fileIcon}>
@@ -517,8 +659,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: theme.spacing.md,
@@ -526,9 +668,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.md,
     backgroundColor: theme.colors.surface,
@@ -544,14 +686,14 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: theme.colors.textPrimary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   headerSubtitle: {
     fontSize: 12,
     color: theme.colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 2,
   },
   placeholder: {
@@ -566,16 +708,17 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
-  },  required: {
+  },
+  required: {
     color: theme.colors.error,
   },
   dropdownButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: theme.colors.surface,
     borderRadius: 8,
     borderWidth: 1,
@@ -594,59 +737,59 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '80%',
+    maxHeight: "80%",
     paddingBottom: theme.spacing.xl,
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: theme.colors.textPrimary,
   },
   studentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   studentItemSelected: {
-    backgroundColor: theme.colors.primary + '15',
+    backgroundColor: theme.colors.primary + "15",
   },
   studentAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: theme.spacing.md,
   },
   studentAvatarText: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   studentInfo: {
     flex: 1,
   },
   studentName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: theme.colors.textPrimary,
     marginBottom: 4,
   },
@@ -656,32 +799,32 @@ const styles = StyleSheet.create({
   },
   emptyList: {
     padding: theme.spacing.xl,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyListText: {
     fontSize: 14,
     color: theme.colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   pickerContainer: {
     backgroundColor: theme.colors.surface,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   picker: {
     height: 50,
   },
   fileActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: theme.spacing.md,
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: theme.colors.surface,
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.sm,
@@ -692,12 +835,12 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: theme.colors.primary,
   },
   fileItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.md,
     borderRadius: 8,
@@ -709,9 +852,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: theme.colors.primary + "15",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: theme.spacing.md,
   },
   fileInfo: {
@@ -719,7 +862,7 @@ const styles = StyleSheet.create({
   },
   fileName: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: theme.colors.textPrimary,
     marginBottom: 4,
   },
@@ -735,19 +878,19 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     fontSize: 14,
     color: theme.colors.textPrimary,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
     minHeight: 100,
   },
   charCount: {
     fontSize: 12,
     color: theme.colors.textSecondary,
-    textAlign: 'right',
+    textAlign: "right",
     marginTop: theme.spacing.xs,
   },
   submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: theme.colors.primary,
     paddingVertical: theme.spacing.md,
     borderRadius: 8,
@@ -760,7 +903,7 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
 });

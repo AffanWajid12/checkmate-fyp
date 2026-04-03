@@ -21,12 +21,15 @@ import {
   TouchableOpacity,
   View,
   Linking,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as DocumentPicker from "expo-document-picker";
 import DocumentScanner from "react-native-document-scanner-plugin";
 import { createPdf } from "react-native-images-to-pdf";
 import RNBlobUtil from "react-native-blob-util";
+import { compressImagesForPdf } from "@/utils/scanToCompressedPdf";
+import { createPdfFromJpegs } from "@/utils/pdfLibImagesToPdf";
 import SubmissionOptionsDrawer from "./SubmissionOptionsDrawer";
 
 type ViewAssessmentDetailScreenRouteProp = RouteProp<
@@ -336,23 +339,119 @@ export default function ViewAssessmentDetailScreen() {
   const scanToPdfFile = async () => {
     const result = await DocumentScanner.scanDocument({
       maxNumDocuments: 10,
-      croppedImageQuality: 100,
+      croppedImageQuality: 75,
     });
     if (!result?.scannedImages?.length) return null;
 
     const normalizeToFileUri = (p: string) =>
       p.startsWith("file://") ? p : `file://${p}`;
-    const pages = result.scannedImages.map((p) => ({
-      imagePath: normalizeToFileUri(p),
-    }));
+
+    const normalizedImages = result.scannedImages.map(normalizeToFileUri);
+
+    // Diagnostics: log original scan sizes and dimensions
+    await Promise.all(
+      normalizedImages.map(async (uri) => {
+        try {
+          const filePath = uri.replace(/^file:\/\//, "");
+          const stat = await RNBlobUtil.fs.stat(filePath);
+          const size = Number(stat?.size) || 0;
+
+          await new Promise<void>((resolve) => {
+            Image.getSize(
+              uri,
+              (width, height) => {
+                console.log("🧾 Scan image (original):", {
+                  uri,
+                  size,
+                  width,
+                  height,
+                });
+                resolve();
+              },
+              () => {
+                console.log("🧾 Scan image (original):", {
+                  uri,
+                  size,
+                  width: null,
+                  height: null,
+                });
+                resolve();
+              },
+            );
+          });
+        } catch (e: any) {
+          console.log("⚠️ Could not stat original scan image", {
+            uri,
+            message: e?.message,
+          });
+        }
+      }),
+    );
+
+    const compressedImages = await compressImagesForPdf(normalizedImages);
+
+    // Diagnostics: log compressed image sizes and dimensions
+    await Promise.all(
+      compressedImages.map(async (uri) => {
+        try {
+          const filePath = uri.replace(/^file:\/\//, "");
+          const stat = await RNBlobUtil.fs.stat(filePath);
+          const size = Number(stat?.size) || 0;
+
+          await new Promise<void>((resolve) => {
+            Image.getSize(
+              uri,
+              (width, height) => {
+                console.log("🧾 Scan image (compressed):", {
+                  uri,
+                  size,
+                  width,
+                  height,
+                });
+                resolve();
+              },
+              () => {
+                console.log("🧾 Scan image (compressed):", {
+                  uri,
+                  size,
+                  width: null,
+                  height: null,
+                });
+                resolve();
+              },
+            );
+          });
+        } catch (e: any) {
+          console.log("⚠️ Could not stat compressed scan image", {
+            uri,
+            message: e?.message,
+          });
+        }
+      }),
+    );
+    const pages = compressedImages.map((p) => ({ imagePath: p }));
 
     const timestamp = Date.now();
     const outputPath = `file://${RNBlobUtil.fs.dirs.DocumentDir}/scan-${timestamp}.pdf`;
 
-    const created: any = await createPdf({
-      pages,
-      outputPath,
-    });
+    let created: any;
+    try {
+      created = await createPdfFromJpegs({
+        imageUris: compressedImages,
+        outputPath,
+      });
+    } catch (e: any) {
+      console.log(
+        "⚠️ pdf-lib PDF generation failed; falling back to native createPdf",
+        {
+          message: e?.message,
+        },
+      );
+      created = await createPdf({
+        pages,
+        outputPath,
+      });
+    }
 
     const pdfUri =
       typeof created === "string"

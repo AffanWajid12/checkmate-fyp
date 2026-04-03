@@ -1,0 +1,34 @@
+# Monorepo-level EAS ignore rules
+
+# If EAS ends up archiving from the repo root, this prevents huge sibling folders from being uploaded.
+
+**/node_modules/
+**/.expo/
+**/dist/
+**/web-build/
+**/.next/
+**/build/
+
+# Python venvs / caches
+
+.venv/
+**/.venv/
+**/**pycache**/
+\*\*/.pytest_cache/
+
+# Large archives/media
+
+**/\*.zip
+**/_.7z
+\*\*/_.tar
+**/\*.tar.gz
+**/_.tgz
+\*\*/_.mp4
+**/\*.mov
+**/\*.mkv
+
+# Exclude other apps/services (not needed for mobile build)
+
+backend/
+frontend/
+services/
