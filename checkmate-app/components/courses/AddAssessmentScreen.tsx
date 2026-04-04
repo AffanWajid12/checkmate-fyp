@@ -9,17 +9,17 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as DocumentPicker from "expo-document-picker";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -30,10 +30,17 @@ interface AttachmentFile {
   mimeType: string;
 }
 
-type AddAssessmentScreenRouteProp = RouteProp<RootStackParamList, "AddAssessment">;
+type AddAssessmentScreenRouteProp = RouteProp<
+  RootStackParamList,
+  "AddAssessment"
+>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const ASSESSMENT_TYPES: Array<{ value: BackendAssessmentType; label: string; icon: string }> = [
+const ASSESSMENT_TYPES: Array<{
+  value: BackendAssessmentType;
+  label: string;
+  icon: string;
+}> = [
   { value: "EXAM", label: "Exam", icon: "document-text" },
   { value: "QUIZ", label: "Quiz", icon: "help-circle" },
   { value: "ASSIGNMENT", label: "Assignment", icon: "clipboard" },
@@ -45,20 +52,20 @@ export default function AddAssessmentScreen() {
   const { courseId, courseCode, courseTitle } = route.params;
 
   const [loading, setLoading] = useState(false);
-  
+
   // Required fields
   const [title, setTitle] = useState("");
   const [type, setType] = useState<BackendAssessmentType>("ASSIGNMENT");
   const [totalPoints, setTotalPoints] = useState("100");
   const [dueDate, setDueDate] = useState("");
   const [dueTime, setDueTime] = useState("");
-    // Optional fields
+  // Optional fields
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [allowLateSubmissions, setAllowLateSubmissions] = useState(true);
   const [latePenalty, setLatePenalty] = useState("10");
   const [visibleToStudents, setVisibleToStudents] = useState(true);
-  
+
   // File attachments
   const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
 
@@ -71,15 +78,21 @@ export default function AddAssessmentScreen() {
       Alert.alert("Validation Error", "Title must be at least 3 characters");
       return false;
     }
-    
+
     const points = parseInt(totalPoints);
     if (isNaN(points) || points <= 0 || points > 1000) {
-      Alert.alert("Validation Error", "Total points must be between 1 and 1000");
+      Alert.alert(
+        "Validation Error",
+        "Total points must be between 1 and 1000",
+      );
       return false;
     }
 
     if (!dueDate.trim()) {
-      Alert.alert("Validation Error", "Due date is required (e.g., 2024-12-25)");
+      Alert.alert(
+        "Validation Error",
+        "Due date is required (e.g., 2024-12-25)",
+      );
       return false;
     }
 
@@ -91,14 +104,20 @@ export default function AddAssessmentScreen() {
     // Basic date format validation (YYYY-MM-DD)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(dueDate)) {
-      Alert.alert("Validation Error", "Due date must be in format YYYY-MM-DD (e.g., 2024-12-25)");
+      Alert.alert(
+        "Validation Error",
+        "Due date must be in format YYYY-MM-DD (e.g., 2024-12-25)",
+      );
       return false;
     }
 
     // Basic time format validation (HH:MM)
     const timeRegex = /^\d{2}:\d{2}$/;
     if (!timeRegex.test(dueTime)) {
-      Alert.alert("Validation Error", "Due time must be in format HH:MM (e.g., 14:30)");
+      Alert.alert(
+        "Validation Error",
+        "Due time must be in format HH:MM (e.g., 14:30)",
+      );
       return false;
     }
 
@@ -106,17 +125,24 @@ export default function AddAssessmentScreen() {
     const dueDateTimeString = `${dueDate}T${dueTime}:00`;
     const dueDateTime = new Date(dueDateTimeString);
     if (dueDateTime <= new Date()) {
-      Alert.alert("Validation Error", "Due date and time must be in the future");
+      Alert.alert(
+        "Validation Error",
+        "Due date and time must be in the future",
+      );
       return false;
     }
 
     if (allowLateSubmissions) {
       const penalty = parseInt(latePenalty);
       if (isNaN(penalty) || penalty < 0 || penalty > 100) {
-        Alert.alert("Validation Error", "Late penalty must be between 0 and 100");
+        Alert.alert(
+          "Validation Error",
+          "Late penalty must be between 0 and 100",
+        );
         return false;
       }
-    }    return true;
+    }
+    return true;
   };
 
   const handlePickDocument = async () => {
@@ -162,7 +188,7 @@ export default function AddAssessmentScreen() {
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
   const handleCreateAssessment = async () => {
@@ -180,7 +206,8 @@ export default function AddAssessmentScreen() {
         title: title.trim(),
         type,
         // always send a string so backend announcement includes Instructions block
-        instructions: (instructions ?? '').toString(),
+        instructions: (instructions ?? "").toString(),
+        visibleToStudents,
         due_date: new Date(dueDateTimeString).toISOString(),
         files:
           attachmentFiles.length > 0
@@ -275,7 +302,6 @@ export default function AddAssessmentScreen() {
                 maxLength={100}
               />
             </View>
-
             {/* Type Selector */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>
@@ -291,7 +317,8 @@ export default function AddAssessmentScreen() {
                     key={assessmentType.value}
                     style={[
                       styles.typeOption,
-                      type === assessmentType.value && styles.typeOptionSelected,
+                      type === assessmentType.value &&
+                        styles.typeOptionSelected,
                     ]}
                     onPress={() => setType(assessmentType.value)}
                   >
@@ -307,7 +334,8 @@ export default function AddAssessmentScreen() {
                     <Text
                       style={[
                         styles.typeText,
-                        type === assessmentType.value && styles.typeTextSelected,
+                        type === assessmentType.value &&
+                          styles.typeTextSelected,
                       ]}
                     >
                       {assessmentType.label}
@@ -316,7 +344,6 @@ export default function AddAssessmentScreen() {
                 ))}
               </ScrollView>
             </View>
-
             {/* Total Points Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>
@@ -332,7 +359,6 @@ export default function AddAssessmentScreen() {
                 maxLength={4}
               />
             </View>
-
             {/* Due Date Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>
@@ -350,7 +376,6 @@ export default function AddAssessmentScreen() {
                 Format: YYYY-MM-DD (e.g., 2024-12-25)
               </Text>
             </View>
-
             {/* Due Time Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>
@@ -368,7 +393,6 @@ export default function AddAssessmentScreen() {
                 Format: HH:MM in 24-hour format (e.g., 14:30 for 2:30 PM)
               </Text>
             </View>
-
             {/* Description Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Description (Optional)</Text>
@@ -384,7 +408,6 @@ export default function AddAssessmentScreen() {
                 maxLength={500}
               />
             </View>
-
             {/* Instructions Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Instructions (Optional)</Text>
@@ -400,7 +423,6 @@ export default function AddAssessmentScreen() {
                 maxLength={1000}
               />
             </View>
-
             {/* Allow Late Submissions Toggle */}
             <View style={styles.toggleGroup}>
               <View style={styles.toggleLeft}>
@@ -419,7 +441,6 @@ export default function AddAssessmentScreen() {
                 thumbColor={theme.colors.onPrimary}
               />
             </View>
-
             {/* Late Penalty Input (conditional) */}
             {allowLateSubmissions && (
               <View style={styles.inputGroup}>
@@ -437,7 +458,8 @@ export default function AddAssessmentScreen() {
                   Penalty percentage per day late
                 </Text>
               </View>
-            )}            {/* Visible to Students Toggle */}
+            )}{" "}
+            {/* Visible to Students Toggle */}
             <View style={styles.toggleGroup}>
               <View style={styles.toggleLeft}>
                 <Text style={styles.toggleLabel}>Visible to Students</Text>
@@ -455,10 +477,8 @@ export default function AddAssessmentScreen() {
                 thumbColor={theme.colors.onPrimary}
               />
             </View>
-
             {/* File Attachments Section */}
             <View style={styles.sectionDivider} />
-            
             <View style={styles.inputGroup}>
               <View style={styles.fileHeaderContainer}>
                 <Text style={styles.label}>Attachments (Optional)</Text>
@@ -466,11 +486,15 @@ export default function AddAssessmentScreen() {
                   style={styles.addFileButton}
                   onPress={handlePickDocument}
                 >
-                  <Ionicons name="add-circle" size={20} color={theme.colors.primary} />
+                  <Ionicons
+                    name="add-circle"
+                    size={20}
+                    color={theme.colors.primary}
+                  />
                   <Text style={styles.addFileButtonText}>Add Files</Text>
                 </TouchableOpacity>
               </View>
-              
+
               {attachmentFiles.length > 0 && (
                 <View style={styles.filesContainer}>
                   {attachmentFiles.map((file, index) => (
@@ -494,13 +518,17 @@ export default function AddAssessmentScreen() {
                         style={styles.removeFileButton}
                         onPress={() => handleRemoveFile(index)}
                       >
-                        <Ionicons name="close-circle" size={24} color="#EF4444" />
+                        <Ionicons
+                          name="close-circle"
+                          size={24}
+                          color="#EF4444"
+                        />
                       </TouchableOpacity>
                     </View>
                   ))}
                 </View>
               )}
-              
+
               {attachmentFiles.length === 0 && (
                 <View style={styles.emptyFilesContainer}>
                   <Ionicons
@@ -523,7 +551,10 @@ export default function AddAssessmentScreen() {
         {/* Submit Button */}
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+            style={[
+              styles.submitButton,
+              loading && styles.submitButtonDisabled,
+            ]}
             onPress={handleCreateAssessment}
             disabled={loading}
           >
@@ -675,7 +706,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: theme.colors.textPrimary,
     marginBottom: 2,
-  },  toggleDescription: {
+  },
+  toggleDescription: {
     fontSize: 12,
     color: theme.colors.textSecondary,
   },

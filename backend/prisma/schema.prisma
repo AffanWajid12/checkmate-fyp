@@ -9,19 +9,19 @@ datasource db {
 }
 
 model users {
-  id              String                  @id @db.Uuid
-  email           String                  @unique
-  name            String
-  role            Role                    @default(STUDENT)
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @default(now()) @updatedAt
-  profile_picture String?
-  comments        announcement_comments[] @relation("UserComments")
-  ownedCourses    courses[]               @relation("TeacherCourses")
+  id                   String                  @id @db.Uuid
+  email                String                  @unique
+  name                 String
+  role                 Role                    @default(STUDENT)
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @default(now()) @updatedAt
+  profile_picture      String?
+  comments             announcement_comments[] @relation("UserComments")
+  ownedCourses         courses[]               @relation("TeacherCourses")
+  enrolledCourses      enrollments[]           @relation("StudentEnrollments")
   generatedAssessments generated_assessments[] @relation("TeacherGeneratedAssessments")
   referenceMaterials   reference_materials[]   @relation("TeacherReferenceMaterials")
-  enrolledCourses enrollments[]           @relation("StudentEnrollments")
-  submissions     submissions[]           @relation("UserSubmissions")
+  submissions          submissions[]           @relation("UserSubmissions")
 
   @@map("users")
   @@schema("public")
@@ -125,6 +125,7 @@ model assessments {
   instructions     String?
   type             AssessmentType     @default(QUIZ)
   due_date         DateTime?
+  visible_to_students Boolean         @default(true)
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   announcement_id  String             @db.Uuid
@@ -199,6 +200,54 @@ model attendance {
   @@schema("public")
 }
 
+model generated_assessments {
+  id                  String                                     @id @default(uuid()) @db.Uuid
+  title               String?
+  subject             String
+  assessment_type     AssessmentType                             @default(QUIZ)
+  difficulty          String
+  instructions        String?
+  question_count      Int?
+  question_payload    Json
+  status              String?
+  createdAt           DateTime                                   @default(now())
+  updatedAt           DateTime                                   @default(now()) @updatedAt
+  teacher_id          String                                     @db.Uuid
+  reference_materials generated_assessment_reference_materials[] @relation("GeneratedAssessmentReferences")
+  teacher             users                                      @relation("TeacherGeneratedAssessments", fields: [teacher_id], references: [id], onDelete: Cascade)
+
+  @@map("generated_assessments")
+  @@schema("public")
+}
+
+model reference_materials {
+  id                    String                                     @id @default(uuid()) @db.Uuid
+  bucket_path           String
+  file_name             String
+  file_size             Int
+  mime_type             String
+  createdAt             DateTime                                   @default(now())
+  updatedAt             DateTime                                   @default(now()) @updatedAt
+  teacher_id            String                                     @db.Uuid
+  generated_assessments generated_assessment_reference_materials[] @relation("ReferenceMaterialGeneratedAssessments")
+  teacher               users                                      @relation("TeacherReferenceMaterials", fields: [teacher_id], references: [id], onDelete: Cascade)
+
+  @@map("reference_materials")
+  @@schema("public")
+}
+
+model generated_assessment_reference_materials {
+  id                      String                @id @default(uuid()) @db.Uuid
+  generated_assessment_id String                @db.Uuid
+  reference_material_id   String                @db.Uuid
+  generated_assessment    generated_assessments @relation("GeneratedAssessmentReferences", fields: [generated_assessment_id], references: [id], onDelete: Cascade)
+  reference_material      reference_materials   @relation("ReferenceMaterialGeneratedAssessments", fields: [reference_material_id], references: [id], onDelete: Cascade)
+
+  @@unique([generated_assessment_id, reference_material_id])
+  @@map("generated_assessment_reference_materials")
+  @@schema("public")
+}
+
 enum Role {
   STUDENT
   TEACHER
@@ -228,59 +277,5 @@ enum SubmissionStatus {
   LATE
   GRADED
 
-  @@schema("public")
-}
-
-model generated_assessments {
-  id              String   @id @db.Uuid @default(uuid())
-  title           String?
-  subject         String
-  assessment_type AssessmentType @default(QUIZ)
-  difficulty      String
-  instructions    String?
-  question_count  Int?
-  question_payload Json
-  status          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt @default(now())
-
-  teacher_id      String @db.Uuid
-  teacher         users  @relation("TeacherGeneratedAssessments", fields: [teacher_id], references: [id], onDelete: Cascade)
-
-  reference_materials generated_assessment_reference_materials[] @relation("GeneratedAssessmentReferences")
-
-  @@map("generated_assessments")
-  @@schema("public")
-}
-
-model reference_materials {
-  id          String   @id @db.Uuid @default(uuid())
-  bucket_path String
-  file_name   String
-  file_size   Int
-  mime_type   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt @default(now())
-
-  teacher_id  String @db.Uuid
-  teacher     users  @relation("TeacherReferenceMaterials", fields: [teacher_id], references: [id], onDelete: Cascade)
-
-  generated_assessments generated_assessment_reference_materials[] @relation("ReferenceMaterialGeneratedAssessments")
-
-  @@map("reference_materials")
-  @@schema("public")
-}
-
-model generated_assessment_reference_materials {
-  id                      String @id @db.Uuid @default(uuid())
-  
-  generated_assessment_id String @db.Uuid
-  generated_assessment    generated_assessments @relation("GeneratedAssessmentReferences", fields: [generated_assessment_id], references: [id], onDelete: Cascade)
-
-  reference_material_id   String @db.Uuid
-  reference_material      reference_materials   @relation("ReferenceMaterialGeneratedAssessments", fields: [reference_material_id], references: [id], onDelete: Cascade)
-
-  @@unique([generated_assessment_id, reference_material_id])
-  @@map("generated_assessment_reference_materials")
   @@schema("public")
 }

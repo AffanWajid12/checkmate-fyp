@@ -5,6 +5,7 @@ export type CreateAssessmentInput = {
   title: string;
   type: BackendAssessmentType;
   instructions: string; // always send a string (can be empty)
+  visibleToStudents?: boolean;
   due_date?: string; // ISO string
   files?: Array<{
     fileName: string;
@@ -25,6 +26,10 @@ class AssessmentService {
     formData.append('title', data.title);
     formData.append('type', data.type);
     formData.append('instructions', (data.instructions ?? '').toString());
+
+    if (data.visibleToStudents !== undefined) {
+      formData.append('visibleToStudents', String(data.visibleToStudents));
+    }
 
     if (data.due_date) {
       formData.append('due_date', new Date(data.due_date).toISOString());

@@ -118,6 +118,7 @@ export const getEnrolledCourses = async (req, res) => {
                         announcements: {
                             include: {
                                 assessments: {
+                                    where: { visible_to_students: true },
                                     include: {
                                         submissions: {
                                             where: { user_id: req.user.id },

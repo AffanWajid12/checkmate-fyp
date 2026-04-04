@@ -11,12 +11,27 @@ import {
 } from "../utils/courseHelpers.js";
 import { buildAssessmentAnnouncement } from "../utils/assessmentAnnouncementTemplates.js";
 
+const parseOptionalBoolean = (value) => {
+    if (value === undefined || value === null || value === "") return undefined;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    if (typeof value === "string") {
+        const v = value.trim().toLowerCase();
+        if (["true", "1", "yes", "on"].includes(v)) return true;
+        if (["false", "0", "no", "off"].includes(v)) return false;
+    }
+    return undefined;
+};
+
 // POST /api/courses/:courseId/announcements/:announcementId/assessments
 // Body (multipart/form-data): title, type, instructions?, due_date?, files[]
 export const addAssessment = async (req, res) => {
     try {
         const { courseId, announcementId } = req.params;
         const { title, type, instructions, due_date } = req.body;
+        const visibleToStudents = parseOptionalBoolean(
+            req.body.visibleToStudents ?? req.body.visible_to_students,
+        );
 
         if (!title || !type)
             return res.status(400).json({ message: "title and type are required" });
@@ -38,6 +53,9 @@ export const addAssessment = async (req, res) => {
                 instructions: instructions ?? null,
                 due_date: due_date ? new Date(due_date) : null,
                 announcement_id: announcementId,
+                ...(visibleToStudents === undefined
+                    ? {}
+                    : { visible_to_students: visibleToStudents }),
             },
         });
 
@@ -88,6 +106,9 @@ export const createAssessment = async (req, res) => {
     try {
         const { courseId } = req.params;
         const { title, type, instructions, due_date } = req.body;
+        const visibleToStudents = parseOptionalBoolean(
+            req.body.visibleToStudents ?? req.body.visible_to_students,
+        );
 
         if (!title || !type)
             return res.status(400).json({ message: "title and type are required" });
@@ -123,6 +144,9 @@ export const createAssessment = async (req, res) => {
                     instructions: instructions ?? null,
                     due_date: dueDate,
                     announcement_id: announcement.id,
+                    ...(visibleToStudents === undefined
+                        ? {}
+                        : { visible_to_students: visibleToStudents }),
                 },
             });
 
@@ -313,6 +337,10 @@ export const getAssessmentDetails = async (req, res) => {
         } else {
             await verifyStudentEnrolled(courseId, req.user.id);
 
+            if (assessment.visible_to_students === false) {
+                return res.status(404).json({ message: "Assessment not found" });
+            }
+
             const submission = await prisma.submissions.findUnique({
                 where: {
                     user_id_assessment_id: {
@@ -354,6 +382,10 @@ export const submitAssessment = async (req, res) => {
 
         await verifyStudentEnrolled(courseId, req.user.id);
         const assessment = await verifyAssessmentInCourse(assessmentId, courseId);
+
+        if (assessment.visible_to_students === false) {
+            return res.status(404).json({ message: "Assessment not found" });
+        }
 
         if (!req.files || req.files.length === 0)
             return res.status(400).json({ message: "At least one file is required" });
@@ -513,7 +545,11 @@ export const updateSubmission = async (req, res) => {
         const { courseId, assessmentId } = req.params;
 
         await verifyStudentEnrolled(courseId, req.user.id);
-        await verifyAssessmentInCourse(assessmentId, courseId);
+        const assessment = await verifyAssessmentInCourse(assessmentId, courseId);
+
+        if (assessment.visible_to_students === false) {
+            return res.status(404).json({ message: "Assessment not found" });
+        }
 
         if (!req.files || req.files.length === 0)
             return res.status(400).json({ message: "At least one file is required" });
@@ -648,7 +684,11 @@ export const unsubmitAssessment = async (req, res) => {
         const { courseId, assessmentId } = req.params;
 
         await verifyStudentEnrolled(courseId, req.user.id);
-        await verifyAssessmentInCourse(assessmentId, courseId);
+        const assessment = await verifyAssessmentInCourse(assessmentId, courseId);
+
+        if (assessment.visible_to_students === false) {
+            return res.status(404).json({ message: "Assessment not found" });
+        }
 
         const submission = await prisma.submissions.findUnique({
             where: {
@@ -693,7 +733,11 @@ export const removeAttachment = async (req, res) => {
         const { courseId, assessmentId, attachmentId } = req.params;
 
         await verifyStudentEnrolled(courseId, req.user.id);
-        await verifyAssessmentInCourse(assessmentId, courseId);
+        const assessment = await verifyAssessmentInCourse(assessmentId, courseId);
+
+        if (assessment.visible_to_students === false) {
+            return res.status(404).json({ message: "Assessment not found" });
+        }
 
         // Find the attachment and verify it belongs to this student's submission
         const attachment = await prisma.attachments.findUnique({

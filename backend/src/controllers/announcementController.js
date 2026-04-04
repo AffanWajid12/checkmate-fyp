@@ -80,9 +80,13 @@ export const getCourseAnnouncements = async (req, res) => {
                     orderBy: { createdAt: "asc" }
                 },
                 resources: true,
-                assessments: {
-                    include: { source_materials: true },
-                },
+                assessments:
+                    req.user.role === "TEACHER"
+                        ? { include: { source_materials: true } }
+                        : {
+                              where: { visible_to_students: true },
+                              include: { source_materials: true },
+                          },
             },
             orderBy: { createdAt: "desc" },
         });
