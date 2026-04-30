@@ -3,7 +3,7 @@ import { getSupabaseAccessToken } from '../supabase/authToken';
 
 // Base API URL - Update this with your actual backend URL
 const API_BASE_URL = __DEV__
-  ? 'http://192.168.1.9:5000' // Development
+  ? 'http://192.168.18.102:5000' // Development
   : 'https://api.checkmate.edu'; // Production
 
 // Create axios instance
