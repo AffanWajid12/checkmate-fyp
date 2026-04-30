@@ -1,5 +1,16 @@
 import prisma from "../config/prismaClient.js";
-import { generateCourseCode, handleError, verifyCourseOwner, signUserAvatar } from "../utils/courseHelpers.js";
+import { generateCourseCode, handleError, verifyCourseOwner, signUserAvatar, calculateClassStats } from "../utils/courseHelpers.js";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const calculateBlueprintTotal = (nodes) => {
+    if (!nodes || !Array.isArray(nodes)) return 0;
+    return nodes.reduce((sum, node) => {
+        if (node.subparts && node.subparts.length > 0) {
+            return sum + calculateBlueprintTotal(node.subparts);
+        }
+        return sum + (Number(node.points || node.total_marks) || 0);
+    }, 0);
+};
 
 // ─── Teacher Controllers ─────────────────────────────────────────────────────
 
@@ -150,6 +161,111 @@ export const getEnrolledCourses = async (req, res) => {
 
         const courses = enrollmentsWithAvatars.map((e) => e.course);
         return res.status(200).json({ message: "Enrolled courses retrieved successfully", courses });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+/**
+ * GET /api/courses/student/marks
+ * Returns all marks for the student across all enrolled courses, including class statistics.
+ */
+export const getStudentMarks = async (req, res) => {
+    try {
+        const studentId = req.user.id;
+
+        // 1. Get all enrollments with courses and assessments
+        const enrollments = await prisma.enrollments.findMany({
+            where: { student_id: studentId },
+            include: {
+                course: {
+                    include: {
+                        announcements: {
+                            include: {
+                                assessments: {
+                                    where: { visible_to_students: true },
+                                    include: {
+                                        grading_blueprint: true,
+                                        submissions: {
+                                            where: { user_id: studentId },
+                                            include: { evaluation: true }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const marksData = await Promise.all(enrollments.map(async (e) => {
+            const course = e.course;
+            const assessments = course.announcements.flatMap(a => a.assessments);
+            
+            const results = (await Promise.all(assessments.map(async (asmt) => {
+                const studentSubmission = asmt.submissions[0];
+                if (studentSubmission?.status !== 'GRADED') return null;
+                
+                const obtainedMarks = Number(studentSubmission?.evaluation?.total_score ?? studentSubmission?.grade ?? 0);
+                
+                // Robust total marks calculation
+                let totalMarks = Number(asmt.grading_blueprint?.total_marks || asmt.total_marks || 0);
+                if (totalMarks === 0 && asmt.grading_blueprint?.structure) {
+                    totalMarks = calculateBlueprintTotal(asmt.grading_blueprint.structure);
+                }
+                
+                // Get all graded submissions for stats
+                const allSubmissions = await prisma.submissions.findMany({
+                    where: { 
+                        assessment_id: asmt.id,
+                        status: 'GRADED',
+                        user: {
+                            enrolledCourses: {
+                                some: { course_id: course.id }
+                            }
+                        }
+                    },
+                    include: { evaluation: true }
+                });
+
+                const gradedScores = allSubmissions
+                    .map(s => {
+                        const val = s.evaluation?.total_score ?? s.grade;
+                        return (val !== null && val !== undefined) ? Number(val) : null;
+                    });
+
+                const stats = calculateClassStats(gradedScores);
+
+                return {
+                    id: asmt.id,
+                    title: asmt.title,
+                    type: asmt.type,
+                    totalMarks,
+                    obtainedMarks,
+                    status: 'GRADED',
+                    stats
+                };
+            }))).filter(Boolean);
+
+            const grandObtained = results.reduce((acc, r) => acc + Number(r.obtainedMarks), 0);
+            const grandTotal = results.reduce((acc, r) => acc + Number(r.totalMarks), 0);
+
+            return {
+                courseId: course.id,
+                courseTitle: course.title,
+                courseCode: course.code,
+                results,
+                grandObtained: parseFloat(grandObtained.toFixed(2)),
+                grandTotal: parseFloat(grandTotal.toFixed(2)),
+                gradedCount: results.length
+            };
+        }));
+
+        return res.status(200).json({ 
+            message: "Student marks retrieved", 
+            marks: marksData 
+        });
     } catch (error) {
         return handleError(res, error);
     }

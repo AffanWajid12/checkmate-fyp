@@ -33,8 +33,27 @@ app.get('/api', (req, res) => {
 });
 
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Something went wrong!');
+    console.error("Global Error Handler:", err);
+    
+    // Handle Multer Errors
+    if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ 
+            message: "File too large. Maximum allowed size is 100MB per file." 
+        });
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+        return res.status(400).json({ 
+            message: "Too many files. Maximum allowed is 10 files." 
+        });
+    }
+
+    const status = err.status || 500;
+    const message = err.message || 'Something went wrong!';
+    
+    res.status(status).json({ 
+        message,
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
 });
 
 const PORT = process.env.PORT || 5000;

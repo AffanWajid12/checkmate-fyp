@@ -8,6 +8,7 @@ import {
     useUnsubmitAssessment,
     useRemoveAttachment,
 } from '../../../hooks/useCourses';
+import DetailedResultView from './DetailedResultView';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -171,6 +172,7 @@ const MiniDropzone = ({ files, onChange }) => {
 const SubmissionPortal = ({ assessment, submission, courseId, assessmentId }) => {
     const [stagedFiles, setStagedFiles] = useState([]);
     const [showAddFiles, setShowAddFiles] = useState(false);
+    const [showDetails, setShowDetails] = useState(false);
 
     const { mutate: submit, isPending: submitting } = useSubmitAssessment(courseId, assessmentId);
     const { mutate: update, isPending: updating } = useUpdateSubmission(courseId, assessmentId);
@@ -247,18 +249,48 @@ const SubmissionPortal = ({ assessment, submission, courseId, assessmentId }) =>
 
             {/* Graded result */}
             {isGraded && (
-                <div className="pt-3 border-t border-neutral-100 space-y-3">
+                <div className="pt-3 border-t border-neutral-100 space-y-4">
                     <div className="flex items-center justify-between">
-                        <span className="text-sm text-text-secondary">Grade</span>
-                        <span className="text-xl font-bold text-text-primary">{submission.grade}</span>
-                    </div>
-                    {submission.feedback && (
-                        <div>
-                            <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-1">Feedback</p>
-                            <p className="text-sm text-text-secondary leading-relaxed">{submission.feedback}</p>
+                        <span className="text-sm font-bold text-text-secondary">Overall Grade</span>
+                        <div className="text-right">
+                            <span className="text-2xl font-black text-primary tracking-tight">{submission.grade}</span>
+                            <span className="text-sm font-bold text-neutral-300 ml-1">
+                                / {(() => {
+                                    const bp = assessment.grading_blueprint;
+                                    const calc = (nodes) => nodes?.reduce((sum, n) => 
+                                        sum + (n.subparts?.length > 0 ? calc(n.subparts) : (parseFloat(n.points || n.total_marks) || 0)), 0) || 0;
+                                    return calc(bp?.structure) || '—';
+                                })()}
+                            </span>
                         </div>
+                    </div>
+                    {submission.evaluation ? (
+                        <button
+                            onClick={() => setShowDetails(true)}
+                            className="w-full py-2.5 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            View Detailed Feedback
+                        </button>
+                    ) : (
+                        submission.feedback && (
+                            <div>
+                                <p className="text-xs font-black text-text-muted uppercase tracking-wide mb-1">Feedback</p>
+                                <p className="text-sm text-text-secondary leading-relaxed bg-neutral-50 p-3 rounded-xl border border-neutral-100">{submission.feedback}</p>
+                            </div>
+                        )
                     )}
                 </div>
+            )}
+
+            {showDetails && submission && (
+                <DetailedResultView
+                    submission={submission}
+                    assessment={assessment}
+                    onClose={() => setShowDetails(false)}
+                />
             )}
 
             {/* Existing submitted files */}

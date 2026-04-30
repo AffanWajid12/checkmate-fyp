@@ -63,6 +63,20 @@ export const useStudentAttendance = (courseId) =>
     });
 
 /**
+ * GET /api/courses/marks
+ * Returns student marks and stats for all enrolled courses.
+ */
+export const useStudentMarks = () =>
+    useQuery({
+        queryKey: ["courses", "marks"],
+        queryFn: async () => {
+            const { data } = await apiClient.get("/api/courses/marks");
+            return data.marks; // array of course marks objects
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+/**
  * GET /api/courses/:courseId/announcements
  * Returns announcements for a course. Accessible by both TEACHER (owns) and STUDENT (enrolled).
  */
@@ -467,6 +481,29 @@ export const useGetSubmissionDetails = (courseId, assessmentId, submissionId) =>
     });
 
 /**
+ * POST /api/courses/:courseId/assessments/:assessmentId/source-materials
+ * Teacher only — appends new source materials to an assessment.
+ */
+export const useAddSourceMaterials = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (formData) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments/${assessmentId}/source-materials`,
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } }
+            );
+            return data; // { message, materials }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+        },
+    });
+};
+
+/**
  * DELETE /api/courses/:courseId/assessments/:assessmentId/source-materials/:materialId
  * Teacher only — removes a source material from storage and DB.
  */
@@ -655,6 +692,74 @@ export const useUpdateAssessment = (courseId) => {
         onSuccess: (_, { assessmentId }) => {
             queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });
             queryClient.invalidateQueries({ queryKey: courseKeys.assessmentDetails(courseId, assessmentId) });
+        },
+    });
+};
+
+/**
+ * PUT /api/courses/:courseId/assessments/:assessmentId/blueprint
+ * Saves the grading blueprint for an assessment.
+ */
+export const useSaveBlueprint = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ total_marks, structure }) => {
+            const { data } = await apiClient.put(
+                `/api/courses/${courseId}/assessments/${assessmentId}/blueprint`,
+                { total_marks, structure }
+            );
+            return data.blueprint;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+        },
+    });
+};
+
+/**
+ * PUT /api/courses/:courseId/assessments/:assessmentId/submissions/:submissionId/evaluate
+ * Saves the detailed manual/AI evaluation for a submission.
+ */
+export const useSaveEvaluation = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ submissionId, total_score, overall_feedback, details, studentId }) => {
+            const { data } = await apiClient.put(
+                `/api/courses/${courseId}/assessments/${assessmentId}/submissions/${submissionId}/evaluate`,
+                { total_score, overall_feedback, details, studentId }
+            );
+            return data.evaluation;
+        },
+        onSuccess: (_, { submissionId }) => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.submissionDetails(courseId, assessmentId, submissionId),
+            });
+        },
+    });
+};
+
+/**
+ * DELETE /api/courses/:courseId/assessments/:assessmentId/evaluation-reset
+ * Resets all evaluations and the blueprint for an assessment.
+ */
+export const useResetEvaluation = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async () => {
+            const { data } = await apiClient.delete(
+                `/api/courses/${courseId}/assessments/${assessmentId}/evaluation-reset`
+            );
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
         },
     });
 };

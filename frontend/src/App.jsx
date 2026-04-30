@@ -109,6 +109,14 @@ function App() {
                 }
               />
               <Route
+                path="/student/marks"
+                element={
+                  <RoleProtectedRoute allowedRoles={["STUDENT"]}>
+                    <StudentDashboard defaultTab="marks" />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
                 path="/student/courses/:courseId"
                 element={
                   <RoleProtectedRoute allowedRoles={["STUDENT"]}>

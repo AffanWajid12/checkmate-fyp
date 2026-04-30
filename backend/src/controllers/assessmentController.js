@@ -8,6 +8,7 @@ import {
     verifyAssessmentInCourse,
     generateSignedUrl,
     signUserAvatar,
+    calculateClassStats,
 } from "../utils/courseHelpers.js";
 import { buildAssessmentAnnouncement } from "../utils/assessmentAnnouncementTemplates.js";
 
@@ -305,21 +306,41 @@ export const getAssessmentDetails = async (req, res) => {
                 where: { assessment_id: assessmentId },
                 include: {
                     user: { select: { id: true, name: true, email: true, profile_picture: true } },
+                    evaluation: true,
+                    attachments: true,
                 },
             });
 
             const submittedIds = new Set(submissions.map((s) => s.user_id));
 
-            // Sign all avatars
+            // Sign all avatars and attachments
             const submittedWithAvatars = await Promise.all(
                 submissions
                     .filter((s) => s.status === "SUBMITTED" || s.status === "GRADED")
-                    .map(async (s) => ({ ...s, user: await signUserAvatar(s.user) }))
+                    .map(async (s) => {
+                        const user = await signUserAvatar(s.user);
+                        const attachments = await Promise.all(
+                            (s.attachments || []).map(async (a) => ({
+                                ...a,
+                                signed_url: await generateSignedUrl("submission-files", a.bucket_path),
+                            }))
+                        );
+                        return { ...s, user, attachments };
+                    })
             );
             const lateWithAvatars = await Promise.all(
                 submissions
                     .filter((s) => s.status === "LATE")
-                    .map(async (s) => ({ ...s, user: await signUserAvatar(s.user) }))
+                    .map(async (s) => {
+                        const user = await signUserAvatar(s.user);
+                        const attachments = await Promise.all(
+                            (s.attachments || []).map(async (a) => ({
+                                ...a,
+                                signed_url: await generateSignedUrl("submission-files", a.bucket_path),
+                            }))
+                        );
+                        return { ...s, user, attachments };
+                    })
             );
             const notSubmittedWithAvatars = await Promise.all(
                 enrollments
@@ -333,6 +354,11 @@ export const getAssessmentDetails = async (req, res) => {
                 submitted: submittedWithAvatars,
                 late: lateWithAvatars,
                 not_submitted: notSubmittedWithAvatars,
+                stats: calculateClassStats(
+                    submissions
+                        .filter(s => s.status === 'GRADED')
+                        .map(s => s.evaluation?.total_score ?? s.grade)
+                )
             });
         } else {
             await verifyStudentEnrolled(courseId, req.user.id);
@@ -348,7 +374,7 @@ export const getAssessmentDetails = async (req, res) => {
                         assessment_id: assessmentId,
                     },
                 },
-                include: { attachments: true },
+                include: { attachments: true, evaluation: true },
             });
 
             // Generate signed URLs for submission attachments if they exist
@@ -964,6 +990,161 @@ export const updateAssessment = async (req, res) => {
         });
 
         return res.status(200).json({ message: "Assessment updated successfully", assessment: updated });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+// PUT /api/courses/:courseId/assessments/:assessmentId/blueprint
+// Body: { total_marks: Float, structure: Json } — TEACHER only
+export const updateBlueprint = async (req, res) => {
+    try {
+        const { courseId, assessmentId } = req.params;
+        const { total_marks, structure } = req.body;
+
+        if (total_marks === undefined || !structure) {
+            return res.status(400).json({ message: "total_marks and structure are required" });
+        }
+
+        await verifyCourseOwner(courseId, req.user.id);
+        const assessment = await verifyAssessmentInCourse(assessmentId, courseId);
+
+        const blueprint = await prisma.grading_blueprints.upsert({
+            where: { assessment_id: assessmentId },
+            update: {
+                total_marks: parseFloat(total_marks),
+                structure: structure,
+            },
+            create: {
+                assessment_id: assessmentId,
+                total_marks: parseFloat(total_marks),
+                structure: structure,
+            },
+        });
+
+        return res.status(200).json({
+            message: "Blueprint updated successfully",
+            blueprint,
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+// PUT /api/courses/:courseId/assessments/:assessmentId/submissions/:submissionId/evaluate
+// Body: { total_score: Float, overall_feedback?: String, details: Json } — TEACHER only
+export const saveDetailedEvaluation = async (req, res) => {
+    try {
+        const { courseId, assessmentId, submissionId } = req.params;
+        const { total_score, overall_feedback, details } = req.body;
+
+        if (total_score === undefined || !details) {
+            return res.status(400).json({ message: "total_score and details are required" });
+        }
+
+        await verifyCourseOwner(courseId, req.user.id);
+        await verifyAssessmentInCourse(assessmentId, courseId);
+
+        let submission;
+        if (submissionId === "new") {
+            const { studentId } = req.body;
+            if (!studentId) return res.status(400).json({ message: "studentId is required for new evaluations" });
+            
+            // Check if submission already exists
+            submission = await prisma.submissions.findUnique({
+                where: {
+                    user_id_assessment_id: {
+                        user_id: studentId,
+                        assessment_id: assessmentId,
+                    },
+                },
+            });
+
+            if (!submission) {
+                // Create a "not submitted" submission that we will then grade
+                submission = await prisma.submissions.create({
+                    data: {
+                        user_id: studentId,
+                        assessment_id: assessmentId,
+                        status: "SUBMITTED", // Will be changed to GRADED below
+                        submitted_at: new Date(),
+                    },
+                });
+            }
+        } else {
+            submission = await prisma.submissions.findUnique({
+                where: { id: submissionId },
+            });
+        }
+
+        if (!submission || submission.assessment_id !== assessmentId) {
+            return res.status(404).json({ message: "Submission not found" });
+        }
+
+        const actualSubmissionId = submission.id;
+
+        // Upsert the evaluation
+        const evaluation = await prisma.evaluations.upsert({
+            where: { submission_id: actualSubmissionId },
+            update: {
+                total_score: parseFloat(total_score),
+                overall_feedback: overall_feedback ?? null,
+                details: details,
+                evaluated_by: req.user.id,
+            },
+            create: {
+                submission_id: actualSubmissionId,
+                total_score: parseFloat(total_score),
+                overall_feedback: overall_feedback ?? null,
+                details: details,
+                evaluated_by: req.user.id,
+            },
+        });
+        
+        // Also update the base submission grade and status
+        await prisma.submissions.update({
+            where: { id: actualSubmissionId },
+            data: {
+                grade: parseFloat(total_score),
+                feedback: overall_feedback ?? null,
+                status: "GRADED",
+            },
+        });
+
+        return res.status(200).json({
+            message: "Detailed evaluation saved successfully",
+            evaluation,
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+
+// DELETE /api/courses/:courseId/assessments/:assessmentId/evaluation-reset
+export const resetEvaluation = async (req, res) => {
+    try {
+        const { courseId, assessmentId } = req.params;
+        await verifyCourseOwner(courseId, req.user.id);
+        const assessment = await verifyAssessmentInCourse(assessmentId, courseId);
+
+        // 1. Delete all evaluations for submissions of this assessment
+        await prisma.evaluations.deleteMany({
+            where: { submission: { assessment_id: assessmentId } }
+        });
+
+        // 2. Reset submission status to SUBMITTED if they were GRADED
+        await prisma.submissions.updateMany({
+            where: { assessment_id: assessmentId, status: "GRADED" },
+            data: { status: "SUBMITTED" }
+        });
+
+        // 3. Clear the grading_blueprint on the assessment
+        await prisma.grading_blueprints.deleteMany({
+            where: { assessment_id: assessmentId }
+        });
+
+        return res.status(200).json({ message: "Evaluation and blueprint reset successfully" });
     } catch (error) {
         return handleError(res, error);
     }

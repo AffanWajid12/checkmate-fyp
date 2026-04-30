@@ -20,7 +20,9 @@ import {
     useGradeExam, 
     useUploadGradingResource, 
     useGetGradingResources, 
-    useClearGradingResources 
+    useClearGradingResources,
+    useSaveBlueprint,
+    useSaveEvaluation
 } from '../../../../hooks/useCourses';
 
 export default function AIGradingTab({ courseId, assessmentId, submitted, late, sourceMaterials }) {
@@ -54,6 +56,8 @@ export default function AIGradingTab({ courseId, assessmentId, submitted, late, 
     const { mutate: generateRubric, isPending: isGeneratingRubric } = useGenerateRubric();
     const { mutate: generateRubricsBulk, isPending: isGeneratingRubricsBulk } = useGenerateRubricsBulk();
     const { mutateAsync: gradeExamAsync } = useGradeExam();
+    const { mutateAsync: saveBlueprint } = useSaveBlueprint(courseId, assessmentId);
+    const { mutateAsync: saveEvaluation } = useSaveEvaluation(courseId, assessmentId);
 
     const { mutate: uploadResource, isPending: isUploadingResource } = useUploadGradingResource();
     const { data: gradingResources = [] } = useGetGradingResources(assessmentId);
@@ -369,6 +373,57 @@ export default function AIGradingTab({ courseId, assessmentId, submitted, late, 
         }
     };
 
+    const handleSaveToDatabase = async () => {
+        try {
+            const toastId = toast.loading('Saving results to database...', { duration: 15000 });
+            
+            // 1. Save blueprint
+            const calculateTotal = (nodes) => {
+                let total = 0;
+                nodes.forEach(node => {
+                    if (node.subparts && node.subparts.length > 0) {
+                        total += calculateTotal(node.subparts);
+                    } else {
+                        total += parseFloat(node.points || node.total_marks) || 0;
+                    }
+                });
+                return total;
+            };
+            const totalMarks = calculateTotal(questions);
+            await saveBlueprint({ total_marks: totalMarks, structure: questions });
+
+            // 2. Save each graded result
+            let successCount = 0;
+            for (const subId of selectedStudents) {
+                const result = gradingResults[subId];
+                if (!result) continue;
+
+                // format details
+                const details = result.results.map(qRes => ({
+                    label: qRes.label,
+                    points: qRes.points,
+                    question_text: qRes.question_text || qRes.label,
+                    type: qRes.type || 'manual',
+                    score: qRes.score,
+                    feedback: typeof qRes.feedback === 'object' ? JSON.stringify(qRes.feedback) : qRes.feedback
+                }));
+
+                await saveEvaluation({
+                    submissionId: subId,
+                    total_score: result.total_score,
+                    overall_feedback: "Graded by Checkmate AI",
+                    details: details
+                });
+                successCount++;
+            }
+            
+            toast.success(`Successfully saved ${successCount} evaluation${successCount !== 1 ? 's' : ''}!`, { id: toastId });
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to save to database. Please try again.");
+        }
+    };
+
     // --- Render ---
     return (
         <div className="space-y-6">
@@ -540,6 +595,12 @@ export default function AIGradingTab({ courseId, assessmentId, submitted, late, 
                         setGradingResults({});
                         localStorage.removeItem(`assessment_${assessmentId}_grading_results`);
                         setStep(6);
+                    }}
+                    onSaveToDatabase={handleSaveToDatabase}
+                    onUpdateResults={(subId, updatedResult) => {
+                        const newResults = { ...gradingResults, [subId]: updatedResult };
+                        setGradingResults(newResults);
+                        localStorage.setItem(`assessment_${assessmentId}_grading_results`, JSON.stringify(newResults));
                     }}
                 />
             )}

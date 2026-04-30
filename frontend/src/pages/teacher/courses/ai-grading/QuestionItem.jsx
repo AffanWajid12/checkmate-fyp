@@ -1,10 +1,10 @@
 import React from 'react';
 
-export default function QuestionItem({ 
-    question, 
-    onChange, 
-    onDelete, 
-    isReadOnly = false, 
+export default function QuestionItem({
+    question,
+    onChange,
+    onDelete,
+    isReadOnly = false,
     hideRubric = false,
     onGenerateRubric = null,
     isGeneratingRubric = false
@@ -24,7 +24,7 @@ export default function QuestionItem({
     const handleAnswerModeChange = (e) => {
         onChange({ ...question, answer_mode: e.target.value });
     };
-    
+
     const handleTotalMarksChange = (e) => {
         const val = e.target.value === '' ? '' : Number(e.target.value);
         onChange({ ...question, total_marks: val });
@@ -357,7 +357,7 @@ export default function QuestionItem({
                         {!isReadOnly && (
                             <button
                                 onClick={() => {
-                                    if(confirm("Are you sure you want to delete the entire rubric?")) {
+                                    if (confirm("Are you sure you want to delete the entire rubric?")) {
                                         onChange({ ...question, rubric: null });
                                     }
                                 }}
@@ -447,18 +447,18 @@ export default function QuestionItem({
             ) : (
                 !hideRubric && !isReadOnly && !hasSubparts && (
                     <div className="mt-4 p-6 border-2 border-dashed border-neutral-200 rounded-2xl flex flex-col items-center justify-center text-center bg-neutral-50/50 group/manual">
-                         <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-neutral-100 flex items-center justify-center mb-3 group-hover/manual:scale-110 transition-transform">
+                        <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-neutral-100 flex items-center justify-center mb-3 group-hover/manual:scale-110 transition-transform">
                             <svg className="w-6 h-6 text-neutral-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
-                         </div>
-                         <p className="text-xs font-bold text-text-muted mb-4 uppercase tracking-widest">No Rubric Defined</p>
-                         <button 
+                        </div>
+                        <p className="text-xs font-bold text-text-muted mb-4 uppercase tracking-widest">No Rubric Defined</p>
+                        <button
                             onClick={createManualRubric}
                             className="text-xs font-black text-primary hover:bg-primary-50 px-4 py-2 rounded-xl border border-primary/20 transition-all active:scale-95 bg-white shadow-sm"
-                         >
+                        >
                             + Create Manual Rubric
-                         </button>
+                        </button>
                     </div>
                 )
             )}

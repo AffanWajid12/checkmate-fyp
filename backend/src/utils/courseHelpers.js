@@ -78,10 +78,33 @@ export const signUserAvatar = async (user) => {
 export const verifyAssessmentInCourse = async (assessmentId, courseId) => {
     const assessment = await prisma.assessments.findUnique({
         where: { id: assessmentId },
-        include: { announcement: true, source_materials: true },
+        include: { announcement: true, source_materials: true, grading_blueprint: true },
     });
     if (!assessment) throw { status: 404, message: "Assessment not found" };
     if (assessment.announcement.course_id !== courseId)
         throw { status: 403, message: "Assessment does not belong to this course" };
     return assessment;
+};
+
+// Calculates class performance statistics from an array of numeric scores
+export const calculateClassStats = (scores) => {
+    const gradedScores = scores.filter(s => s !== null && !isNaN(s));
+    if (gradedScores.length === 0) {
+        return { average: 0, min: 0, max: 0, stdDev: 0, count: 0 };
+    }
+
+    const sum = gradedScores.reduce((a, b) => a + Number(b), 0);
+    const avg = sum / gradedScores.length;
+    const min = Math.min(...gradedScores);
+    const max = Math.max(...gradedScores);
+    const variance = gradedScores.reduce((a, b) => a + Math.pow(Number(b) - avg, 2), 0) / gradedScores.length;
+    const stdDev = Math.sqrt(variance);
+
+    return {
+        average: parseFloat(avg.toFixed(2)),
+        min: parseFloat(min.toFixed(2)),
+        max: parseFloat(max.toFixed(2)),
+        stdDev: parseFloat(stdDev.toFixed(2)),
+        count: gradedScores.length
+    };
 };

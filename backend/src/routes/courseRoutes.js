@@ -9,6 +9,7 @@ import {
     getEnrolledCourses,
     deleteCourse,
     unenrollFromCourse,
+    getStudentMarks,
 } from "../controllers/courseController.js";
 
 import {
@@ -43,6 +44,9 @@ import {
     teacherCreateSubmission,
     teacherAppendSubmissionFiles,
     deleteAssessment,
+    updateBlueprint,
+    saveDetailedEvaluation,
+    resetEvaluation,
 } from "../controllers/assessmentController.js";
 
 import { runPlagiarismCheck } from "../controllers/plagiarismController.js";
@@ -53,6 +57,7 @@ const router = Router();
 // ─── Student Routes ───────────────────────────────────────────────────────────
 router.post("/enroll", verifyUser, verifyUserType("STUDENT"), enrollInCourse);
 router.get("/enrolled", verifyUser, verifyUserType("STUDENT"), getEnrolledCourses);
+router.get("/marks", verifyUser, verifyUserType("STUDENT"), getStudentMarks);
 router.delete("/unenroll/:courseId", verifyUser, verifyUserType("STUDENT"), unenrollFromCourse);
 
 // ─── Teacher Routes ───────────────────────────────────────────────────────────
@@ -61,8 +66,8 @@ router.get("/my-courses", verifyUser, verifyUserType("TEACHER"), getTeacherCours
 router.delete("/:id", verifyUser, verifyUserType("TEACHER"), deleteCourse);
 
 // Announcements
-router.post("/:courseId/announcements", verifyUser, verifyUserType("TEACHER"), uploadMultiple, addAnnouncement);
-router.patch("/:courseId/announcements/:announcementId", verifyUser, verifyUserType("TEACHER"), uploadMultiple, updateAnnouncement);
+router.post("/:courseId/announcements", verifyUser, verifyUserType("TEACHER"), uploadMultipleLarge, addAnnouncement);
+router.patch("/:courseId/announcements/:announcementId", verifyUser, verifyUserType("TEACHER"), uploadMultipleLarge, updateAnnouncement);
 router.delete("/:courseId/announcements/:announcementId", verifyUser, verifyUserType("TEACHER"), deleteAnnouncement);
 
 // Attendance
@@ -71,15 +76,15 @@ router.get("/:courseId/attendance", verifyUser, verifyUserType("TEACHER"), getCo
 router.delete("/:courseId/attendance/:sessionId", verifyUser, verifyUserType("TEACHER"), deleteAttendanceSession);
 
 // Assessment management (teacher)
-router.post("/:courseId/assessments", verifyUser, verifyUserType("TEACHER"), uploadMultiple, createAssessment);
-router.post("/:courseId/announcements/:announcementId/assessments", verifyUser, verifyUserType("TEACHER"), uploadMultiple, addAssessment);
+router.post("/:courseId/assessments", verifyUser, verifyUserType("TEACHER"), uploadMultipleLarge, createAssessment);
+router.post("/:courseId/announcements/:announcementId/assessments", verifyUser, verifyUserType("TEACHER"), uploadMultipleLarge, addAssessment);
 router.patch("/:courseId/assessments/:assessmentId", verifyUser, verifyUserType("TEACHER"), updateAssessment);
 router.delete("/:courseId/assessments/:assessmentId", verifyUser, verifyUserType("TEACHER"), deleteAssessment);
 router.post(
     "/:courseId/assessments/:assessmentId/source-materials",
     verifyUser,
     verifyUserType("TEACHER"),
-    uploadMultiple,
+    uploadMultipleLarge,
     addAssessmentSourceMaterials
 );
 router.post("/:courseId/assessments/:assessmentId/submissions", verifyUser, verifyUserType("TEACHER"), uploadMultipleLarge, teacherCreateSubmission);
@@ -90,6 +95,9 @@ router.delete("/:courseId/assessments/:assessmentId/source-materials/:materialId
 router.post("/:courseId/assessments/:assessmentId/plagiarism-check", verifyUser, verifyUserType("TEACHER"), runPlagiarismCheck);
 router.post("/:courseId/assessments/:assessmentId/extract-questions", verifyUser, verifyUserType("TEACHER"), extractQuestions);
 router.post("/:courseId/assessments/:assessmentId/submissions/:submissionId/pair-answers", verifyUser, verifyUserType("TEACHER"), pairStudentAnswers);
+router.put("/:courseId/assessments/:assessmentId/blueprint", verifyUser, verifyUserType("TEACHER"), updateBlueprint);
+router.put("/:courseId/assessments/:assessmentId/submissions/:submissionId/evaluate", verifyUser, verifyUserType("TEACHER"), saveDetailedEvaluation);
+router.delete("/:courseId/assessments/:assessmentId/evaluation-reset", verifyUser, verifyUserType("TEACHER"), resetEvaluation);
 
 // Attendance (student)
 router.get("/:courseId/my-attendance", verifyUser, verifyUserType("STUDENT"), getStudentAttendance);
