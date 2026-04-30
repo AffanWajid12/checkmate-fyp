@@ -138,7 +138,7 @@ const TeacherGenerateAssessmentPage = () => {
         <div className="mb-8">
           <button
             onClick={() => navigate("/teacher/generations")}
-            className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-4"
+            className="flex items-center bg-black p-2 text-sm rounded-xl text-white font-bold gap-1.5 transition-colors mb-4 cursor-pointer"
           >
             <BackIcon />
             Back
@@ -159,7 +159,7 @@ const TeacherGenerateAssessmentPage = () => {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder='e.g. "Linear Algebra", "OOP in Java"'
-              className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
+              className="w-full bg-white px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
             />
           </div>
 
@@ -171,7 +171,7 @@ const TeacherGenerateAssessmentPage = () => {
               <select
                 value={assessmentType}
                 onChange={(e) => setAssessmentType(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
+                className="w-full bg-white px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
               >
                 <option value="quiz">Quiz</option>
                 <option value="assignment">Assignment</option>
@@ -186,7 +186,7 @@ const TeacherGenerateAssessmentPage = () => {
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
+                className="w-full bg-white px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all"
               >
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
@@ -215,7 +215,7 @@ const TeacherGenerateAssessmentPage = () => {
               ].map((row) => (
                 <div
                   key={row.key}
-                  className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-neutral-200 bg-neutral-50"
+                  className="flex bg-white items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-neutral-200 bg-neutral-50"
                 >
                   <span className="text-sm font-semibold text-text-primary">
                     {row.label}
@@ -243,7 +243,7 @@ const TeacherGenerateAssessmentPage = () => {
               onChange={(e) => setInstructions(e.target.value)}
               rows={4}
               placeholder="e.g. focus on conceptual understanding, keep questions short…"
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all resize-none"
+              className="w-full bg-white px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all resize-none"
             />
           </div>
 

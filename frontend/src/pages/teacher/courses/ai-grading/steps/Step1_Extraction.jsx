@@ -4,7 +4,8 @@ export default function Step1_Extraction({
     onExtract, 
     isExtracting, 
     isScanned, 
-    setIsScanned 
+    setIsScanned,
+    onSkip
 }) {
     return (
         <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-12 text-center space-y-4 max-w-2xl mx-auto mt-12 bg-white">
@@ -61,6 +62,13 @@ export default function Step1_Extraction({
                         Start AI Extraction
                     </>
                 )}
+            </button>
+            <button
+                onClick={onSkip}
+                disabled={isExtracting}
+                className="mt-3 w-full px-8 py-4 rounded-2xl bg-transparent border-2 border-neutral-200 text-text-secondary text-base font-bold hover:bg-neutral-50 hover:text-text-primary transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3"
+            >
+                Skip & Create Manually
             </button>
             {isExtracting && <p className="text-[11px] text-text-muted mt-4 font-medium italic">Our AI is reading your PDF. This typically takes 30-60 seconds.</p>}
         </div>

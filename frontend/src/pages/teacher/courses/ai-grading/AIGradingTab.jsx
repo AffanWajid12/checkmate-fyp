@@ -144,7 +144,7 @@ export default function AIGradingTab({ courseId, assessmentId, submitted, late, 
             const my_text = q.text || "";
             
             if (q.subparts && q.subparts.length > 0) {
-                const new_context = (context_text + "\n" + my_text).strip();
+                const new_context = (context_text + "\n" + my_text).trim();
                 leaves = [...leaves, ...getLeafQuestions(q.subparts, curPath, new_context)];
             } else {
                 const full_text = context_text ? `Context: ${context_text}\n\nQuestion: ${my_text}` : my_text;
@@ -380,6 +380,7 @@ export default function AIGradingTab({ courseId, assessmentId, submitted, late, 
                     isExtracting={isExtracting}
                     isScanned={isScanned}
                     setIsScanned={setIsScanned}
+                    onSkip={() => setStep(2)}
                 />
             )}
 
