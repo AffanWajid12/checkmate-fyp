@@ -51,6 +51,7 @@ import {
 
 import { runPlagiarismCheck } from "../controllers/plagiarismController.js";
 import { extractQuestions, pairStudentAnswers } from "../controllers/gradingController.js";
+import { generateInsights, getInsights } from "../controllers/insightController.js";
 
 const router = Router();
 
@@ -98,6 +99,7 @@ router.post("/:courseId/assessments/:assessmentId/submissions/:submissionId/pair
 router.put("/:courseId/assessments/:assessmentId/blueprint", verifyUser, verifyUserType("TEACHER"), updateBlueprint);
 router.put("/:courseId/assessments/:assessmentId/submissions/:submissionId/evaluate", verifyUser, verifyUserType("TEACHER"), saveDetailedEvaluation);
 router.delete("/:courseId/assessments/:assessmentId/evaluation-reset", verifyUser, verifyUserType("TEACHER"), resetEvaluation);
+router.post("/:courseId/assessments/:assessmentId/insights/generate", verifyUser, verifyUserType("TEACHER"), generateInsights);
 
 // Attendance (student)
 router.get("/:courseId/my-attendance", verifyUser, verifyUserType("STUDENT"), getStudentAttendance);
@@ -112,6 +114,7 @@ router.delete("/:courseId/assessments/:assessmentId/attachments/:attachmentId", 
 // getCourseAnnouncements and getAssessmentDetails handle role checking internally
 router.get("/:courseId/announcements", verifyUser, getCourseAnnouncements);
 router.get("/:courseId/assessments/:assessmentId", verifyUser, getAssessmentDetails);
+router.get("/:courseId/assessments/:assessmentId/insights", verifyUser, getInsights);
 
 // Comments
 router.post("/:courseId/announcements/:announcementId/comments", verifyUser, addAnnouncementComment);

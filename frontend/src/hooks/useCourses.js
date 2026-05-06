@@ -10,6 +10,7 @@ export const courseKeys = {
     courseAttendance: (courseId) => ["courses", courseId, "attendance"],
     assessmentDetails: (courseId, assessmentId) => ["courses", courseId, "assessments", assessmentId],
     submissionDetails: (courseId, assessmentId, submissionId) => ["courses", courseId, "assessments", assessmentId, "submissions", submissionId],
+    assessmentInsights: (courseId, assessmentId) => ["courses", courseId, "assessments", assessmentId, "insights"],
 };
 
 // ─── Student Hooks ────────────────────────────────────────────────────────────
@@ -763,3 +764,42 @@ export const useResetEvaluation = (courseId, assessmentId) => {
         },
     });
 };
+/**
+ * POST /api/courses/:courseId/assessments/:assessmentId/insights/generate
+ * Teacher only — generates analytics & LLM insights for a graded assessment.
+ */
+export const useGenerateInsights = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ threshold } = {}) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments/${assessmentId}/insights/generate`,
+                threshold !== undefined ? { threshold } : {}
+            );
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentInsights(courseId, assessmentId),
+            });
+        },
+    });
+};
+
+/**
+ * GET /api/courses/:courseId/assessments/:assessmentId/insights
+ * Role-aware: teacher gets full analytics, student gets personal insight only.
+ */
+export const useGetInsights = (courseId, assessmentId, enabled = true) =>
+    useQuery({
+        queryKey: courseKeys.assessmentInsights(courseId, assessmentId),
+        queryFn: async () => {
+            const { data } = await apiClient.get(
+                `/api/courses/${courseId}/assessments/${assessmentId}/insights`
+            );
+            return data;
+        },
+        enabled: !!courseId && !!assessmentId && enabled,
+        staleTime: 5 * 60 * 1000,
+        retry: false,
+    });

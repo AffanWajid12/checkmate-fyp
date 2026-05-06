@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import BlueprintManager from './BlueprintManager';
 import GradingPanel from './GradingPanel';
+import InsightsTab from './InsightsTab';
 import { InlineResourceViewer } from '../../../../components/InlineResourceViewer';
 import { useResetEvaluation } from '../../../../hooks/useCourses';
 import toast from 'react-hot-toast';
@@ -8,6 +9,7 @@ import toast from 'react-hot-toast';
 export default function ManualEvaluationTab({ courseId, assessment, submitted = [], late = [], notSubmitted = [] }) {
     const [selectedStudentId, setSelectedStudentId] = useState(null);
     const [isEditingBlueprint, setIsEditingBlueprint] = useState(false);
+    const [isViewingInsights, setIsViewingInsights] = useState(false);
     const { mutateAsync: resetEvaluation, isPending: isResetting } = useResetEvaluation(courseId, assessment.id);
     const [selectedAttachmentIdx, setSelectedAttachmentIdx] = useState(0);
 
@@ -49,6 +51,17 @@ export default function ManualEvaluationTab({ courseId, assessment, submitted = 
             toast.error("Failed to reset evaluation.");
         }
     };
+
+    // If viewing insights, show the insights tab
+    if (isViewingInsights) {
+        return (
+            <InsightsTab
+                courseId={courseId}
+                assessment={assessment}
+                onBack={() => setIsViewingInsights(false)}
+            />
+        );
+    }
 
     // If there's no blueprint OR we're explicitly editing it, show the manager
     if (!assessment?.grading_blueprint || isEditingBlueprint) {
@@ -112,6 +125,13 @@ export default function ManualEvaluationTab({ courseId, assessment, submitted = 
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             Reset All
+                        </button>
+                        <button
+                            onClick={() => setIsViewingInsights(true)}
+                            className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-violet-500 text-white rounded-2xl text-xs font-black hover:from-indigo-600 hover:to-violet-600 transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-indigo-200/50"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                            Insights
                         </button>
                         <button 
                             onClick={() => setIsEditingBlueprint(true)}

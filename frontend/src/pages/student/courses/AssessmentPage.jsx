@@ -7,8 +7,10 @@ import {
     useUpdateSubmission,
     useUnsubmitAssessment,
     useRemoveAttachment,
+    useGetInsights,
 } from '../../../hooks/useCourses';
 import DetailedResultView from './DetailedResultView';
+import StudentInsightView from './StudentInsightView';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -173,13 +175,18 @@ const SubmissionPortal = ({ assessment, submission, courseId, assessmentId }) =>
     const [stagedFiles, setStagedFiles] = useState([]);
     const [showAddFiles, setShowAddFiles] = useState(false);
     const [showDetails, setShowDetails] = useState(false);
+    const [showInsights, setShowInsights] = useState(false);
 
     const { mutate: submit, isPending: submitting } = useSubmitAssessment(courseId, assessmentId);
     const { mutate: update, isPending: updating } = useUpdateSubmission(courseId, assessmentId);
     const { mutate: unsubmit, isPending: unsubmitting } = useUnsubmitAssessment(courseId, assessmentId);
     const { mutate: removeFile, isPending: removing } = useRemoveAttachment(courseId, assessmentId);
 
+    // Fetch insights for this assessment (enabled only when graded)
     const isGraded = submission?.status === 'GRADED';
+    const { data: insightData } = useGetInsights(courseId, assessmentId, isGraded);
+    const studentInsight = insightData?.student_insight || null;
+
     const hasSubmitted = !!submission;
     const statusMeta = submission ? STATUS_META[submission.status] ?? STATUS_META.SUBMITTED : null;
     const due = assessment.due_date ? formatDateTime(assessment.due_date) : null;
@@ -282,6 +289,15 @@ const SubmissionPortal = ({ assessment, submission, courseId, assessmentId }) =>
                             </div>
                         )
                     )}
+                    {studentInsight && (
+                        <button
+                            onClick={() => setShowInsights(true)}
+                            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-500/10 to-violet-500/10 text-indigo-600 font-bold text-sm hover:from-indigo-500/20 hover:to-violet-500/20 transition-colors flex items-center justify-center gap-2 border border-indigo-100"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            View AI Insights
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -290,6 +306,14 @@ const SubmissionPortal = ({ assessment, submission, courseId, assessmentId }) =>
                     submission={submission}
                     assessment={assessment}
                     onClose={() => setShowDetails(false)}
+                />
+            )}
+
+            {showInsights && studentInsight && (
+                <StudentInsightView
+                    insight={studentInsight}
+                    assessment={assessment}
+                    onClose={() => setShowInsights(false)}
                 />
             )}
 
