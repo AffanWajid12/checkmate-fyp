@@ -2,42 +2,54 @@ import React, { useState } from 'react';
 import { useGenerateInsights, useGetInsights } from '../../../../hooks/useCourses';
 import toast from 'react-hot-toast';
 
-// ─── Tiny SVG Bar Chart ──────────────────────────────────────────────────────
+// ─── Bar Chart ───────────────────────────────────────────────────────────────
+
+const BAR_MAX_HEIGHT = 160; // px
 
 const BarChart = ({ data }) => {
     if (!data || data.length === 0) return null;
-    const maxVal = Math.max(...data.map(d => d.max_points), 1);
 
     return (
-        <div className="flex items-end gap-3 h-52 px-2 pt-4">
+        <div className="flex items-end gap-2 px-1" style={{ height: `${BAR_MAX_HEIGHT + 48}px` }}>
             {data.map((d, i) => {
-                const avgPct = (d.avg_score / maxVal) * 100;
-                const maxPct = (d.max_points / maxVal) * 100;
-                const ratio = d.max_points > 0 ? d.avg_score / d.max_points : 0;
-                const barColor = ratio >= 0.8 ? 'bg-emerald-400' : ratio >= 0.6 ? 'bg-amber-400' : 'bg-red-400';
+                const pct = d.max_points > 0 ? (d.avg_score / d.max_points) * 100 : 0;
+                const barHeight = Math.max((Math.min(pct, 100) / 100) * BAR_MAX_HEIGHT, 6);
 
                 return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                        {/* Tooltip */}
-                        <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-neutral-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 shadow-xl">
+                    <div
+                        key={i}
+                        className="flex-1 flex flex-col items-center justify-end group relative"
+                        style={{ height: '100%' }}
+                    >
+                        {/* Value label above bar */}
+                        <span className="text-xs font-black text-neutral-500 mb-1.5 tabular-nums group-hover:text-accent-500 transition-colors">
+                            {pct.toFixed(0)}%
+                        </span>
+
+                        {/* Track behind bar */}
+                        <div
+                            className="relative w-full rounded-t-xl overflow-hidden"
+                            style={{ height: `${BAR_MAX_HEIGHT}px` }}
+                        >
+                            {/* Filled bar — grows from bottom */}
+                            <div
+                                className="absolute bottom-0 left-0 right-0 rounded-t-xl transition-all duration-700 ease-out"
+                                style={{
+                                    height: `${barHeight}px`,
+                                    background: 'linear-gradient(to top, #14b8a6, #2dd4bf)',
+                                }}
+                            />
+                        </div>
+
+                        {/* Q label below */}
+                        <span className="text-[10px] font-black text-neutral-400 mt-2 truncate max-w-full text-center">
+                            {d.label}
+                        </span>
+
+                        {/* Tooltip on hover */}
+                        <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-neutral-900 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 shadow-xl">
                             {d.topic || d.label}: {d.avg_score.toFixed(1)}/{d.max_points}
                         </div>
-                        <div className="w-full flex flex-col items-center gap-0.5" style={{ height: '100%' }}>
-                            <span className="text-[9px] font-black text-neutral-400 mb-1">{d.avg_score.toFixed(1)}</span>
-                            <div className="w-full flex-1 relative rounded-t-lg overflow-hidden bg-neutral-100">
-                                {/* Max bar (full height reference) */}
-                                <div
-                                    className="absolute bottom-0 w-full bg-neutral-100 rounded-t-lg transition-all"
-                                    style={{ height: `${maxPct}%` }}
-                                />
-                                {/* Avg bar */}
-                                <div
-                                    className={`absolute bottom-0 w-full ${barColor} rounded-t-lg transition-all duration-500 ease-out`}
-                                    style={{ height: `${avgPct}%` }}
-                                />
-                            </div>
-                        </div>
-                        <span className="text-[10px] font-black text-neutral-500 mt-1 truncate max-w-full">{d.label}</span>
                     </div>
                 );
             })}
@@ -169,17 +181,11 @@ export default function InsightsTab({ courseId, assessment, onBack }) {
                         <p className="text-xs text-text-muted mb-4">Hover over bars to see topic details</p>
                         <BarChart data={teacherData.question_averages} />
                         {/* Legend */}
-                        <div className="flex gap-4 mt-4 justify-center">
-                            {[
-                                { label: '≥ 80%', color: 'bg-emerald-400' },
-                                { label: '60–79%', color: 'bg-amber-400' },
-                                { label: '< 60%', color: 'bg-red-400' },
-                            ].map((l, i) => (
-                                <div key={i} className="flex items-center gap-1.5">
-                                    <div className={`w-3 h-3 rounded-sm ${l.color}`} />
-                                    <span className="text-[10px] font-bold text-neutral-500">{l.label}</span>
-                                </div>
-                            ))}
+                        <div className="flex gap-4 mt-5 justify-center">
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{ background: 'linear-gradient(to right, #14b8a6, #2dd4bf)' }} />
+                                <span className="text-[10px] font-bold text-neutral-500">Avg score as % of max marks</span>
+                            </div>
                         </div>
                     </div>
 
