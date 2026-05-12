@@ -32,6 +32,17 @@ export const apiTestUtils = {
     } catch (error: any) {
       console.error('❌ API Connection failed:', error.message);
       
+      if (error.response?.status === 404) {
+        // Express returns 404 for the root route `/` if it's not defined, 
+        // which means we successfully reached the backend server!
+        console.log('✅ API Connection successful! (Server reached but no route at /)');
+        return {
+          connected: true,
+          message: 'API server is reachable (returned 404 for /)',
+          baseURL: API_BASE_URL,
+        };
+      }
+
       if (error.code === 'ERR_NETWORK') {
         return {
           connected: false,
