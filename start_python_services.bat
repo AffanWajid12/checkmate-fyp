@@ -1,0 +1,19 @@
+@echo off
+echo Starting Python Services...
+
+echo Starting assessment-generation...
+start "assessment-generation" cmd /k "cd services\assessment-generation && call venv\Scripts\activate && python run.py"
+
+echo Starting grade-english-fyp...
+start "grade-english-fyp" cmd /k "cd services\grade-english-fyp && call venv\Scripts\activate && python app.py"
+
+echo Starting llm...
+start "llm" cmd /k "cd services\llm && call venv\Scripts\activate && python app.py"
+
+echo Starting plagiarism-detection...
+start "plagiarism-detection" cmd /k "cd services\plagiarism-detection && call venv\Scripts\activate && python app.py"
+
+echo Starting qa-pairing...
+start "qa-pairing" cmd /k "cd services\qa-pairing && call venv\Scripts\activate && python app.py"
+
+echo All python services have been started in new windows.

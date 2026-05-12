@@ -226,11 +226,14 @@ export default function AIGradingTab({ courseId, assessmentId, submitted, late, 
         });
     };
 
-    const handleUpdateQuestion = (idx, updated) => {
+    const handleUpdateQuestion = (idx, updated, skipClearPairings = false) => {
         const newQuestions = [...questions];
         newQuestions[idx] = updated;
         setQuestions(newQuestions);
-        clearAllPairings();
+        localStorage.setItem(`assessment_${assessmentId}_questions`, JSON.stringify(newQuestions));
+        if (!skipClearPairings) {
+            clearAllPairings();
+        }
     };
 
     const handleDeleteQuestion = (idx) => {
@@ -546,7 +549,7 @@ export default function AIGradingTab({ courseId, assessmentId, submitted, late, 
                    isGradingBulk={isGradingBulk}
                    selectedStudentsCount={selectedStudents.length}
                    questions={questions}
-                   onUpdateQuestion={handleUpdateQuestion}
+                   onUpdateQuestion={(idx, updated) => handleUpdateQuestion(idx, updated, true)}
                    onGenerateRubric={(q, onSuccess) => {
                         if (!q || !q.text || q.total_marks === undefined) {
                             return toast.error("Missing question text or marks.");

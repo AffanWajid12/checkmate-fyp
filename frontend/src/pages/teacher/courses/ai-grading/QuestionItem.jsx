@@ -57,8 +57,15 @@ export default function QuestionItem({
     const handleRubricHeaderChange = (oldKey, newKey) => {
         if (!newKey || oldKey === newKey) return;
         const newRubric = (question.rubric || []).map(row => {
-            const { [oldKey]: val, ...rest } = row;
-            return { ...rest, [newKey]: val };
+            const newRow = {};
+            for (const key in row) {
+                if (key === oldKey) {
+                    newRow[newKey] = row[oldKey];
+                } else {
+                    newRow[key] = row[key];
+                }
+            }
+            return newRow;
         });
         onChange({ ...question, rubric: newRubric });
     };
@@ -378,8 +385,9 @@ export default function QuestionItem({
                                                 <div className="flex items-center gap-2">
                                                     <input
                                                         type="text"
-                                                        value={col}
-                                                        onChange={(e) => handleRubricHeaderChange(col, e.target.value)}
+                                                        defaultValue={col}
+                                                        onBlur={(e) => handleRubricHeaderChange(col, e.target.value)}
+                                                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
                                                         className="bg-transparent border-none focus:ring-1 focus:ring-primary/30 rounded p-0.5 w-full font-bold uppercase tracking-wider text-text-muted outline-none"
                                                     />
                                                     <button
