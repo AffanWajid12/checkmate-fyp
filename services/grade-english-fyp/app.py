@@ -819,5 +819,5 @@ def grade():
 
 
 if __name__ == '__main__':
-    print("Starting Flask AI Grading Server on Port 5002 with Teacher-Guided Rubrics...")
+    print("Starting Flask AI Grading Server on Port 5004 with Teacher-Guided Rubrics...")
     app.run(host='0.0.0.0', port=5004)

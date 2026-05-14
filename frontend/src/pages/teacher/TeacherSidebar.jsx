@@ -17,19 +17,7 @@ const navItems = [
             </svg>
         ),
     },
-    {
-        to: '/teacher/attendance',
-        label: 'Attendance',
-        icon: (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-                <path d="M9 16l2 2 4-4" />
-            </svg>
-        ),
-    },
+
     {
         to: '/teacher/assignments',
         label: 'Assignments',
@@ -125,9 +113,9 @@ const TeacherSidebar = ({ children }) => {
             <div className="border-t border-neutral-100 px-4 py-4 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-accent-500 flex-shrink-0 flex items-center justify-center text-white font-bold text-sm overflow-hidden border border-neutral-200">
                     {user?.profile_picture ? (
-                        <img 
-                            src={getAvatarUrl(user.profile_picture)} 
-                            alt="Profile" 
+                        <img
+                            src={getAvatarUrl(user.profile_picture)}
+                            alt="Profile"
                             className="w-full h-full object-cover"
                             onError={(e) => {
                                 e.target.style.display = 'none';
@@ -182,9 +170,8 @@ const TeacherSidebar = ({ children }) => {
 
             {/* ── Mobile: slide-in drawer ──────────────────── */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-neutral-200 flex flex-col transform transition-transform duration-300 ease-in-out md:hidden ${
-                    sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-                }`}
+                className={`fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-neutral-200 flex flex-col transform transition-transform duration-300 ease-in-out md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                    }`}
             >
                 <button
                     onClick={() => setSidebarOpen(false)}

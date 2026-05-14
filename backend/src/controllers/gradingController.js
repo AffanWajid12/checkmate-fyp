@@ -162,8 +162,8 @@ export const pairStudentAnswers = async (req, res) => {
                 combinedPdfBuffer = Buffer.from(combineResponse.data);
 
                 // Upload to Supabase
-                const storagePath = combinedAttachment 
-                    ? combinedAttachment.bucket_path 
+                const storagePath = combinedAttachment
+                    ? combinedAttachment.bucket_path
                     : `${courseId}/${assessmentId}/${submission.id}/${uuidv4()}.pdf`;
 
                 const { error: uploadError } = await supabase.storage

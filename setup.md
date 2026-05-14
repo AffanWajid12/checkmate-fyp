@@ -55,6 +55,8 @@ This guide provides step-by-step instructions to set up and run the Checkmate FY
    ```bash
    pip install -r requirements.txt
    ```
+
+   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 5. Run the service:
    ```bash
    python app.py

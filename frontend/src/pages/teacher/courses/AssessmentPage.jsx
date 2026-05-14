@@ -1,8 +1,16 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAssessmentDetails, useRunPlagiarismCheck, useDeleteAssessment, useUpdateAssessment } from '../../../hooks/useCourses';
+import { 
+    useAssessmentDetails, 
+    useRunPlagiarismCheck, 
+    useDeleteAssessment, 
+    useUpdateAssessment,
+    useAddSourceMaterials,
+    useDeleteSourceMaterial 
+} from '../../../hooks/useCourses';
 import TeacherSidebar from '../TeacherSidebar';
-import AIGradingTab from "./AIGradingTab";
+import AIGradingTab from "./ai-grading/AIGradingTab";
+import ManualEvaluationTab from './manual-evaluation/ManualEvaluationTab.jsx';
 import { TrashIcon, PencilIcon, XMarkIcon } from '../courses/CoursePage/components/Icons';
 import toast from 'react-hot-toast';
 
@@ -575,8 +583,11 @@ const EditAssessmentModal = ({ assessment, courseId, onClose }) => {
     const [instructions, setInstructions] = useState(assessment.instructions || '');
     const [dueDate, setDueDate] = useState(assessment.due_date ? assessment.due_date.split('T')[0] : '');
     const [dueTime, setDueTime] = useState(assessment.due_date ? new Date(assessment.due_date).toTimeString().slice(0, 5) : '23:59');
+    const [newFiles, setNewFiles] = useState([]);
 
-    const { mutateAsync: updateAsmt, isPending } = useUpdateAssessment(courseId);
+    const { mutateAsync: updateAsmt, isPending: isUpdating } = useUpdateAssessment(courseId);
+    const { mutateAsync: addMaterials, isPending: isUploading } = useAddSourceMaterials(courseId, assessment.id);
+    const { mutateAsync: deleteMaterial } = useDeleteSourceMaterial(courseId, assessment.id);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -586,6 +597,7 @@ const EditAssessmentModal = ({ assessment, courseId, onClose }) => {
         }
 
         try {
+            // 1. Update basic settings
             await updateAsmt({
                 assessmentId: assessment.id,
                 title: title.trim(),
@@ -593,7 +605,15 @@ const EditAssessmentModal = ({ assessment, courseId, onClose }) => {
                 instructions: instructions.trim(),
                 due_date: finalDueDate,
             });
-            toast.success('Assessment settings updated');
+
+            // 2. Upload new files if any
+            if (newFiles.length > 0) {
+                const formData = new FormData();
+                newFiles.forEach(file => formData.append('files', file));
+                await addMaterials(formData);
+            }
+
+            toast.success('Assessment updated successfully');
             onClose();
         } catch (error) {
             console.error('Update failed:', error);
@@ -601,67 +621,139 @@ const EditAssessmentModal = ({ assessment, courseId, onClose }) => {
         }
     };
 
+    const handleDeleteMaterial = async (materialId) => {
+        if (!window.confirm('Delete this source material?')) return;
+        try {
+            await deleteMaterial(materialId);
+            toast.success('Material removed');
+        } catch (error) {
+            toast.error('Failed to remove material');
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-neutral-200">
-                <div className="flex items-center justify-between p-6 border-b border-neutral-100">
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-neutral-200 flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between p-6 border-b border-neutral-100 shrink-0">
                     <h3 className="text-lg font-bold text-text-primary">Edit Assessment Settings</h3>
                     <button onClick={onClose} className="p-2 rounded-xl hover:bg-neutral-100 transition-colors"><XMarkIcon /></button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold text-text-muted uppercase mb-1">Title</label>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            required
-                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-text-muted uppercase mb-1">Type</label>
-                        <select
-                            value={type}
-                            onChange={(e) => setType(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none"
-                        >
-                            <option value="ASSIGNMENT">Assignment</option>
-                            <option value="QUIZ">Quiz</option>
-                            <option value="EXAM">Exam</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-text-muted uppercase mb-1">Instructions</label>
-                        <textarea
-                            value={instructions}
-                            onChange={(e) => setInstructions(e.target.value)}
-                            rows={4}
-                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none resize-none"
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                
+                <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                    {/* Basic Info */}
+                    <div className="space-y-4">
                         <div>
-                            <label className="block text-xs font-bold text-text-muted uppercase mb-1">Due Date</label>
+                            <label className="block text-xs font-bold text-text-muted uppercase mb-1">Title</label>
                             <input
-                                type="date"
-                                value={dueDate}
-                                onChange={(e) => setDueDate(e.target.value)}
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                required
                                 className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-text-muted uppercase mb-1">Due Time</label>
-                            <input
-                                type="time"
-                                value={dueTime}
-                                onChange={(e) => setDueTime(e.target.value)}
+                            <label className="block text-xs font-bold text-text-muted uppercase mb-1">Type</label>
+                            <select
+                                value={type}
+                                onChange={(e) => setType(e.target.value)}
                                 className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none"
+                            >
+                                <option value="ASSIGNMENT">Assignment</option>
+                                <option value="QUIZ">Quiz</option>
+                                <option value="EXAM">Exam</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-text-muted uppercase mb-1">Instructions</label>
+                            <textarea
+                                value={instructions}
+                                onChange={(e) => setInstructions(e.target.value)}
+                                rows={4}
+                                className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none resize-none"
                             />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-text-muted uppercase mb-1">Due Date</label>
+                                <input
+                                    type="date"
+                                    value={dueDate}
+                                    onChange={(e) => setDueDate(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-text-muted uppercase mb-1">Due Time</label>
+                                <input
+                                    type="time"
+                                    value={dueTime}
+                                    onChange={(e) => setDueTime(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm focus:ring-2 focus:ring-accent-400 focus:outline-none"
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex gap-3 pt-2">
+                    {/* Attachments Section */}
+                    <div className="pt-4 border-t border-neutral-100">
+                        <label className="block text-xs font-bold text-text-muted uppercase mb-3">Source Materials</label>
+                        
+                        {/* Existing Files */}
+                        {assessment.source_materials?.length > 0 && (
+                            <div className="space-y-2 mb-4">
+                                {assessment.source_materials.map(m => (
+                                    <div key={m.id} className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 border border-neutral-100 group">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <FileIcon mime={m.mime_type} />
+                                            <span className="text-xs font-medium text-text-primary truncate">{m.file_name}</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteMaterial(m.id)}
+                                            className="p-1.5 rounded-lg text-text-muted hover:text-error hover:bg-error/10 transition-all opacity-0 group-hover:opacity-100"
+                                        >
+                                            <TrashIcon size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* New Uploads */}
+                        <div className="space-y-3">
+                            <div className="flex flex-wrap gap-2">
+                                {newFiles.map((file, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/20 text-[10px] font-bold text-primary">
+                                        <span className="truncate max-w-[100px]">{file.name}</span>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setNewFiles(newFiles.filter((_, i) => i !== idx))}
+                                            className="hover:text-red-500"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            <label className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-neutral-200 rounded-2xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group">
+                                <input 
+                                    type="file" 
+                                    multiple 
+                                    className="hidden" 
+                                    onChange={(e) => setNewFiles([...newFiles, ...Array.from(e.target.files)])}
+                                />
+                                <svg className="w-4 h-4 text-neutral-400 group-hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                <span className="text-xs font-bold text-neutral-500 group-hover:text-primary transition-colors">Add New Materials</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Form Actions */}
+                    <div className="flex gap-3 pt-4 sticky bottom-0 bg-white border-t border-neutral-100 py-4 mt-auto shrink-0">
                         <button
                             type="button"
                             onClick={onClose}
@@ -671,10 +763,18 @@ const EditAssessmentModal = ({ assessment, courseId, onClose }) => {
                         </button>
                         <button
                             type="submit"
-                            disabled={isPending}
-                            className="flex-1 px-4 py-3 rounded-xl bg-primary text-text-inverse text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                            disabled={isUpdating || isUploading}
+                            className="flex-1 px-4 py-3 rounded-xl bg-neutral-900 text-white text-sm font-bold hover:bg-black transition-all shadow-lg shadow-black/20 disabled:opacity-50 flex items-center justify-center gap-2"
                         >
-                            {isPending ? 'Saving...' : 'Save Changes'}
+                            {(isUpdating || isUploading) ? (
+                                <>
+                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    Saving...
+                                </>
+                            ) : 'Update Assessment'}
                         </button>
                     </div>
                 </form>
@@ -726,7 +826,8 @@ const TeacherAssessmentPage = () => {
         { key: 'details', label: 'Details' },
         { key: 'submissions', label: 'Submissions' },
         { key: 'plagiarism', label: 'Plagiarism' },
-        { key: 'ai-grading', label: 'AI Grading' }
+        { key: 'ai-grading', label: 'AI Grading' },
+        { key: 'manual-evaluation', label: 'Manual Evaluation' }
     ];
 
     return (
@@ -842,6 +943,15 @@ const TeacherAssessmentPage = () => {
                         submitted={submitted}
                         late={late}
                         sourceMaterials={assessment.source_materials}
+                    />
+                )}
+                {activeTab === 'manual-evaluation' && (
+                    <ManualEvaluationTab
+                        courseId={courseId}
+                        assessment={assessment}
+                        submitted={submitted}
+                        late={late}
+                        notSubmitted={not_submitted}
                     />
                 )}
             </div>

@@ -29,6 +29,15 @@ const navItems = [
                 <line x1="3" y1="10" x2="21" y2="10" />
                 <path d="M9 16l2 2 4-4" />
             </svg>
+        )
+    },
+    {
+        to: '/student/marks',
+        label: 'Marks',
+        icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                <path d="M12 20v-6M6 20V10M18 20V4" />
+            </svg>
         ),
     }
 ];

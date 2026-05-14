@@ -3,6 +3,7 @@ import CoursesPage from './courses/CoursesPage';
 import AttendanceOverview from './attendance/AttendanceOverview';
 import StudentSidebar from './StudentSidebar';
 import StudentAssignmentsOverview from './assignments/AssignmentsOverview';
+import MarksPage from './marks/MarksPage';
 
 // ── Placeholder pages for other tabs ──────────────────────────
 const PlaceholderPage = ({ title }) => (
@@ -34,8 +35,8 @@ const StudentDashboard = ({ defaultTab = 'courses' }) => {
                 return <AttendanceOverview />;
             case 'assignments':
                 return <StudentAssignmentsOverview />;
-            case 'grades':
-                return <PlaceholderPage title="Grades" />;
+            case 'marks':
+                return <MarksPage />;
             default:
                 return <CoursesPage />;
         }

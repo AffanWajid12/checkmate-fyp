@@ -1,9 +1,6 @@
-torch==2.6.0 --index-url https://download.pytorch.org/whl/cu121
-torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu121
-torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu121
 transformers==4.46.3
 tokenizers==0.20.3
-flask>=3.0.0
+flask
 flask-cors>=4.0.0
 Pillow>=10.0.0
 addict>=2.4.0

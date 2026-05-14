@@ -12,6 +12,7 @@ import StudentsTab from './tabs/StudentsTab';
 import AnnouncementsTab from './tabs/AnnouncementsTab';
 import AssessmentsTab from './tabs/AssessmentsTab';
 import AttendanceTab from './tabs/AttendanceTab';
+import ReevaluationsTab from './tabs/ReevaluationsTab';
 
 // ─── Tab Icons ────────────────────────────────────────────────────────────────
 
@@ -73,12 +74,20 @@ const EditIcon = () => (
 
 // ─── Tab Definitions ──────────────────────────────────────────────────────────
 
+const ReevaluationsTabIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+        <polyline points="1 4 1 10 7 10" />
+        <path d="M3.51 15a9 9 0 102.13-9.36L1 10" />
+    </svg>
+);
+
 const TABS = [
     { key: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
     { key: 'students', label: 'Students', icon: <StudentsTabIcon /> },
     { key: 'announcements', label: 'Announcements', icon: <AnnouncementsTabIcon /> },
     { key: 'assessments', label: 'Assessments', icon: <AssessmentsTabIcon /> },
     { key: 'attendance', label: 'Attendance', icon: <AttendanceTabIcon /> },
+    { key: 'reevaluations', label: 'Re-evaluations', icon: <ReevaluationsTabIcon /> },
 ];
 
 // ─── Teacher Name Hook ────────────────────────────────────────────────────────
@@ -226,6 +235,7 @@ const TeacherCoursePage = () => {
                     {activeTab === 'announcements' && <AnnouncementsTab courseId={courseId} />}
                     {activeTab === 'assessments' && <AssessmentsTab courseId={courseId} />}
                     {activeTab === 'attendance' && <AttendanceTab course={course} courseId={courseId} />}
+                    {activeTab === 'reevaluations' && <ReevaluationsTab courseId={courseId} />}
                 </div>
             </div>
         </TeacherSidebar>

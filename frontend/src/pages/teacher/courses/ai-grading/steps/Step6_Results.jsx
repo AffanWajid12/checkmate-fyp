@@ -1,15 +1,72 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 
 export default function Step6_Results({
     gradingResults,
     selectedStudents,
     submissions,
     onBack,
-    onReset
+    onReset,
+    onSaveToDatabase,
+    onUpdateResults
 }) {
     const [selectedSubId, setSelectedSubId] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [editingQIdx, setEditingQIdx] = useState(null);
+    const [editData, setEditData] = useState({ score: 0, feedback: '' });
 
-    const closeModal = () => setSelectedSubId(null);
+    const handleSave = async () => {
+        setIsSaving(true);
+        await onSaveToDatabase();
+        setIsSaving(false);
+    };
+
+    const closeModal = () => {
+        setSelectedSubId(null);
+        setEditingQIdx(null);
+    };
+
+    const handleStartEdit = (idx, qRes) => {
+        setEditingQIdx(idx);
+        // If feedback is object, take the summary
+        const rawFeedback = qRes.feedback;
+        const feedbackText = typeof rawFeedback === 'object' ? (rawFeedback.summary || JSON.stringify(rawFeedback)) : rawFeedback;
+        setEditData({ score: qRes.score, feedback: feedbackText });
+    };
+
+    const handleSaveEdit = (idx) => {
+        const result = gradingResults[selectedSubId];
+        const updatedResultsList = [...result.results];
+        
+        // Update the specific question
+        const oldQ = updatedResultsList[idx];
+        const newScore = parseFloat(editData.score) || 0;
+
+        if (newScore > oldQ.points) {
+            toast.error(`Score cannot exceed maximum points (${oldQ.points})`);
+            return;
+        }
+
+        const newQ = { 
+            ...oldQ, 
+            score: newScore,
+            feedback: editData.feedback,
+            is_manually_edited: true
+        };
+        updatedResultsList[idx] = newQ;
+
+        // Recalculate total score
+        const newTotalScore = updatedResultsList.reduce((acc, curr) => acc + (parseFloat(curr.score) || 0), 0);
+
+        const updatedResult = {
+            ...result,
+            results: updatedResultsList,
+            total_score: newTotalScore
+        };
+
+        onUpdateResults(selectedSubId, updatedResult);
+        setEditingQIdx(null);
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pb-20">
@@ -34,9 +91,16 @@ export default function Step6_Results({
                     </button>
                     <button
                         onClick={onReset}
-                        className="px-6 py-3.5 rounded-2xl bg-neutral-900 text-white font-black hover:bg-black transition-all active:scale-95 shadow-xl shadow-black/20 text-sm"
+                        className="px-6 py-3.5 rounded-2xl border-2 border-neutral-200 text-text-secondary font-black hover:bg-neutral-50 transition-all active:scale-95 text-sm"
                     >
                         Reset All
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="px-6 py-3.5 rounded-2xl bg-neutral-900 text-white font-black hover:bg-black transition-all active:scale-95 shadow-xl shadow-black/20 text-sm disabled:opacity-50 flex items-center gap-2"
+                    >
+                        {isSaving ? 'Saving...' : 'Save to Database'}
                     </button>
                 </div>
             </div>
@@ -181,8 +245,19 @@ export default function Step6_Results({
                                                         {qRes.type === 'McqQuestion' ? 'Multiple Choice' : 'Text Based'}
                                                     </span>
                                                 </div>
-                                                <div className="text-sm font-black text-primary bg-white px-5 py-2 rounded-full shadow-sm ring-1 ring-neutral-100">
-                                                    {qRes.score} <span className="opacity-30 mx-1">/</span> {qRes.points} <span className="ml-1 text-[10px] text-neutral-300 font-bold">Marks</span>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-sm font-black text-primary bg-white px-5 py-2 rounded-full shadow-sm ring-1 ring-neutral-100">
+                                                        {qRes.score} <span className="opacity-30 mx-1">/</span> {qRes.points} <span className="ml-1 text-[10px] text-neutral-300 font-bold">Marks</span>
+                                                    </div>
+                                                    {editingQIdx !== idx && (
+                                                        <button
+                                                            onClick={() => handleStartEdit(idx, qRes)}
+                                                            className="p-2 bg-white border border-neutral-200 rounded-xl text-neutral-400 hover:text-primary hover:border-primary transition-all shadow-sm"
+                                                            title="Edit Score & Feedback"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -226,72 +301,126 @@ export default function Step6_Results({
 
                                                 <div className="h-px bg-neutral-100" />
 
-                                                {/* AI Feedback Grid */}
+                                                {/* AI Feedback Grid / Editor */}
                                                 <div>
-                                                    <h5 className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] mb-6">AI Feedback & Analysis</h5>
+                                                    <div className="flex justify-between items-center mb-6">
+                                                        <h5 className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em]">
+                                                            {editingQIdx === idx ? 'Edit Evaluation' : 'AI Feedback & Analysis'}
+                                                        </h5>
+                                                        {qRes.is_manually_edited && (
+                                                            <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest bg-amber-50 px-2 py-0.5 rounded border border-amber-100">Manually Adjusted</span>
+                                                        )}
+                                                    </div>
 
-                                                    {isStructured ? (
-                                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                                            {/* Positive */}
-                                                            <div className="space-y-4">
-                                                                <div className="flex items-center gap-2 text-success uppercase text-[10px] font-black tracking-widest">
-                                                                    <div className="w-5 h-5 rounded-lg bg-success/20 flex items-center justify-center">
-                                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
+                                                    {editingQIdx === idx ? (
+                                                        <div className="space-y-6 bg-neutral-50 p-6 rounded-[2rem] border border-primary/20 shadow-inner">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                <div>
+                                                                    <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2">Adjust Score</label>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <input
+                                                                            type="number"
+                                                                            value={editData.score}
+                                                                            max={qRes.points}
+                                                                            min={0}
+                                                                            onChange={(e) => setEditData({ ...editData, score: e.target.value })}
+                                                                            className="w-24 px-4 py-2.5 bg-white border border-neutral-200 rounded-xl font-black text-primary outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                                                        />
+                                                                        <span className="text-lg font-black text-neutral-300">/ {qRes.points}</span>
                                                                     </div>
-                                                                    Positive Points
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    {feedback.positive_points?.map((p, i) => (
-                                                                        <div key={i} className="p-3 bg-success/5 border border-success/10 rounded-xl text-xs font-bold text-success-800 leading-tight">
-                                                                            {p}
-                                                                        </div>
-                                                                    )) || <p className="text-[10px] text-neutral-400 italic">None noted.</p>}
                                                                 </div>
                                                             </div>
-
-                                                            {/* Negative */}
-                                                            <div className="space-y-4">
-                                                                <div className="flex items-center gap-2 text-danger-500 uppercase text-[10px] font-black tracking-widest">
-                                                                    <div className="w-5 h-5 rounded-lg bg-danger-50 flex items-center justify-center">
-                                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" /></svg>
-                                                                    </div>
-                                                                    Critical Gaps
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    {feedback.negative_points?.map((p, i) => (
-                                                                        <div key={i} className="p-3 bg-danger-50 border border-danger-100 rounded-xl text-xs font-bold text-danger-700 leading-tight">
-                                                                            {p}
-                                                                        </div>
-                                                                    )) || <p className="text-[10px] text-neutral-400 italic">None noted.</p>}
-                                                                </div>
+                                                            <div>
+                                                                <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2">Edit Feedback Summary</label>
+                                                                <textarea
+                                                                    value={editData.feedback}
+                                                                    onChange={(e) => setEditData({ ...editData, feedback: e.target.value })}
+                                                                    rows={4}
+                                                                    className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
+                                                                    placeholder="Enter your manual feedback here..."
+                                                                />
                                                             </div>
-
-                                                            {/* Improvements */}
-                                                            <div className="space-y-4">
-                                                                <div className="flex items-center gap-2 text-accent-600 uppercase text-[10px] font-black tracking-widest">
-                                                                    <div className="w-5 h-5 rounded-lg bg-accent-100 flex items-center justify-center">
-                                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                                                    </div>
-                                                                    To Improve
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    {feedback.improvement_points?.map((p, i) => (
-                                                                        <div key={i} className="p-3 bg-accent-50 border border-accent-100 rounded-xl text-xs font-bold text-accent-700 leading-tight">
-                                                                            {p}
-                                                                        </div>
-                                                                    )) || <p className="text-[10px] text-neutral-400 italic">None noted.</p>}
-                                                                </div>
+                                                            <div className="flex gap-3 pt-2">
+                                                                <button
+                                                                    onClick={() => handleSaveEdit(idx)}
+                                                                    className="px-6 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-black shadow-lg hover:bg-black transition-all active:scale-95"
+                                                                >
+                                                                    Save Changes
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setEditingQIdx(null)}
+                                                                    className="px-6 py-2.5 bg-white border border-neutral-200 text-text-secondary rounded-xl text-xs font-black hover:bg-neutral-50 transition-all"
+                                                                >
+                                                                    Cancel
+                                                                </button>
                                                             </div>
                                                         </div>
-                                                    ) : null}
+                                                    ) : (
+                                                        <>
+                                                            {isStructured ? (
+                                                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                                                    {/* Positive */}
+                                                                    <div className="space-y-4">
+                                                                        <div className="flex items-center gap-2 text-success uppercase text-[10px] font-black tracking-widest">
+                                                                            <div className="w-5 h-5 rounded-lg bg-success/20 flex items-center justify-center">
+                                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
+                                                                            </div>
+                                                                            Positive Points
+                                                                        </div>
+                                                                        <div className="space-y-2">
+                                                                            {feedback.positive_points?.map((p, i) => (
+                                                                                <div key={i} className="p-3 bg-success/5 border border-success/10 rounded-xl text-xs font-bold text-success-800 leading-tight">
+                                                                                    {p}
+                                                                                </div>
+                                                                            )) || <p className="text-[10px] text-neutral-400 italic">None noted.</p>}
+                                                                        </div>
+                                                                    </div>
 
-                                                    <div className={`mt-6 p-6 rounded-3xl bg-neutral-900 text-white shadow-xl shadow-neutral-900/10 relative overflow-hidden ${!isStructured ? 'mt-0' : ''}`}>
-                                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full translate-x-12 -translate-y-12 blur-2xl" />
-                                                        <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-2 relative z-10">Executive Summary</p>
-                                                        <p className="text-[13px] font-bold leading-relaxed relative z-10 text-white/90">
-                                                            {feedback.summary || feedback}
-                                                        </p>
-                                                    </div>
+                                                                    {/* Negative */}
+                                                                    <div className="space-y-4">
+                                                                        <div className="flex items-center gap-2 text-danger-500 uppercase text-[10px] font-black tracking-widest">
+                                                                            <div className="w-5 h-5 rounded-lg bg-danger-50 flex items-center justify-center">
+                                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                            </div>
+                                                                            Critical Gaps
+                                                                        </div>
+                                                                        <div className="space-y-2">
+                                                                            {feedback.negative_points?.map((p, i) => (
+                                                                                <div key={i} className="p-3 bg-danger-50 border border-danger-100 rounded-xl text-xs font-bold text-danger-700 leading-tight">
+                                                                                    {p}
+                                                                                </div>
+                                                                            )) || <p className="text-[10px] text-neutral-400 italic">None noted.</p>}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Improvements */}
+                                                                    <div className="space-y-4">
+                                                                        <div className="flex items-center gap-2 text-accent-600 uppercase text-[10px] font-black tracking-widest">
+                                                                            <div className="w-5 h-5 rounded-lg bg-accent-100 flex items-center justify-center">
+                                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                                                            </div>
+                                                                            To Improve
+                                                                        </div>
+                                                                        <div className="space-y-2">
+                                                                            {feedback.improvement_points?.map((p, i) => (
+                                                                                <div key={i} className="p-3 bg-accent-50 border border-accent-100 rounded-xl text-xs font-bold text-accent-700 leading-tight">
+                                                                                    {p}
+                                                                                </div>
+                                                                            )) || <p className="text-[10px] text-neutral-400 italic">None noted.</p>}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ) : null}
+
+                                                            <div className={`mt-6 p-6 rounded-3xl bg-neutral-900 text-white shadow-xl shadow-neutral-900/10 relative overflow-hidden ${!isStructured ? 'mt-0' : ''}`}>
+                                                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full translate-x-12 -translate-y-12 blur-2xl" />
+                                                                <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-2 relative z-10">Executive Summary</p>
+                                                                <p className="text-[13px] font-bold leading-relaxed relative z-10 text-white/90">
+                                                                    {feedback.summary || feedback}
+                                                                </p>
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

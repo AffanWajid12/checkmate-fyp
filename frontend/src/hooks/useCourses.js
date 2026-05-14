@@ -10,6 +10,7 @@ export const courseKeys = {
     courseAttendance: (courseId) => ["courses", courseId, "attendance"],
     assessmentDetails: (courseId, assessmentId) => ["courses", courseId, "assessments", assessmentId],
     submissionDetails: (courseId, assessmentId, submissionId) => ["courses", courseId, "assessments", assessmentId, "submissions", submissionId],
+    assessmentInsights: (courseId, assessmentId) => ["courses", courseId, "assessments", assessmentId, "insights"],
 };
 
 // ─── Student Hooks ────────────────────────────────────────────────────────────
@@ -60,6 +61,20 @@ export const useStudentAttendance = (courseId) =>
             return data.records; // array of { id, date, status, enrollment_id, ... }
         },
         enabled: !!courseId,
+    });
+
+/**
+ * GET /api/courses/marks
+ * Returns student marks and stats for all enrolled courses.
+ */
+export const useStudentMarks = () =>
+    useQuery({
+        queryKey: ["courses", "marks"],
+        queryFn: async () => {
+            const { data } = await apiClient.get("/api/courses/marks");
+            return data.marks; // array of course marks objects
+        },
+        staleTime: 5 * 60 * 1000,
     });
 
 /**
@@ -467,6 +482,29 @@ export const useGetSubmissionDetails = (courseId, assessmentId, submissionId) =>
     });
 
 /**
+ * POST /api/courses/:courseId/assessments/:assessmentId/source-materials
+ * Teacher only — appends new source materials to an assessment.
+ */
+export const useAddSourceMaterials = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (formData) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments/${assessmentId}/source-materials`,
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } }
+            );
+            return data; // { message, materials }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+        },
+    });
+};
+
+/**
  * DELETE /api/courses/:courseId/assessments/:assessmentId/source-materials/:materialId
  * Teacher only — removes a source material from storage and DB.
  */
@@ -655,6 +693,185 @@ export const useUpdateAssessment = (courseId) => {
         onSuccess: (_, { assessmentId }) => {
             queryClient.invalidateQueries({ queryKey: courseKeys.announcements(courseId) });
             queryClient.invalidateQueries({ queryKey: courseKeys.assessmentDetails(courseId, assessmentId) });
+        },
+    });
+};
+
+/**
+ * PUT /api/courses/:courseId/assessments/:assessmentId/blueprint
+ * Saves the grading blueprint for an assessment.
+ */
+export const useSaveBlueprint = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ total_marks, structure }) => {
+            const { data } = await apiClient.put(
+                `/api/courses/${courseId}/assessments/${assessmentId}/blueprint`,
+                { total_marks, structure }
+            );
+            return data.blueprint;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+        },
+    });
+};
+
+/**
+ * PUT /api/courses/:courseId/assessments/:assessmentId/submissions/:submissionId/evaluate
+ * Saves the detailed manual/AI evaluation for a submission.
+ */
+export const useSaveEvaluation = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ submissionId, total_score, overall_feedback, details, studentId }) => {
+            const { data } = await apiClient.put(
+                `/api/courses/${courseId}/assessments/${assessmentId}/submissions/${submissionId}/evaluate`,
+                { total_score, overall_feedback, details, studentId }
+            );
+            return data.evaluation;
+        },
+        onSuccess: (_, { submissionId }) => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.submissionDetails(courseId, assessmentId, submissionId),
+            });
+        },
+    });
+};
+
+/**
+ * DELETE /api/courses/:courseId/assessments/:assessmentId/evaluation-reset
+ * Resets all evaluations and the blueprint for an assessment.
+ */
+export const useResetEvaluation = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async () => {
+            const { data } = await apiClient.delete(
+                `/api/courses/${courseId}/assessments/${assessmentId}/evaluation-reset`
+            );
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentDetails(courseId, assessmentId),
+            });
+        },
+    });
+};
+/**
+ * POST /api/courses/:courseId/assessments/:assessmentId/insights/generate
+ * Teacher only — generates analytics & LLM insights for a graded assessment.
+ */
+export const useGenerateInsights = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ threshold } = {}) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments/${assessmentId}/insights/generate`,
+                threshold !== undefined ? { threshold } : {}
+            );
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: courseKeys.assessmentInsights(courseId, assessmentId),
+            });
+        },
+    });
+};
+
+/**
+ * GET /api/courses/:courseId/assessments/:assessmentId/insights
+ * Role-aware: teacher gets full analytics, student gets personal insight only.
+ */
+export const useGetInsights = (courseId, assessmentId, enabled = true) =>
+    useQuery({
+        queryKey: courseKeys.assessmentInsights(courseId, assessmentId),
+        queryFn: async () => {
+            const { data } = await apiClient.get(
+                `/api/courses/${courseId}/assessments/${assessmentId}/insights`
+            );
+            return data;
+        },
+        enabled: !!courseId && !!assessmentId && enabled,
+        staleTime: 5 * 60 * 1000,
+        retry: false,
+    });
+
+// ─── Re-evaluation Hooks ──────────────────────────────────────────────────────
+
+/**
+ * POST /api/reevaluation/request
+ * Body: { submissionId, reason }
+ * Student requests re-evaluation of a graded submission.
+ */
+export const useRequestReevaluation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ submissionId, reason }) => {
+            const { data } = await apiClient.post("/api/reevaluation/request", {
+                submissionId,
+                reason,
+            });
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["courses", "marks"] });
+        },
+    });
+};
+
+/**
+ * GET /api/reevaluation/teacher/pending
+ * Teacher fetches pending re-evaluation requests.
+ */
+export const useTeacherPendingReevaluations = () =>
+    useQuery({
+        queryKey: ["reevaluation", "teacher", "pending"],
+        queryFn: async () => {
+            const { data } = await apiClient.get("/api/reevaluation/teacher/pending");
+            return data.requests;
+        },
+        staleTime: 30 * 1000,
+    });
+
+/**
+ * GET /api/reevaluation/teacher/all
+ * Teacher fetches all re-evaluation requests (all statuses).
+ */
+export const useTeacherAllReevaluations = () =>
+    useQuery({
+        queryKey: ["reevaluation", "teacher", "all"],
+        queryFn: async () => {
+            const { data } = await apiClient.get("/api/reevaluation/teacher/all");
+            return data.requests;
+        },
+        staleTime: 30 * 1000,
+    });
+
+/**
+ * PATCH /api/reevaluation/teacher/respond/:requestId
+ * Body: { action: "ACCEPTED" | "REJECTED", teacherNote?: string }
+ * Teacher accepts or rejects a re-evaluation request.
+ */
+export const useRespondToReevaluation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ requestId, action, teacherNote }) => {
+            const { data } = await apiClient.patch(
+                `/api/reevaluation/teacher/respond/${requestId}`,
+                { action, teacherNote }
+            );
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["reevaluation"] });
         },
     });
 };

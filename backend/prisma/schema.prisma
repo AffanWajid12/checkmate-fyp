@@ -22,6 +22,9 @@ model users {
   generatedAssessments generated_assessments[] @relation("TeacherGeneratedAssessments")
   referenceMaterials   reference_materials[]   @relation("TeacherReferenceMaterials")
   submissions          submissions[]           @relation("UserSubmissions")
+  evaluations          evaluations[]           @relation("UserEvaluations")
+  reevalRequestsAsStudent reevaluation_requests[] @relation("StudentReevaluations")
+  reevalRequestsAsTeacher reevaluation_requests[] @relation("TeacherReevaluations")
 
   @@map("users")
   @@schema("public")
@@ -124,6 +127,8 @@ model assessments {
   title            String
   instructions     String?
   type             AssessmentType     @default(QUIZ)
+  total_marks      Float?
+  blueprint        Json?
   due_date         DateTime?
   visible_to_students Boolean         @default(true)
   createdAt        DateTime           @default(now())
@@ -132,6 +137,8 @@ model assessments {
   announcement     announcements      @relation("AnnouncementAssessments", fields: [announcement_id], references: [id], onDelete: Cascade)
   source_materials source_materials[] @relation("AssessmentSourceMaterials")
   submissions      submissions[]      @relation("AssessmentSubmissions")
+  grading_blueprint grading_blueprints? @relation("AssessmentBlueprint")
+  insights         assessment_insights? @relation("AssessmentInsights")
 
   @@map("assessments")
   @@schema("public")
@@ -139,17 +146,19 @@ model assessments {
 
 model submissions {
   id            String           @id @default(uuid()) @db.Uuid
-  status        SubmissionStatus @default(SUBMITTED)
-  submitted_at  DateTime         @default(now())
-  grade         Float?
-  feedback      String?
-  createdAt     DateTime         @default(now())
+  status          SubmissionStatus @default(SUBMITTED)
+  submitted_at    DateTime         @default(now())
+  grade           Float?
+  feedback        String?
+  createdAt       DateTime         @default(now())
   updatedAt     DateTime         @default(now()) @updatedAt
   user_id       String           @db.Uuid
   assessment_id String           @db.Uuid
-  attachments   attachments[]    @relation("SubmissionAttachments")
-  assessment    assessments      @relation("AssessmentSubmissions", fields: [assessment_id], references: [id], onDelete: Cascade)
-  user          users            @relation("UserSubmissions", fields: [user_id], references: [id], onDelete: Cascade)
+  attachments          attachments[]          @relation("SubmissionAttachments")
+  assessment           assessments            @relation("AssessmentSubmissions", fields: [assessment_id], references: [id], onDelete: Cascade)
+  user                 users                  @relation("UserSubmissions", fields: [user_id], references: [id], onDelete: Cascade)
+  evaluation           evaluations?           @relation("SubmissionEvaluation")
+  reevaluation_request reevaluation_requests? @relation("SubmissionReevaluation")
 
   @@unique([user_id, assessment_id])
   @@map("submissions")
@@ -277,5 +286,75 @@ enum SubmissionStatus {
   LATE
   GRADED
 
+  @@schema("public")
+}
+
+enum ReevaluationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+
+  @@schema("public")
+}
+
+model reevaluation_requests {
+  id             String             @id @default(uuid()) @db.Uuid
+  submission_id  String             @unique @db.Uuid
+  student_id     String             @db.Uuid
+  teacher_id     String             @db.Uuid
+  status         ReevaluationStatus @default(PENDING)
+  student_reason String?
+  teacher_note   String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  submission submissions @relation("SubmissionReevaluation", fields: [submission_id], references: [id], onDelete: Cascade)
+  student    users       @relation("StudentReevaluations", fields: [student_id], references: [id])
+  teacher    users       @relation("TeacherReevaluations", fields: [teacher_id], references: [id])
+
+  @@map("reevaluation_requests")
+  @@schema("public")
+}
+
+model grading_blueprints {
+  id            String      @id @default(uuid()) @db.Uuid
+  assessment_id String      @unique @db.Uuid
+  total_marks   Float
+  structure     Json
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  assessment    assessments @relation("AssessmentBlueprint", fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("grading_blueprints")
+  @@schema("public")
+}
+
+model evaluations {
+  id               String      @id @default(uuid()) @db.Uuid
+  submission_id    String      @unique @db.Uuid
+  total_score      Float
+  overall_feedback String?
+  details          Json
+  evaluated_by     String      @db.Uuid
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  submission       submissions @relation("SubmissionEvaluation", fields: [submission_id], references: [id], onDelete: Cascade)
+  evaluator        users       @relation("UserEvaluations", fields: [evaluated_by], references: [id], onDelete: Cascade)
+
+  @@map("evaluations")
+  @@schema("public")
+}
+
+model assessment_insights {
+  id            String      @id @default(uuid()) @db.Uuid
+  assessment_id String      @unique @db.Uuid
+  teacher_data  Json
+  student_data  Json
+  generated_at  DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  assessment    assessments @relation("AssessmentInsights", fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("assessment_insights")
   @@schema("public")
 }
