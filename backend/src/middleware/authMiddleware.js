@@ -26,7 +26,7 @@ const verifyUser = async (req, res, next) => {
         }
 
         let dbUser = await prisma.users.findUnique({ where: { id: user.id } });
-        
+
         if (!dbUser) {
             // AUTO-SYNC: If user is authenticated in Supabase but missing in DB (e.g. after DB reset)
             // Recreate the user record automatically using Supabase metadata
@@ -41,7 +41,7 @@ const verifyUser = async (req, res, next) => {
             });
             console.log(`Auto-synced user ${user.email} to database.`);
         }
-        
+
         req.user = dbUser;
         next();
     } catch (error) {

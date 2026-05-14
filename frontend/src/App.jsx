@@ -30,6 +30,7 @@ import SettingsPage from "./pages/SettingsPage.jsx";
 import StudentSidebar from "./pages/student/StudentSidebar.jsx";
 import TeacherSidebar from "./pages/teacher/TeacherSidebar.jsx";
 import CodingAssessmentsPage from "./pages/teacher/coding/CodingAssessmentsPage.jsx";
+import OMREvaluationPage from "./pages/teacher/omr/OMREvaluationPage.jsx";
 
 const queryClient = new QueryClient();
 
@@ -212,6 +213,14 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={["TEACHER"]}>
                     <CodingAssessmentsPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/omr-evaluation"
+                element={
+                  <RoleProtectedRoute allowedRoles={["TEACHER"]}>
+                    <OMREvaluationPage />
                   </RoleProtectedRoute>
                 }
               />

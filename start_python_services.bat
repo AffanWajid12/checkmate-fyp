@@ -16,4 +16,7 @@ start "plagiarism-detection" cmd /k "cd services\plagiarism-detection && call ve
 echo Starting qa-pairing...
 start "qa-pairing" cmd /k "cd services\qa-pairing && call venv\Scripts\activate && python app.py"
 
+echo Starting omr-checker...
+start "omr-checker" cmd /k "cd services\omr-checker && call venv\Scripts\activate && python app.py"
+
 echo All python services have been started in new windows.

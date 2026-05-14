@@ -171,4 +171,4 @@ def evaluate_single_omr():
                 print(f"Warning: Failed to cleanup temp workspace {temp_workspace}: {e}")
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8543, debug=True)
+    app.run(host='0.0.0.0', port=8543, debug=True, use_reloader=False)
