@@ -875,3 +875,110 @@ export const useRespondToReevaluation = () => {
         },
     });
 };
+
+// ─── Coding Assessment Hooks ──────────────────────────────────────────────────
+
+/**
+ * POST /api/courses/:courseId/assessments/:assessmentId/test-cases
+ * Teacher saves/updates test cases for a CODING assessment.
+ */
+export const useSaveTestCases = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ language, test_cases, total_marks }) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments/${assessmentId}/test-cases`,
+                { language, test_cases, total_marks }
+            );
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: courseKeys.assessmentDetails(courseId, assessmentId) });
+        },
+    });
+};
+
+/**
+ * GET /api/courses/:courseId/assessments/:assessmentId/test-cases
+ * Teacher fetches full test cases (including hidden).
+ */
+export const useGetTestCases = (courseId, assessmentId) =>
+    useQuery({
+        queryKey: ["courses", courseId, "assessments", assessmentId, "test-cases"],
+        queryFn: async () => {
+            const { data } = await apiClient.get(
+                `/api/courses/${courseId}/assessments/${assessmentId}/test-cases`
+            );
+            return data.coding_assessment;
+        },
+        enabled: !!courseId && !!assessmentId,
+    });
+
+/**
+ * POST /api/courses/:courseId/assessments/:assessmentId/generate-test-cases
+ * Teacher triggers AI test case generation.
+ */
+export const useGenerateTestCases = (courseId, assessmentId) =>
+    useMutation({
+        mutationFn: async ({ question, language, count }) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments/${assessmentId}/generate-test-cases`,
+                { question, language, count }
+            );
+            return data; // { test_cases: [...] }
+        },
+    });
+
+/**
+ * POST /api/courses/:courseId/assessments/:assessmentId/code-submit
+ * Student submits source code and triggers test execution.
+ */
+export const useCodeSubmit = (courseId, assessmentId) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ source_code, language }) => {
+            const { data } = await apiClient.post(
+                `/api/courses/${courseId}/assessments/${assessmentId}/code-submit`,
+                { source_code, language }
+            );
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: courseKeys.assessmentDetails(courseId, assessmentId) });
+            queryClient.invalidateQueries({ queryKey: ["courses", courseId, "assessments", assessmentId, "code-submission"] });
+        },
+    });
+};
+
+/**
+ * GET /api/courses/:courseId/assessments/:assessmentId/code-submission
+ * Student fetches own code submission + test results (hidden case outputs masked).
+ */
+export const useGetCodeSubmission = (courseId, assessmentId) =>
+    useQuery({
+        queryKey: ["courses", courseId, "assessments", assessmentId, "code-submission"],
+        queryFn: async () => {
+            const { data } = await apiClient.get(
+                `/api/courses/${courseId}/assessments/${assessmentId}/code-submission`
+            );
+            return data;
+        },
+        enabled: !!courseId && !!assessmentId,
+    });
+
+/**
+ * GET /api/courses/:courseId/assessments/:assessmentId/code-submissions
+ * Teacher fetches all student code submissions for a CODING assessment.
+ */
+export const useGetAllCodeSubmissions = (courseId, assessmentId) =>
+    useQuery({
+        queryKey: ["courses", courseId, "assessments", assessmentId, "code-submissions"],
+        queryFn: async () => {
+            const { data } = await apiClient.get(
+                `/api/courses/${courseId}/assessments/${assessmentId}/code-submissions`
+            );
+            return data.submissions;
+        },
+        enabled: !!courseId && !!assessmentId,
+    });
+

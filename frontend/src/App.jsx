@@ -29,6 +29,7 @@ import ViewSubmissionPage from "./pages/teacher/courses/ViewSubmissionPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
 import StudentSidebar from "./pages/student/StudentSidebar.jsx";
 import TeacherSidebar from "./pages/teacher/TeacherSidebar.jsx";
+import CodingAssessmentsPage from "./pages/teacher/coding/CodingAssessmentsPage.jsx";
 
 const queryClient = new QueryClient();
 
@@ -203,6 +204,14 @@ function App() {
                 element={
                   <RoleProtectedRoute allowedRoles={["TEACHER"]}>
                     <ViewSubmissionPage />
+                  </RoleProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/coding-assessments"
+                element={
+                  <RoleProtectedRoute allowedRoles={["TEACHER"]}>
+                    <CodingAssessmentsPage />
                   </RoleProtectedRoute>
                 }
               />

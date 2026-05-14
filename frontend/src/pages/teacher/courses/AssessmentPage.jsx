@@ -6,7 +6,9 @@ import {
     useDeleteAssessment, 
     useUpdateAssessment,
     useAddSourceMaterials,
-    useDeleteSourceMaterial 
+    useDeleteSourceMaterial,
+    useGetAllCodeSubmissions,
+    useGetTestCases,
 } from '../../../hooks/useCourses';
 import TeacherSidebar from '../TeacherSidebar';
 import AIGradingTab from "./ai-grading/AIGradingTab";
@@ -65,6 +67,7 @@ const TYPE_META = {
     QUIZ: { label: 'Quiz', color: 'bg-blue-50 text-blue-600 border-blue-200' },
     ASSIGNMENT: { label: 'Assignment', color: 'bg-purple-50 text-purple-600 border-purple-200' },
     EXAM: { label: 'Exam', color: 'bg-amber-50 text-amber-600 border-amber-200' },
+    CODING: { label: 'Coding', color: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
 };
 
 const STATUS_META = {
@@ -94,13 +97,19 @@ const FileChip = ({ material }) => (
 
 const DetailsTab = ({ assessment }) => {
     const typeMeta = TYPE_META[assessment.type] ?? TYPE_META.ASSIGNMENT;
+    const isCoding = assessment.type === 'CODING';
+    const codingMeta = assessment.coding_assessment;
+    const testCases = Array.isArray(codingMeta?.test_cases) ? codingMeta.test_cases : [];
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: instructions + source materials */}
+            {/* Left: instructions + source materials + test cases */}
             <div className="lg:col-span-2 space-y-6">
-                {/* Instructions */}
+                {/* Instructions / Problem Statement */}
                 <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-6">
-                    <h3 className="text-sm font-bold text-text-primary mb-3">Instructions</h3>
+                    <h3 className="text-sm font-bold text-text-primary mb-3">
+                        {isCoding ? 'Problem Statement' : 'Instructions'}
+                    </h3>
                     {assessment.instructions ? (
                         <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
                             {assessment.instructions}
@@ -110,8 +119,8 @@ const DetailsTab = ({ assessment }) => {
                     )}
                 </div>
 
-                {/* Source Materials */}
-                {assessment.source_materials?.length > 0 && (
+                {/* Source Materials (non-coding only) */}
+                {!isCoding && assessment.source_materials?.length > 0 && (
                     <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-6">
                         <h3 className="text-sm font-bold text-text-primary mb-3">
                             Source Materials
@@ -124,6 +133,77 @@ const DetailsTab = ({ assessment }) => {
                                 <FileChip key={m.id} material={m} />
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {/* Test Cases (coding only) */}
+                {isCoding && (
+                    <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-emerald-600">
+                                    <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+                                </svg>
+                                Test Cases
+                                <span className="text-xs font-normal text-text-muted">
+                                    ({testCases.length} total · {testCases.filter(tc => tc.is_hidden).length} hidden)
+                                </span>
+                            </h3>
+                            <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                    {codingMeta?.language === 'python' ? '🐍 Python' : '🟨 JavaScript'}
+                                </span>
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-text-secondary">
+                                    {codingMeta?.total_marks} marks
+                                </span>
+                            </div>
+                        </div>
+
+                        {testCases.length === 0 ? (
+                            <p className="text-sm text-text-muted italic">No test cases configured yet.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {testCases.map((tc, idx) => (
+                                    <div
+                                        key={tc.id || idx}
+                                        className={`rounded-xl border p-4 text-xs font-mono ${
+                                            tc.is_hidden
+                                                ? 'bg-neutral-50 border-neutral-200'
+                                                : 'bg-emerald-50/40 border-emerald-100'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <span className="font-bold text-text-primary text-[11px] uppercase tracking-wide">
+                                                Case {idx + 1}
+                                            </span>
+                                            {tc.is_hidden ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-200 text-neutral-600">
+                                                    🔒 Hidden
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700">
+                                                    👁 Visible
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[11px] text-text-muted font-sans font-semibold uppercase tracking-wide mb-1">Input (stdin)</p>
+                                                <pre className="bg-white border border-neutral-200 rounded-lg p-2 text-text-primary whitespace-pre-wrap break-all leading-relaxed">
+                                                    {tc.input || <span className="text-text-muted italic">(empty)</span>}
+                                                </pre>
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] text-text-muted font-sans font-semibold uppercase tracking-wide mb-1">Expected Output</p>
+                                                <pre className="bg-white border border-neutral-200 rounded-lg p-2 text-text-primary whitespace-pre-wrap break-all leading-relaxed">
+                                                    {tc.expected_output || <span className="text-text-muted italic">(empty)</span>}
+                                                </pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -151,11 +231,36 @@ const DetailsTab = ({ assessment }) => {
                         <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-1">Created</p>
                         <p className="text-sm text-text-primary">{formatDateTime(assessment.createdAt)}</p>
                     </div>
+
+                    {isCoding && codingMeta && (
+                        <>
+                            <div className="border-t border-neutral-100 pt-4">
+                                <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-1">Language</p>
+                                <p className="text-sm text-text-primary font-semibold">
+                                    {codingMeta.language === 'python' ? '🐍 Python' : '🟨 JavaScript'}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-1">Total Marks</p>
+                                <p className="text-sm text-text-primary font-semibold">{codingMeta.total_marks}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-1">Test Cases</p>
+                                <p className="text-sm text-text-primary">
+                                    {testCases.length} total
+                                    <span className="text-text-muted ml-1">
+                                        ({testCases.filter(tc => !tc.is_hidden).length} visible, {testCases.filter(tc => tc.is_hidden).length} hidden)
+                                    </span>
+                                </p>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
+
 
 // ─── Submissions Tab ──────────────────────────────────────────────────────────
 
@@ -565,6 +670,206 @@ const PlagiarismTab = ({ courseId, assessmentId }) => {
     );
 };
 
+// ─── Code Results Tab ───────────────────────────────────────────────────
+
+const TestResultBadge = ({ passed }) => (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
+        passed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
+    }`}>
+        {passed ? '✓ Pass' : '✗ Fail'}
+    </span>
+);
+
+const CodeResultsTab = ({ courseId, assessmentId }) => {
+    const { data: submissions, isLoading, isError } = useGetAllCodeSubmissions(courseId, assessmentId);
+    const { data: codingData } = useGetTestCases(courseId, assessmentId);
+    const [expanded, setExpanded] = useState(null);
+    const [search, setSearch] = useState('');
+
+    if (isLoading) {
+        return (
+            <div className="animate-pulse space-y-4">
+                {[1,2,3].map(i => <div key={i} className="h-20 bg-neutral-100 rounded-2xl" />)}
+            </div>
+        );
+    }
+
+    if (isError) {
+        return <p className="text-sm text-error text-center py-10">Failed to load code submissions.</p>;
+    }
+
+    const allSubs = submissions || [];
+    const q = search.toLowerCase();
+    const filtered = allSubs.filter(s => (s.user?.name || '').toLowerCase().includes(q));
+
+    if (allSubs.length === 0) {
+        return (
+            <div className="text-center py-16 space-y-3">
+                <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto text-emerald-500">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+                        <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+                    </svg>
+                </div>
+                <h3 className="text-base font-bold text-text-primary">No code submissions yet</h3>
+                <p className="text-sm text-text-muted">Students haven't submitted code for this assessment.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-5">
+            {/* Summary bar */}
+            {codingData && (
+                <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-4 flex items-center gap-6">
+                    <div className="text-center">
+                        <p className="text-2xl font-black text-emerald-600">{allSubs.length}</p>
+                        <p className="text-xs text-text-muted">Submissions</p>
+                    </div>
+                    <div className="w-px h-10 bg-neutral-200" />
+                    <div className="text-center">
+                        <p className="text-2xl font-black text-text-primary">
+                            {Array.isArray(codingData.test_cases) ? codingData.test_cases.length : '—'}
+                        </p>
+                        <p className="text-xs text-text-muted">Test Cases</p>
+                    </div>
+                    <div className="w-px h-10 bg-neutral-200" />
+                    <div className="text-center">
+                        <p className="text-2xl font-black text-text-primary">
+                            {codingData.language === 'python' ? '🐍' : '🟨'} {codingData.language}
+                        </p>
+                        <p className="text-xs text-text-muted">Language</p>
+                    </div>
+                    <div className="ml-auto text-center">
+                        <p className="text-2xl font-black text-text-primary">{codingData.total_marks}</p>
+                        <p className="text-xs text-text-muted">Total Marks</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Search */}
+            <div className="relative">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted">
+                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search by student name…"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+            </div>
+
+            {/* Student cards */}
+            <div className="space-y-3">
+                {filtered.map(sub => {
+                    const cs = sub.code_submission;
+                    const isExpanded = expanded === sub.id;
+                    const passRate = cs ? Math.round((cs.passed_tests / Math.max(cs.total_tests, 1)) * 100) : 0;
+
+                    return (
+                        <div key={sub.id} className="bg-background border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
+                            {/* Header row */}
+                            <div
+                                className="flex items-center gap-4 p-4 cursor-pointer hover:bg-neutral-50 transition-colors"
+                                onClick={() => setExpanded(isExpanded ? null : sub.id)}
+                            >
+                                {/* Avatar */}
+                                <div className="w-9 h-9 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                    {sub.user?.profile_picture ? (
+                                        <img src={sub.user.profile_picture} alt={sub.user?.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-xs font-bold text-accent-500">{(sub.user?.name || '?')[0].toUpperCase()}</span>
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold text-text-primary truncate">{sub.user?.name || 'Unknown'}</p>
+                                    <p className="text-xs text-text-muted">{sub.user?.email || ''}</p>
+                                </div>
+                                {cs ? (
+                                    <>
+                                        <div className="text-center hidden sm:block">
+                                            <p className="text-lg font-black text-text-primary">{cs.passed_tests}<span className="text-text-muted text-xs font-normal">/{cs.total_tests}</span></p>
+                                            <p className="text-[11px] text-text-muted">Tests</p>
+                                        </div>
+                                        <div className="text-center hidden sm:block">
+                                            <p className="text-lg font-black text-emerald-600">{sub.grade ?? '—'}</p>
+                                            <p className="text-[11px] text-text-muted">Grade</p>
+                                        </div>
+                                        <div className="w-24">
+                                            <div className="flex justify-between text-[11px] mb-1">
+                                                <span className="text-text-muted">Pass rate</span>
+                                                <span className="font-bold text-text-primary">{passRate}%</span>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full ${passRate >= 70 ? 'bg-emerald-500' : passRate >= 40 ? 'bg-amber-500' : 'bg-red-400'}`}
+                                                    style={{ width: `${passRate}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <span className="text-xs text-text-muted italic">No code submitted</span>
+                                )}
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`w-4 h-4 text-text-muted flex-shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                                    <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                            </div>
+
+                            {/* Expanded detail */}
+                            {isExpanded && cs && (
+                                <div className="border-t border-neutral-100 p-4 space-y-4 bg-neutral-50">
+                                    {/* Code viewer */}
+                                    <div>
+                                        <p className="text-xs font-bold text-text-muted uppercase tracking-wide mb-2">
+                                            Submitted Code ({cs.language})
+                                        </p>
+                                        <pre className="text-xs font-mono bg-neutral-900 text-neutral-100 p-4 rounded-xl overflow-auto max-h-64 leading-relaxed">{cs.source_code}</pre>
+                                    </div>
+
+                                    {/* Test results */}
+                                    {Array.isArray(cs.test_results) && cs.test_results.length > 0 && (
+                                        <div>
+                                            <p className="text-xs font-bold text-text-muted uppercase tracking-wide mb-2">Test Results</p>
+                                            <div className="space-y-2">
+                                                {cs.test_results.map((tr, idx) => (
+                                                    <div key={idx} className={`p-3 rounded-xl border text-xs font-mono ${
+                                                        tr.passed ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'
+                                                    }`}>
+                                                        <div className="flex items-center justify-between mb-1.5">
+                                                            <span className="font-semibold text-text-primary">Case {idx + 1}{tr.is_hidden ? ' 🔒' : ''}</span>
+                                                            <TestResultBadge passed={tr.passed} />
+                                                        </div>
+                                                        <div className="grid grid-cols-3 gap-2 text-[11px]">
+                                                            <div>
+                                                                <span className="text-text-muted block mb-0.5">Input</span>
+                                                                <code className="text-text-primary whitespace-pre-wrap">{tr.input ?? '(none)'}</code>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-text-muted block mb-0.5">Expected</span>
+                                                                <code className="text-text-primary whitespace-pre-wrap">{tr.expected_output ?? '—'}</code>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-text-muted block mb-0.5">Actual Output</span>
+                                                                <code className={`whitespace-pre-wrap ${tr.passed ? 'text-emerald-700' : 'text-red-700'}`}>{tr.stdout || tr.stderr || '(empty)'}</code>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 const PageSkeleton = () => (
@@ -822,13 +1127,21 @@ const TeacherAssessmentPage = () => {
     const typeMeta = TYPE_META[assessment.type] ?? TYPE_META.ASSIGNMENT;
     const totalSubs = submitted.length + late.length;
 
-    const tabs = [
-        { key: 'details', label: 'Details' },
-        { key: 'submissions', label: 'Submissions' },
-        { key: 'plagiarism', label: 'Plagiarism' },
-        { key: 'ai-grading', label: 'AI Grading' },
-        { key: 'manual-evaluation', label: 'Manual Evaluation' }
-    ];
+    const isCoding = assessment.type === 'CODING';
+
+    const tabs = isCoding
+        ? [
+            { key: 'details', label: 'Details' },
+            { key: 'code-results', label: 'Code Results' },
+            { key: 'submissions', label: 'Submissions' },
+        ]
+        : [
+            { key: 'details', label: 'Details' },
+            { key: 'submissions', label: 'Submissions' },
+            { key: 'plagiarism', label: 'Plagiarism' },
+            { key: 'ai-grading', label: 'AI Grading' },
+            { key: 'manual-evaluation', label: 'Manual Evaluation' },
+        ];
 
     return (
         <TeacherSidebar>
@@ -921,6 +1234,12 @@ const TeacherAssessmentPage = () => {
 
                 {/* Tab content */}
                 {activeTab === 'details' && <DetailsTab assessment={assessment} />}
+                {activeTab === 'code-results' && (
+                    <CodeResultsTab
+                        courseId={courseId}
+                        assessmentId={assessmentId}
+                    />
+                )}
                 {activeTab === 'submissions' && (
                     <SubmissionsTab
                         submitted={submitted}
@@ -930,13 +1249,13 @@ const TeacherAssessmentPage = () => {
                         assessmentId={assessmentId}
                     />
                 )}
-                {activeTab === 'plagiarism' && (
+                {activeTab === 'plagiarism' && !isCoding && (
                     <PlagiarismTab
                         courseId={courseId}
                         assessmentId={assessmentId}
                     />
                 )}
-                {activeTab === 'ai-grading' && (
+                {activeTab === 'ai-grading' && !isCoding && (
                     <AIGradingTab
                         courseId={courseId}
                         assessmentId={assessmentId}
@@ -945,7 +1264,7 @@ const TeacherAssessmentPage = () => {
                         sourceMaterials={assessment.source_materials}
                     />
                 )}
-                {activeTab === 'manual-evaluation' && (
+                {activeTab === 'manual-evaluation' && !isCoding && (
                     <ManualEvaluationTab
                         courseId={courseId}
                         assessment={assessment}
