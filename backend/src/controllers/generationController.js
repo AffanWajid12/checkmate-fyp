@@ -581,6 +581,7 @@ export const generateAssessment = async (req, res) => {
 
         // ───── Call microservice ─────
         const microserviceUrl = process.env.ASSESSMENT_GENERATION_SERVICE_URL;
+        console.log(microserviceUrl)
         if (!microserviceUrl) {
             return res.status(500).json({
                 message: "Assessment generation service not configured",
@@ -656,10 +657,10 @@ export const generateAssessment = async (req, res) => {
                 reference_materials:
                     referenceMaterialIds && referenceMaterialIds.length > 0
                         ? {
-                              create: referenceMaterialIds.map((refId) => ({
-                                  reference_material_id: refId,
-                              })),
-                          }
+                            create: referenceMaterialIds.map((refId) => ({
+                                reference_material_id: refId,
+                            })),
+                        }
                         : undefined,
             },
             include: {
@@ -824,11 +825,17 @@ export const exportAssessmentDocx = async (req, res) => {
         const buffer = await Packer.toBuffer(doc);
 
         const filename = `${_safeFilename(assessment.title || assessment.subject)}.docx`;
+        const encodedFilename = encodeURIComponent(filename);
+        const asciiFilename = filename.replace(/[^\x20-\x7E]/g, ""); // Strip non-ASCII for legacy clients
+        
         res.setHeader(
             "Content-Type",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         );
-        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader(
+            "Content-Disposition", 
+            `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodedFilename}`
+        );
         return res.status(200).send(buffer);
     } catch (error) {
         return handleError(res, error);
