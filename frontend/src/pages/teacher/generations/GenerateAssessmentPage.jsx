@@ -104,6 +104,30 @@ const TeacherGenerateAssessmentPage = () => {
       return;
     }
 
+    let finalMaterialIds = new Set(selectedMaterialIds);
+
+    // Auto-upload any pending files the user forgot to hit "Upload" for
+    if (uploadFiles.length > 0) {
+      try {
+        const uploaded = await uploadMutation.mutateAsync(uploadFiles);
+        toast.success(`Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}.`);
+        uploaded.forEach((m) => finalMaterialIds.add(m.id));
+        
+        // Also update the state so the checkboxes appear checked later
+        setSelectedMaterialIds((prev) => {
+          const next = new Set(prev);
+          uploaded.forEach((m) => next.add(m.id));
+          return next;
+        });
+        setUploadFiles([]);
+      } catch (err) {
+        toast.error(
+          err?.response?.data?.message ?? err?.response?.data?.error ?? "Failed to upload reference materials."
+        );
+        return; // Stop generation if upload fails
+      }
+    }
+
     const payload = {
       subject: subject.trim(),
       assessmentType,
@@ -116,7 +140,7 @@ const TeacherGenerateAssessmentPage = () => {
         math: toInt(counts.math),
       },
       instructions: instructions.trim() ? instructions.trim() : undefined,
-      referenceMaterialIds: Array.from(selectedMaterialIds),
+      referenceMaterialIds: Array.from(finalMaterialIds),
     };
 
     try {

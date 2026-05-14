@@ -2,7 +2,7 @@
 
 import { Router } from "express";
 import { verifyUser, verifyUserType } from "../middleware/authMiddleware.js";
-import { uploadMultiple } from "../middleware/uploadMiddleware.js";
+import { uploadMultipleLarge } from "../middleware/uploadMiddleware.js";
 
 import {
     uploadReferenceMaterials,
@@ -26,7 +26,7 @@ router.post(
     "/",
     verifyUser,
     verifyUserType("TEACHER"),
-    uploadMultiple,
+    uploadMultipleLarge,
     uploadReferenceMaterials
 );
 
