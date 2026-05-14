@@ -803,3 +803,75 @@ export const useGetInsights = (courseId, assessmentId, enabled = true) =>
         staleTime: 5 * 60 * 1000,
         retry: false,
     });
+
+// ─── Re-evaluation Hooks ──────────────────────────────────────────────────────
+
+/**
+ * POST /api/reevaluation/request
+ * Body: { submissionId, reason }
+ * Student requests re-evaluation of a graded submission.
+ */
+export const useRequestReevaluation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ submissionId, reason }) => {
+            const { data } = await apiClient.post("/api/reevaluation/request", {
+                submissionId,
+                reason,
+            });
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["courses", "marks"] });
+        },
+    });
+};
+
+/**
+ * GET /api/reevaluation/teacher/pending
+ * Teacher fetches pending re-evaluation requests.
+ */
+export const useTeacherPendingReevaluations = () =>
+    useQuery({
+        queryKey: ["reevaluation", "teacher", "pending"],
+        queryFn: async () => {
+            const { data } = await apiClient.get("/api/reevaluation/teacher/pending");
+            return data.requests;
+        },
+        staleTime: 30 * 1000,
+    });
+
+/**
+ * GET /api/reevaluation/teacher/all
+ * Teacher fetches all re-evaluation requests (all statuses).
+ */
+export const useTeacherAllReevaluations = () =>
+    useQuery({
+        queryKey: ["reevaluation", "teacher", "all"],
+        queryFn: async () => {
+            const { data } = await apiClient.get("/api/reevaluation/teacher/all");
+            return data.requests;
+        },
+        staleTime: 30 * 1000,
+    });
+
+/**
+ * PATCH /api/reevaluation/teacher/respond/:requestId
+ * Body: { action: "ACCEPTED" | "REJECTED", teacherNote?: string }
+ * Teacher accepts or rejects a re-evaluation request.
+ */
+export const useRespondToReevaluation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ requestId, action, teacherNote }) => {
+            const { data } = await apiClient.patch(
+                `/api/reevaluation/teacher/respond/${requestId}`,
+                { action, teacherNote }
+            );
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["reevaluation"] });
+        },
+    });
+};

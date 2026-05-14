@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { useStudentMarks } from '../../../hooks/useCourses';
+import { useStudentMarks, useRequestReevaluation } from '../../../hooks/useCourses';
+import toast from 'react-hot-toast';
 import { 
     TrophyIcon, 
     AcademicCapIcon, 
@@ -8,6 +9,84 @@ import {
     ArrowTrendingUpIcon,
     InboxIcon
 } from '../../teacher/courses/CoursePage/components/Icons';
+
+// ─── Re-evaluation Modal ────────────────────────────────────────────────────
+
+const ReevalModal = ({ isOpen, onClose, onSubmit, isLoading, assessmentTitle }) => {
+    const [reason, setReason] = useState('');
+
+    if (!isOpen) return null;
+
+    const handleSubmit = () => {
+        if (!reason.trim()) {
+            toast.error('Please enter a reason');
+            return;
+        }
+        onSubmit(reason);
+        setReason('');
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative bg-white rounded-2xl shadow-xl border border-neutral-200 w-full max-w-md mx-4 p-6">
+                <h3 className="text-lg font-bold text-text-primary mb-1">Request Re-evaluation</h3>
+                <p className="text-sm text-text-muted mb-4">
+                    for <span className="font-semibold text-text-secondary">{assessmentTitle}</span>
+                </p>
+
+                <label className="block text-[10px] font-black uppercase tracking-widest text-text-muted mb-2">
+                    Reason for Re-evaluation
+                </label>
+                <textarea
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="Explain why you believe your submission should be re-evaluated..."
+                    className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/50 focus:ring-4 focus:ring-accent-500/10 focus:border-accent-500 outline-none transition-all resize-none"
+                    rows={4}
+                    maxLength={500}
+                />
+                <p className="text-xs text-text-muted mt-1 text-right">{reason.length}/500</p>
+
+                <div className="flex gap-3 mt-4">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 px-4 py-2.5 text-sm font-bold text-text-secondary bg-neutral-100 rounded-xl hover:bg-neutral-200 transition-colors cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={isLoading || !reason.trim()}
+                        className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-accent-500 rounded-xl hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                        {isLoading ? 'Submitting...' : 'Submit Request'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ─── Re-eval Status Badge ───────────────────────────────────────────────────
+
+const ReevalStatusBadge = ({ status }) => {
+    const config = {
+        PENDING: { text: 'Recheck Pending', bg: 'bg-amber-50', text_color: 'text-amber-600', border: 'border-amber-200' },
+        ACCEPTED: { text: 'Accepted', bg: 'bg-emerald-50', text_color: 'text-emerald-600', border: 'border-emerald-200' },
+        REJECTED: { text: 'Rejected', bg: 'bg-red-50', text_color: 'text-red-500', border: 'border-red-200' },
+    };
+    const c = config[status] || config.PENDING;
+
+    return (
+        <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border ${c.bg} ${c.text_color} ${c.border}`}>
+            {status === 'PENDING' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            )}
+            {c.text}
+        </span>
+    );
+};
 
 // ─── Stats Card ────────────────────────────────────────────────────────────────
 
@@ -25,12 +104,14 @@ const StatCard = ({ label, value, icon, color }) => (
 
 // ─── Assessment Row ────────────────────────────────────────────────────────────
 
-const AssessmentRow = ({ result }) => {
+const AssessmentRow = ({ result, onRequestReeval }) => {
     const percentage = result.totalMarks > 0 ? (result.obtainedMarks / result.totalMarks) * 100 : 0;
     const scoreColor = percentage >= 80 ? 'text-success' : percentage >= 60 ? 'text-accent-500' : 'text-error';
     
+    const canRequest = result.status === 'GRADED' && !result.reevaluationStatus;
+
     return (
-        <div className="group grid grid-cols-1 md:grid-cols-8 gap-4 px-6 py-4 items-center hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0">
+        <div className="group grid grid-cols-1 md:grid-cols-9 gap-4 px-6 py-4 items-center hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0">
             <div className="md:col-span-2">
                 <p className="text-sm font-bold text-text-primary group-hover:text-accent-500 transition-colors">
                     {result.title}
@@ -71,7 +152,7 @@ const AssessmentRow = ({ result }) => {
                 <p className="text-sm font-semibold text-text-secondary">{result.stats.stdDev || '—'}</p>
             </div>
 
-            <div className="md:col-span-1 flex flex-col items-end">
+            <div className="md:col-span-1 flex flex-col items-center">
                 <div className="w-full max-w-[80px] h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                     <div 
                         className={`h-full rounded-full ${percentage >= 80 ? 'bg-success' : percentage >= 60 ? 'bg-accent-500' : 'bg-error'}`}
@@ -80,13 +161,28 @@ const AssessmentRow = ({ result }) => {
                 </div>
                 <span className="text-[10px] font-bold text-text-muted mt-1">{Math.round(percentage)}%</span>
             </div>
+
+            {/* Re-evaluation column */}
+            <div className="md:col-span-1 flex justify-center">
+                {result.reevaluationStatus ? (
+                    <ReevalStatusBadge status={result.reevaluationStatus} />
+                ) : canRequest ? (
+                    <button
+                        onClick={() => onRequestReeval(result)}
+                        className="text-[10px] font-bold text-accent-500 hover:text-accent-600 bg-accent-50 hover:bg-accent-100 border border-accent-200 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap"
+                        title="Request re-evaluation of this assessment"
+                    >
+                        Request Recheck
+                    </button>
+                ) : null}
+            </div>
         </div>
     );
 };
 
 // ─── Group Section ─────────────────────────────────────────────────────────────
 
-const GroupSection = ({ title, results }) => {
+const GroupSection = ({ title, results, onRequestReeval }) => {
     const [isOpen, setIsOpen] = useState(true);
 
     return (
@@ -106,7 +202,7 @@ const GroupSection = ({ title, results }) => {
             {isOpen && (
                 <div className="divide-y divide-neutral-100">
                     {results.map(res => (
-                        <AssessmentRow key={res.id} result={res} />
+                        <AssessmentRow key={res.id} result={res} onRequestReeval={onRequestReeval} />
                     ))}
                 </div>
             )}
@@ -119,6 +215,9 @@ const GroupSection = ({ title, results }) => {
 const MarksPage = () => {
     const { data: marksData, isLoading, isError } = useStudentMarks();
     const [selectedCourseId, setSelectedCourseId] = useState(null);
+    const [reevalModal, setReevalModal] = useState({ open: false, result: null });
+
+    const requestReeval = useRequestReevaluation();
 
     const selectedCourse = useMemo(() => {
         if (!marksData) return null;
@@ -141,6 +240,26 @@ const MarksPage = () => {
             return acc;
         }, {});
     }, [selectedCourse]);
+
+    const handleRequestReeval = (result) => {
+        setReevalModal({ open: true, result });
+    };
+
+    const handleSubmitReeval = (reason) => {
+        if (!reevalModal.result) return;
+        requestReeval.mutate(
+            { submissionId: reevalModal.result.submissionId, reason },
+            {
+                onSuccess: () => {
+                    toast.success('Re-evaluation request submitted!');
+                    setReevalModal({ open: false, result: null });
+                },
+                onError: (err) => {
+                    toast.error(err.response?.data?.message || 'Failed to submit request');
+                },
+            }
+        );
+    };
 
     if (isLoading) return (
         <div className="space-y-8 animate-pulse">
@@ -232,7 +351,7 @@ const MarksPage = () => {
                         <div className="divide-y divide-neutral-100">
                             {selectedCourse.results.length > 0 ? (
                                 Object.entries(groupedResults).map(([type, results]) => (
-                                    <GroupSection key={type} title={type} results={results} />
+                                    <GroupSection key={type} title={type} results={results} onRequestReeval={handleRequestReeval} />
                                 ))
                             ) : (
                                 <div className="py-20 text-center">
@@ -259,6 +378,15 @@ const MarksPage = () => {
                     </div>
                 </>
             )}
+
+            {/* Re-evaluation Modal */}
+            <ReevalModal
+                isOpen={reevalModal.open}
+                onClose={() => setReevalModal({ open: false, result: null })}
+                onSubmit={handleSubmitReeval}
+                isLoading={requestReeval.isPending}
+                assessmentTitle={reevalModal.result?.title || ''}
+            />
         </div>
     );
 };

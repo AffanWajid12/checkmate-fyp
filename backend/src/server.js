@@ -11,6 +11,7 @@ import userRoutes from "./routes/userRoutes.js";
 import referenceMaterielsRoutes from "./routes/referenceMaterielsRoutes.js";
 import assessmentGenerationRoutes from "./routes/assessmentGenerationRoutes.js";
 import gradingRoutes from "./routes/gradingRoutes.js";
+import reevaluationRoutes from "./routes/reevaluationRoutes.js";
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/reference-materials", referenceMaterielsRoutes);
 app.use("/api/generated-assessments", assessmentGenerationRoutes);
 app.use("/api/grading", gradingRoutes);
+app.use("/api/reevaluation", reevaluationRoutes);
 
 // Health Check Route
 app.get('/api', (req, res) => {

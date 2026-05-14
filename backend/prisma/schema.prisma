@@ -23,6 +23,8 @@ model users {
   referenceMaterials   reference_materials[]   @relation("TeacherReferenceMaterials")
   submissions          submissions[]           @relation("UserSubmissions")
   evaluations          evaluations[]           @relation("UserEvaluations")
+  reevalRequestsAsStudent reevaluation_requests[] @relation("StudentReevaluations")
+  reevalRequestsAsTeacher reevaluation_requests[] @relation("TeacherReevaluations")
 
   @@map("users")
   @@schema("public")
@@ -152,10 +154,11 @@ model submissions {
   updatedAt     DateTime         @default(now()) @updatedAt
   user_id       String           @db.Uuid
   assessment_id String           @db.Uuid
-  attachments   attachments[]    @relation("SubmissionAttachments")
-  assessment    assessments      @relation("AssessmentSubmissions", fields: [assessment_id], references: [id], onDelete: Cascade)
-  user          users            @relation("UserSubmissions", fields: [user_id], references: [id], onDelete: Cascade)
-  evaluation    evaluations?     @relation("SubmissionEvaluation")
+  attachments          attachments[]          @relation("SubmissionAttachments")
+  assessment           assessments            @relation("AssessmentSubmissions", fields: [assessment_id], references: [id], onDelete: Cascade)
+  user                 users                  @relation("UserSubmissions", fields: [user_id], references: [id], onDelete: Cascade)
+  evaluation           evaluations?           @relation("SubmissionEvaluation")
+  reevaluation_request reevaluation_requests? @relation("SubmissionReevaluation")
 
   @@unique([user_id, assessment_id])
   @@map("submissions")
@@ -283,6 +286,33 @@ enum SubmissionStatus {
   LATE
   GRADED
 
+  @@schema("public")
+}
+
+enum ReevaluationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+
+  @@schema("public")
+}
+
+model reevaluation_requests {
+  id             String             @id @default(uuid()) @db.Uuid
+  submission_id  String             @unique @db.Uuid
+  student_id     String             @db.Uuid
+  teacher_id     String             @db.Uuid
+  status         ReevaluationStatus @default(PENDING)
+  student_reason String?
+  teacher_note   String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  submission submissions @relation("SubmissionReevaluation", fields: [submission_id], references: [id], onDelete: Cascade)
+  student    users       @relation("StudentReevaluations", fields: [student_id], references: [id])
+  teacher    users       @relation("TeacherReevaluations", fields: [teacher_id], references: [id])
+
+  @@map("reevaluation_requests")
   @@schema("public")
 }
 

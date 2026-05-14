@@ -188,7 +188,7 @@ export const getStudentMarks = async (req, res) => {
                                         grading_blueprint: true,
                                         submissions: {
                                             where: { user_id: studentId },
-                                            include: { evaluation: true }
+                                            include: { evaluation: true, reevaluation_request: true }
                                         }
                                     }
                                 }
@@ -244,6 +244,8 @@ export const getStudentMarks = async (req, res) => {
                     totalMarks,
                     obtainedMarks,
                     status: 'GRADED',
+                    submissionId: studentSubmission?.id || null,
+                    reevaluationStatus: studentSubmission?.reevaluation_request?.status || null,
                     stats
                 };
             }))).filter(Boolean);
