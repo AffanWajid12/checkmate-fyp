@@ -8,6 +8,8 @@ import {
     useUnsubmitAssessment,
     useRemoveAttachment,
     useGetInsights,
+    useCodeSubmit,
+    useGetCodeSubmission,
 } from '../../../hooks/useCourses';
 import DetailedResultView from './DetailedResultView';
 import StudentInsightView from './StudentInsightView';
@@ -91,6 +93,7 @@ const TYPE_META = {
     QUIZ: { label: 'Quiz', color: 'bg-blue-50 text-blue-600 border-blue-200' },
     ASSIGNMENT: { label: 'Assignment', color: 'bg-purple-50 text-purple-600 border-purple-200' },
     EXAM: { label: 'Exam', color: 'bg-amber-50 text-amber-600 border-amber-200' },
+    CODING: { label: 'Coding', color: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
 };
 
 const STATUS_META = {
@@ -164,6 +167,241 @@ const MiniDropzone = ({ files, onChange }) => {
                         </li>
                     ))}
                 </ul>
+            )}
+        </div>
+    );
+};
+
+// ─── Code Submission Portal ───────────────────────────────────────────────────
+
+const PassBadge = ({ passed }) => (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
+        passed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
+    }`}>
+        {passed ? '✓ Pass' : '✗ Fail'}
+    </span>
+);
+
+const CodeSubmissionPortal = ({ assessment, courseId, assessmentId }) => {
+    const inputRef = useRef(null);
+    const [codeFile, setCodeFile] = useState(null);
+    const [sourceCode, setSourceCode] = useState('');
+    const [runResults, setRunResults] = useState(null);
+
+    const codingMeta = assessment.coding_assessment;
+    const language = codingMeta?.language || 'python';
+    const totalMarks = codingMeta?.total_marks || 10;
+    const accept = language === 'python' ? '.py' : '.js';
+
+    const { mutate: runTests, isPending: isRunning } = useCodeSubmit(courseId, assessmentId);
+    const { data: prevData } = useGetCodeSubmission(courseId, assessmentId);
+
+    const prevSubmission = prevData?.submission || null;
+    const prevCode = prevData?.code_submission || null;
+    const isGraded = prevSubmission?.status === 'GRADED';
+
+    const handleFileChange = async (file) => {
+        if (!file) return;
+        const ext = file.name.split('.').pop();
+        const validExts = language === 'python' ? ['py'] : ['js'];
+        if (!validExts.includes(ext)) {
+            toast.error(`Please upload a .${validExts[0]} file for ${language}.`);
+            return;
+        }
+        setCodeFile(file);
+        const text = await file.text();
+        setSourceCode(text);
+        setRunResults(null);
+    };
+
+    const handleRunTests = () => {
+        if (!sourceCode.trim()) {
+            toast.error('Upload a code file first.');
+            return;
+        }
+        runTests(
+            { source_code: sourceCode, language },
+            {
+                onSuccess: (data) => {
+                    setRunResults(data);
+                    toast.success(`Done! ${data.passed_tests}/${data.total_tests} tests passed.`);
+                },
+                onError: (err) => {
+                    toast.error(err?.response?.data?.message || 'Code grader service is unavailable.');
+                },
+            }
+        );
+    };
+
+    const results = runResults || (prevCode?.test_results ? {
+        results: prevCode.test_results,
+        passed_tests: prevCode.passed_tests,
+        total_tests: prevCode.total_tests,
+        grade: prevSubmission?.grade,
+    } : null);
+
+    return (
+        <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-5 space-y-5 lg:sticky lg:top-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-text-primary">Your Submission</h2>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    {language === 'python' ? '🐍 Python' : '🟨 JavaScript'}
+                </span>
+            </div>
+
+            {/* Due date */}
+            {assessment.due_date && (
+                <div className={`flex items-center gap-2 text-sm ${new Date(assessment.due_date) < new Date() ? 'text-error' : 'text-text-secondary'}`}>
+                    <ClockIcon />
+                    <span>{new Date(assessment.due_date) < new Date() ? 'Was due' : 'Due'} {formatDateTime(assessment.due_date)}</span>
+                </div>
+            )}
+
+            {/* Grade display */}
+            {results?.grade !== undefined && (
+                <div className="flex items-center justify-between py-3 border-t border-b border-neutral-100">
+                    <span className="text-sm font-bold text-text-secondary">Grade</span>
+                    <div className="text-right">
+                        <span className="text-2xl font-black text-emerald-600">{results.grade}</span>
+                        <span className="text-sm font-bold text-neutral-300 ml-1">/ {totalMarks}</span>
+                    </div>
+                </div>
+            )}
+
+            {/* File uploader */}
+            {!isGraded && (
+                <div>
+                    <label className="block text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
+                        Upload {language === 'python' ? '.py' : '.js'} File
+                    </label>
+                    <div
+                        onClick={() => inputRef.current?.click()}
+                        className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl border-2 border-dashed cursor-pointer transition-colors ${
+                            codeFile ? 'border-emerald-300 bg-emerald-50' : 'border-neutral-200 bg-neutral-50 hover:border-emerald-300'
+                        }`}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-6 h-6 text-text-muted">
+                            <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+                        </svg>
+                        {codeFile ? (
+                            <p className="text-xs font-semibold text-emerald-700">{codeFile.name}</p>
+                        ) : (
+                            <>
+                                <p className="text-xs font-medium text-text-secondary">Click to upload <span className="font-mono font-bold">{accept}</span></p>
+                                {prevCode && <p className="text-[11px] text-text-muted">Previous submission exists — upload to re-run</p>}
+                            </>
+                        )}
+                        <input
+                            ref={inputRef}
+                            type="file"
+                            accept={accept}
+                            className="hidden"
+                            onChange={(e) => handleFileChange(e.target.files[0])}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Run Tests button */}
+            {!isGraded && (
+                <button
+                    onClick={handleRunTests}
+                    disabled={!sourceCode.trim() || isRunning}
+                    className="w-full py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                    {isRunning ? (
+                        <>
+                            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                            </svg>
+                            Running Tests…
+                        </>
+                    ) : (
+                        <>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                                <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                            Run Tests
+                        </>
+                    )}
+                </button>
+            )}
+
+            {/* Test Results */}
+            {results && (
+                <div className="space-y-3 pt-2 border-t border-neutral-100">
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-text-muted uppercase tracking-wide">Test Results</p>
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                            results.passed_tests === results.total_tests
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : results.passed_tests === 0
+                                    ? 'bg-red-50 text-red-700'
+                                    : 'bg-amber-50 text-amber-700'
+                        }`}>
+                            {results.passed_tests}/{results.total_tests} passed
+                        </span>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
+                        <div
+                            className={`h-2 rounded-full transition-all ${
+                                results.passed_tests === results.total_tests ? 'bg-emerald-500'
+                                    : results.passed_tests === 0 ? 'bg-red-400' : 'bg-amber-400'
+                            }`}
+                            style={{ width: `${results.total_tests > 0 ? (results.passed_tests / results.total_tests) * 100 : 0}%` }}
+                        />
+                    </div>
+
+                    {/* Per-test breakdown */}
+                    {Array.isArray(results.results) && results.results.map((r, idx) => (
+                        <div key={idx} className={`p-3 rounded-xl border text-xs ${
+                            r.passed ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'
+                        }`}>
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="font-semibold text-text-primary">
+                                    Case {idx + 1}{r.is_hidden ? ' 🔒 Hidden' : ''}
+                                </span>
+                                <PassBadge passed={r.passed} />
+                            </div>
+                            {!r.is_hidden && (
+                                <div className="grid grid-cols-2 gap-2 mt-1.5">
+                                    <div>
+                                        <span className="text-text-muted block">Input</span>
+                                        <code className="font-mono text-text-primary whitespace-pre-wrap">{r.input ?? '(none)'}</code>
+                                    </div>
+                                    <div>
+                                        <span className="text-text-muted block">Your Output</span>
+                                        <code className={`font-mono whitespace-pre-wrap ${r.passed ? 'text-emerald-700' : 'text-red-700'}`}>
+                                            {r.stdout || r.stderr || '(empty)'}
+                                        </code>
+                                    </div>
+                                </div>
+                            )}
+                            {r.is_hidden && !r.passed && r.stderr && (
+                                <p className="mt-1 font-mono text-red-600 whitespace-pre-wrap">{r.stderr}</p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Previous code preview */}
+            {!codeFile && prevCode?.source_code && (
+                <div className="pt-3 border-t border-neutral-100">
+                    <p className="text-xs font-bold text-text-muted uppercase tracking-wide mb-2">Last Submitted Code</p>
+                    <pre className="text-xs font-mono bg-neutral-900 text-neutral-100 p-3 rounded-xl overflow-auto max-h-48 leading-relaxed">{prevCode.source_code}</pre>
+                </div>
+            )}
+
+            {/* Submitted timestamp */}
+            {prevSubmission && (
+                <p className="text-xs text-text-muted text-center pt-1">
+                    Last run {formatDateTime(prevSubmission.submitted_at)}
+                </p>
             )}
         </div>
     );
@@ -485,6 +723,7 @@ const StudentAssessmentPage = () => {
     );
 
     const { assessment, submission } = data;
+    const isCoding = assessment.type === 'CODING';
     const typeMeta = TYPE_META[assessment.type] ?? TYPE_META.ASSIGNMENT;
 
     return (
@@ -521,7 +760,9 @@ const StudentAssessmentPage = () => {
 
                         {/* Instructions */}
                         <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-6">
-                            <h2 className="text-sm font-bold text-text-primary mb-3">Instructions</h2>
+                            <h2 className="text-sm font-bold text-text-primary mb-3">
+                                {isCoding ? 'Problem Statement' : 'Instructions'}
+                            </h2>
                             {assessment.instructions ? (
                                 <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
                                     {assessment.instructions}
@@ -531,8 +772,8 @@ const StudentAssessmentPage = () => {
                             )}
                         </div>
 
-                        {/* Source Materials */}
-                        {assessment.source_materials?.length > 0 && (
+                        {/* Source Materials (not shown for coding) */}
+                        {!isCoding && assessment.source_materials?.length > 0 && (
                             <div className="bg-background rounded-2xl border border-neutral-200 shadow-sm p-6">
                                 <h2 className="text-sm font-bold text-text-primary mb-3">
                                     Source Materials
@@ -547,16 +788,44 @@ const StudentAssessmentPage = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Coding info panel */}
+                        {isCoding && assessment.coding_assessment && (
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 space-y-2">
+                                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Coding Info</p>
+                                <div className="flex items-center gap-4 flex-wrap text-sm">
+                                    <span className="font-semibold text-text-primary">
+                                        Language: {assessment.coding_assessment.language === 'python' ? '🐍 Python' : '🟨 JavaScript'}
+                                    </span>
+                                    <span className="font-semibold text-text-primary">
+                                        Total Marks: {assessment.coding_assessment.total_marks}
+                                    </span>
+                                    <span className="text-text-secondary">
+                                        {Array.isArray(assessment.coding_assessment.test_cases)
+                                            ? `${assessment.coding_assessment.test_cases.filter(tc => !tc.is_hidden).length} visible test case(s)`
+                                            : 'Test cases configured'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Right column: submission portal */}
                     <div>
-                        <SubmissionPortal
-                            assessment={assessment}
-                            submission={submission ?? null}
-                            courseId={courseId}
-                            assessmentId={assessmentId}
-                        />
+                        {isCoding ? (
+                            <CodeSubmissionPortal
+                                assessment={assessment}
+                                courseId={courseId}
+                                assessmentId={assessmentId}
+                            />
+                        ) : (
+                            <SubmissionPortal
+                                assessment={assessment}
+                                submission={submission ?? null}
+                                courseId={courseId}
+                                assessmentId={assessmentId}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

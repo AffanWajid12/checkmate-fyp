@@ -52,6 +52,14 @@ import {
 import { runPlagiarismCheck } from "../controllers/plagiarismController.js";
 import { extractQuestions, pairStudentAnswers } from "../controllers/gradingController.js";
 import { generateInsights, getInsights } from "../controllers/insightController.js";
+import {
+    saveTestCases,
+    getTestCases,
+    generateTestCasesAI,
+    codeSubmit,
+    getCodeSubmission,
+    getAllCodeSubmissions,
+} from "../controllers/codingController.js";
 
 const router = Router();
 
@@ -109,6 +117,16 @@ router.post("/:courseId/assessments/:assessmentId/submit", verifyUser, verifyUse
 router.patch("/:courseId/assessments/:assessmentId/submit", verifyUser, verifyUserType("STUDENT"), uploadMultipleLarge, updateSubmission);
 router.delete("/:courseId/assessments/:assessmentId/submit", verifyUser, verifyUserType("STUDENT"), unsubmitAssessment);
 router.delete("/:courseId/assessments/:assessmentId/attachments/:attachmentId", verifyUser, verifyUserType("STUDENT"), removeAttachment);
+
+// ─── Coding Assessment Routes ─────────────────────────────────────────────────
+// Teacher
+router.post("/:courseId/assessments/:assessmentId/test-cases", verifyUser, verifyUserType("TEACHER"), saveTestCases);
+router.get("/:courseId/assessments/:assessmentId/test-cases", verifyUser, verifyUserType("TEACHER"), getTestCases);
+router.post("/:courseId/assessments/:assessmentId/generate-test-cases", verifyUser, verifyUserType("TEACHER"), generateTestCasesAI);
+router.get("/:courseId/assessments/:assessmentId/code-submissions", verifyUser, verifyUserType("TEACHER"), getAllCodeSubmissions);
+// Student
+router.post("/:courseId/assessments/:assessmentId/code-submit", verifyUser, verifyUserType("STUDENT"), codeSubmit);
+router.get("/:courseId/assessments/:assessmentId/code-submission", verifyUser, verifyUserType("STUDENT"), getCodeSubmission);
 
 // ─── Shared Routes (Teacher + Student) ───────────────────────────────────────
 // getCourseAnnouncements and getAssessmentDetails handle role checking internally

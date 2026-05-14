@@ -78,7 +78,12 @@ export const signUserAvatar = async (user) => {
 export const verifyAssessmentInCourse = async (assessmentId, courseId) => {
     const assessment = await prisma.assessments.findUnique({
         where: { id: assessmentId },
-        include: { announcement: true, source_materials: true, grading_blueprint: true },
+        include: {
+            announcement: true,
+            source_materials: true,
+            grading_blueprint: true,
+            coding_assessment: true,
+        },
     });
     if (!assessment) throw { status: 404, message: "Assessment not found" };
     if (assessment.announcement.course_id !== courseId)
