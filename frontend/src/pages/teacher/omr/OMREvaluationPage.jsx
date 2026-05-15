@@ -87,16 +87,53 @@ const Step1 = ({ config, onChange, onNext }) => {
                     className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-background text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-300 focus:border-accent-400 transition"
                 />
             </div>
-            <div>
-                <label className="block text-sm font-semibold text-text-primary mb-1.5">Number of Questions <span className="font-normal text-text-muted">(1–100)</span></label>
-                <input
-                    type="number"
-                    min={1} max={100}
-                    value={config.numQuestions}
-                    onChange={e => onChange({ ...config, numQuestions: Math.min(100, Math.max(1, parseInt(e.target.value) || 1)) })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-background text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-300 focus:border-accent-400 transition"
-                />
+            
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-sm font-semibold text-text-primary mb-1.5">Number of Questions <span className="font-normal text-text-muted">(1–100)</span></label>
+                    <input
+                        type="number"
+                        min={1} max={100}
+                        value={config.numQuestions}
+                        onChange={e => onChange({ ...config, numQuestions: Math.min(100, Math.max(1, parseInt(e.target.value) || 1)) })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 bg-background text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-300 focus:border-accent-400 transition"
+                    />
+                </div>
             </div>
+
+            <div className="pt-2 border-t border-neutral-100">
+                <h3 className="text-sm font-bold text-text-primary mb-3">Marking Scheme</h3>
+                <div className="grid grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-text-secondary mb-1">Correct</label>
+                        <input
+                            type="number" step="any"
+                            value={config.correctScore}
+                            onChange={e => onChange({ ...config, correctScore: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-background text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-300 transition"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-text-secondary mb-1">Incorrect</label>
+                        <input
+                            type="number" step="any"
+                            value={config.incorrectScore}
+                            onChange={e => onChange({ ...config, incorrectScore: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-background text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-300 transition"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-text-secondary mb-1">Unmarked</label>
+                        <input
+                            type="number" step="any"
+                            value={config.unmarkedScore}
+                            onChange={e => onChange({ ...config, unmarkedScore: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-background text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-300 transition"
+                        />
+                    </div>
+                </div>
+            </div>
+
             <button
                 disabled={!valid}
                 onClick={onNext}
@@ -334,7 +371,13 @@ const Step4 = ({ results, config, onReset }) => {
 
 const OMREvaluationPage = () => {
     const [step, setStep] = useState(0);
-    const [config, setConfig] = useState({ title: '', numQuestions: 20 });
+    const [config, setConfig] = useState({ 
+        title: '', 
+        numQuestions: 20,
+        correctScore: 1,
+        incorrectScore: 0,
+        unmarkedScore: 0
+    });
     const [answerKey, setAnswerKey] = useState([]);
     const [files, setFiles] = useState([]);
     const [grading, setGrading] = useState(false);
@@ -343,7 +386,7 @@ const OMREvaluationPage = () => {
 
     const reset = () => {
         setStep(0);
-        setConfig({ title: '', numQuestions: 20 });
+        setConfig({ title: '', numQuestions: 20, correctScore: 1, incorrectScore: 0, unmarkedScore: 0 });
         setAnswerKey([]);
         setFiles([]);
         setResults(null);
@@ -366,6 +409,11 @@ const OMREvaluationPage = () => {
             const formData = new FormData();
             formData.append('answerKey', JSON.stringify(answerKey));
             formData.append('title', config.title);
+            formData.append('markingScheme', JSON.stringify({
+                correct: config.correctScore.toString(),
+                incorrect: config.incorrectScore.toString(),
+                unmarked: config.unmarkedScore.toString()
+            }));
             files.forEach(f => formData.append('images', f));
 
             const resp = await apiClient.post(`/api/omr/evaluate`, formData, {

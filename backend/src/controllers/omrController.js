@@ -20,16 +20,18 @@ try {
  * Build the evaluation JSON config from the answer key supplied by the teacher.
  * answerKey: Array of strings like ["A","B","C","D", ...]  (1-indexed by position)
  */
-function buildEvaluationConfig(answerKey) {
+function buildEvaluationConfig(answerKey, markingScheme) {
     const answersInOrder = answerKey.map((ans) => ans.toUpperCase());
+    const numQuestions = answerKey.length;
+    
     return {
         source_type: "custom",
         options: {
-            questions_in_order: ["q1..20"],
+            questions_in_order: [`q1..${numQuestions}`],
             answers_in_order: answersInOrder,
         },
         marking_schemes: {
-            DEFAULT: {
+            DEFAULT: markingScheme || {
                 correct: "1",
                 incorrect: "0",
                 unmarked: "0",
@@ -48,7 +50,7 @@ function buildEvaluationConfig(answerKey) {
  */
 export const evaluateOMR = async (req, res) => {
     try {
-        const { answerKey: answerKeyRaw, title } = req.body;
+        const { answerKey: answerKeyRaw, title, markingScheme: markingSchemeRaw } = req.body;
         const images = req.files;
 
         if (!answerKeyRaw) {
@@ -75,8 +77,17 @@ export const evaluateOMR = async (req, res) => {
                 .json({ error: "answerKey must be a non-empty array" });
         }
 
+        let markingScheme = { correct: "1", incorrect: "0", unmarked: "0" };
+        if (markingSchemeRaw) {
+            try {
+                markingScheme = JSON.parse(markingSchemeRaw);
+            } catch (err) {
+                console.error("Invalid markingScheme format");
+            }
+        }
+
         const template = { ...STANDARD_TEMPLATE };
-        const evaluation = buildEvaluationConfig(answerKey);
+        const evaluation = buildEvaluationConfig(answerKey, markingScheme);
 
         const templateStr = JSON.stringify(template);
         const evaluationStr = JSON.stringify(evaluation);
@@ -112,25 +123,32 @@ export const evaluateOMR = async (req, res) => {
 
                         // Calculate score by comparing answers
                         let score = 0;
+                        const correctPts = parseFloat(markingScheme.correct) || 0;
+                        const incorrectPts = parseFloat(markingScheme.incorrect) || 0;
+                        const unmarkedPts = parseFloat(markingScheme.unmarked) || 0;
+                        
                         answerKey.forEach((correct, idx) => {
                             const qKey = `q${idx + 1}`;
-                            if (
-                                raw[qKey] &&
-                                raw[qKey].toString().toUpperCase() ===
-                                    correct.toUpperCase()
-                            ) {
-                                score++;
+                            const studentAns = raw[qKey];
+                            
+                            if (!studentAns) {
+                                score += unmarkedPts;
+                            } else if (studentAns.toString().toUpperCase() === correct.toUpperCase()) {
+                                score += correctPts;
+                            } else {
+                                score += incorrectPts;
                             }
                         });
+
+                        const maxPossibleScore = answerKey.length * correctPts;
+                        const percentage = maxPossibleScore > 0 ? Math.round((score / maxPossibleScore) * 100) : 0;
 
                         return {
                             filename: file.originalname,
                             status: "success",
                             score,
-                            total: answerKey.length,
-                            percentage: Math.round(
-                                (score / answerKey.length) * 100
-                            ),
+                            total: maxPossibleScore,
+                            percentage,
                             raw_results: raw,
                         };
                     } catch (err) {
