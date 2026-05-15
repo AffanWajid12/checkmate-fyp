@@ -67,6 +67,16 @@ const navItems = [
             </svg>
         ),
     },
+    {
+        to: '/teacher/math-grader',
+        label: 'Math Grader',
+        icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                <path d="M4 7h16M4 12h10M4 17h7" />
+                <path d="M16 14l2 2 4-4" />
+            </svg>
+        ),
+    },
 ];
 
 const SettingsIcon = () => (

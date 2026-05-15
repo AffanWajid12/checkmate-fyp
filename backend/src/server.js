@@ -13,6 +13,7 @@ import assessmentGenerationRoutes from "./routes/assessmentGenerationRoutes.js";
 import gradingRoutes from "./routes/gradingRoutes.js";
 import reevaluationRoutes from "./routes/reevaluationRoutes.js";
 import omrRoutes from "./routes/omrRoutes.js";
+import mathRoutes from "./routes/mathRoutes.js";
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use("/api/generated-assessments", assessmentGenerationRoutes);
 app.use("/api/grading", gradingRoutes);
 app.use("/api/reevaluation", reevaluationRoutes);
 app.use("/api/omr", omrRoutes);
+app.use("/api/math", mathRoutes);
 
 // Health Check Route
 app.get('/api', (req, res) => {
