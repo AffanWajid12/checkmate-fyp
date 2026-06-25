@@ -1,4 +1,4 @@
-# Checkmate ♔
+# Checkmate 
 
 > **An AI-Powered Automated Grading & Educational Management Platform**
 
@@ -6,7 +6,17 @@ Checkmate is a comprehensive educational platform designed to revolutionize the 
 
 ---
 
-## ✨ Core Features
+## Core Features
+<img width="933" height="533" alt="10" src="https://github.com/user-attachments/assets/433b7978-e487-4897-9232-831556d43eab" />
+<img width="993" height="524" alt="1" src="https://github.com/user-attachments/assets/0b31c481-126d-48c1-95e5-76ab52d3b74a" />
+<img width="284" height="546" alt="2" src="https://github.com/user-attachments/assets/a95c47a1-54f2-42b8-bda7-bd84cf06b911" />
+<img width="876" height="517" alt="3" src="https://github.com/user-attachments/assets/326cc6b9-8a6f-4de6-9ca5-7338d7a406f4" />
+<img width="881" height="527" alt="4" src="https://github.com/user-attachments/assets/e3576983-89c2-4663-88e0-08e087730845" />
+<img width="892" height="541" alt="5" src="https://github.com/user-attachments/assets/db96188d-6117-481a-b08b-37ad8c6b9e01" />
+<img width="877" height="509" alt="6" src="https://github.com/user-attachments/assets/06da003b-8e2b-45b9-be45-948d232baa53" />
+<img width="878" height="531" alt="7" src="https://github.com/user-attachments/assets/9e913daf-531e-47a0-83e1-c18c1d1f161c" />
+<img width="878" height="531" alt="8" src="https://github.com/user-attachments/assets/ed660d0e-9a87-4465-9970-117c7156e364" />
+<img width="899" height="536" alt="9" src="https://github.com/user-attachments/assets/8d867f4d-f781-492b-882a-1be5160b9472" />
 
 - **Intelligent QA-Pairing**: Automatically extracts questions from uploaded PDFs/images and maps handwritten/typed student answers precisely to the corresponding sub-questions.
 - **AI-Driven Grading Engine**: Evaluates student answers using RAG, comparing them against generated rubrics and teacher reference materials (PPTs, PDFs) to provide accurate, constructive feedback and scores.
@@ -18,7 +28,7 @@ Checkmate is a comprehensive educational platform designed to revolutionize the 
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 **Frontend & Mobile**
 - **Web App**: React, Vite, Tailwind CSS (Modern, premium dynamic UI)
@@ -39,7 +49,7 @@ Checkmate is a comprehensive educational platform designed to revolutionize the 
 
 ---
 
-## 🧠 System Architecture & AI Workflow
+## System Architecture & AI Workflow
 
 Checkmate's automated grading pipeline works in 4 distinct phases:
 
@@ -50,7 +60,7 @@ Checkmate's automated grading pipeline works in 4 distinct phases:
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - **Node.js** (v18+)
@@ -115,7 +125,7 @@ python app.py
 
 ---
 
-## 🧪 Testing & Reliability
+## Testing & Reliability
 The backend integrates a robust testing environment running isolated tests on a Dockerized PostgreSQL instance. The suite guarantees high reliability across:
 - Authentication & Role Verification (Admin, Student, Teacher)
 - Course & Enrollment Logic
