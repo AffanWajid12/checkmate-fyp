@@ -7,26 +7,23 @@ Checkmate is a comprehensive educational platform designed to revolutionize the 
 ---
 
 ### 📸 Product Gallery
-
 <table width="100%">
-  <!-- Row 1 -->
   <tr>
-    <td width="100%" align="center" valign="bottom">
+    <td width="33.33%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/0b31c481-126d-48c1-95e5-76ab52d3b74a" width="100%" />
       <sub>Dashboard</sub>
     </td>
-    
     <td width="33.33%" align="center" valign="bottom">
-      <img src="https://github.com/user-attachments/assets/a95c47a1-54f2-42b8-bda7-bd84cf06b911" width="55%" />
-      <br/><sub>Scan the papers/sub>
+      <img src="https://github.com/user-attachments/assets/a95c47a1-54f2-42b8-bda7-bd84cf06b911" width="52%" />
+      <br/><sub>Scan the papers</sub>
     </td>
-  </tr>
-  <!-- Row 2 -->
-  <tr>
     <td width="33.33%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/326cc6b9-8a6f-4de6-9ca5-7338d7a406f4" width="100%" />
       <sub>AI Grading Module</sub>
     </td>
+  </tr>
+  
+  <tr>
     <td width="33.33%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/e3576983-89c2-4663-88e0-08e087730845" width="100%" />
       <sub>Extract the questions from question paper</sub>
@@ -35,13 +32,13 @@ Checkmate is a comprehensive educational platform designed to revolutionize the 
       <img src="https://github.com/user-attachments/assets/db96188d-6117-481a-b08b-37ad8c6b9e01" width="100%" />
       <sub>Pair the questions and answers of students from students answer sheets</sub>
     </td>
-  </tr>
-  <!-- Row 3 -->
-  <tr>
     <td width="33.33%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/06da003b-8e2b-45b9-be45-948d232baa53" width="100%" />
       <sub>Verify the result</sub>
     </td>
+  </tr>
+  
+  <tr>
     <td width="33.33%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/9e913daf-531e-47a0-83e1-c18c1d1f161c" width="100%" />
       <sub>Setup parameters for grading</sub>
@@ -50,20 +47,23 @@ Checkmate is a comprehensive educational platform designed to revolutionize the 
       <img src="https://github.com/user-attachments/assets/ed660d0e-9a87-4465-9970-117c7156e364" width="100%" />
       <sub>Select students for grading</sub>
     </td>
-    
+    <td width="33.33%" style="background: transparent;">
+      </td>
   </tr>
+</table>
+
+<table width="100%">
   <tr>
-    <td width="49.99%" align="center" valign="bottom">
-       <img src="https://github.com/user-attachments/assets/8d867f4d-f781-492b-882a-1be5160b9472" width="100%" />
+    <td width="50%" align="center" valign="bottom">
+      <img src="https://github.com/user-attachments/assets/8d867f4d-f781-492b-882a-1be5160b9472" width="100%" />
       <sub>Perform AI Grading</sub>
     </td>
-    <td width="49.99%" align="center" valign="bottom">
+    <td width="50%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/433b7978-e487-4897-9232-831556d43eab" width="100%" />
       <sub>AI Grading Results</sub>
     </td>
   </tr>
 </table>
-
 
 ## Core Features
 
