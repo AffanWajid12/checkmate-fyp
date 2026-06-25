@@ -15,13 +15,10 @@ Checkmate is a comprehensive educational platform designed to revolutionize the 
       <img src="https://github.com/user-attachments/assets/0b31c481-126d-48c1-95e5-76ab52d3b74a" width="100%" />
       <sub>Dashboard</sub>
     </td>
-    <td width="33.33%" align="center" valign="bottom">
-      <img src="https://github.com/user-attachments/assets/433b7978-e487-4897-9232-831556d43eab" width="100%" />
-      <sub>AI Grading</sub>
-    </td>
+    
     <td width="33.33%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/a95c47a1-54f2-42b8-bda7-bd84cf06b911" width="55%" />
-      <br/><sub>Mobile App</sub>
+      <br/><sub>Scan the papers/sub>
     </td>
   </tr>
   <!-- Row 2 -->
@@ -32,26 +29,30 @@ Checkmate is a comprehensive educational platform designed to revolutionize the 
     </td>
     <td width="33.33%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/e3576983-89c2-4663-88e0-08e087730845" width="100%" />
-      <sub>QA-Pairing</sub>
+      <sub>Extract the questions from question paper</sub>
     </td>
     <td width="33.33%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/db96188d-6117-481a-b08b-37ad8c6b9e01" width="100%" />
-      <sub>Analytics</sub>
+      <sub>Pair the questions and answers of students from students answer sheets</sub>
     </td>
   </tr>
   <!-- Row 3 -->
   <tr>
     <td width="33.33%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/06da003b-8e2b-45b9-be45-948d232baa53" width="100%" />
-      <sub>Plagiarism Scanner</sub>
+      <sub>Verify the result</sub>
     </td>
     <td width="33.33%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/9e913daf-531e-47a0-83e1-c18c1d1f161c" width="100%" />
-      <sub>Courses</sub>
+      <sub>Setup parameters for grading</sub>
     </td>
     <td width="33.33%" align="center" valign="bottom">
       <img src="https://github.com/user-attachments/assets/ed660d0e-9a87-4465-9970-117c7156e364" width="100%" />
-      <sub>Attendance</sub>
+      <sub>Select students for grading</sub>
+    </td>
+    <td width="33.33%" align="center" valign="bottom">
+      <img src="https://github.com/user-attachments/assets/433b7978-e487-4897-9232-831556d43eab" width="100%" />
+      <sub>AI Grading</sub>
     </td>
   </tr>
 </table>
