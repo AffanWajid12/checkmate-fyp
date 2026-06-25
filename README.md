@@ -6,53 +6,63 @@ Checkmate is a comprehensive educational platform designed to revolutionize the 
 
 ---
 
-## Core Features
-
+### 📸 Product Gallery
 
 <table width="100%">
+  <!-- Row 1 -->
   <tr>
-    <td width="50%" align="center">
-      <b>Dashboard Overview</b><br/><br/>
-      <img src="https://github.com/user-attachments/assets/0b31c481-126d-48c1-95e5-76ab52d3b74a" width="100%" alt="Dashboard" />
+    <td width="33.33%" align="center" valign="bottom">
+      <img src="https://github.com/user-attachments/assets/0b31c481-126d-48c1-95e5-76ab52d3b74a" width="100%" />
+      <sub>Dashboard</sub>
     </td>
-    <td width="50%" align="center">
-      <b>AI Evaluation & Grading</b><br/><br/>
-      <img src="https://github.com/user-attachments/assets/433b7978-e487-4897-9232-831556d43eab" width="100%" alt="Grading Engine" />
+    <td width="33.33%" align="center" valign="bottom">
+      <img src="https://github.com/user-attachments/assets/433b7978-e487-4897-9232-831556d43eab" width="100%" />
+      <sub>AI Grading</sub>
+    </td>
+    <td width="33.33%" align="center" valign="bottom">
+      <img src="https://github.com/user-attachments/assets/a95c47a1-54f2-42b8-bda7-bd84cf06b911" width="55%" />
+      <br/><sub>Mobile App</sub>
+    </td>
+  </tr>
+  <!-- Row 2 -->
+  <tr>
+    <td width="33.33%" align="center" valign="bottom">
+      <img src="https://github.com/user-attachments/assets/326cc6b9-8a6f-4de6-9ca5-7338d7a406f4" width="100%" />
+      <sub>Rubrics</sub>
+    </td>
+    <td width="33.33%" align="center" valign="bottom">
+      <img src="https://github.com/user-attachments/assets/e3576983-89c2-4663-88e0-08e087730845" width="100%" />
+      <sub>QA-Pairing</sub>
+    </td>
+    <td width="33.33%" align="center" valign="bottom">
+      <img src="https://github.com/user-attachments/assets/db96188d-6117-481a-b08b-37ad8c6b9e01" width="100%" />
+      <sub>Analytics</sub>
+    </td>
+  </tr>
+  <!-- Row 3 -->
+  <tr>
+    <td width="33.33%" align="center" valign="bottom">
+      <img src="https://github.com/user-attachments/assets/06da003b-8e2b-45b9-be45-948d232baa53" width="100%" />
+      <sub>Plagiarism Scanner</sub>
+    </td>
+    <td width="33.33%" align="center" valign="bottom">
+      <img src="https://github.com/user-attachments/assets/9e913daf-531e-47a0-83e1-c18c1d1f161c" width="100%" />
+      <sub>Courses</sub>
+    </td>
+    <td width="33.33%" align="center" valign="bottom">
+      <img src="https://github.com/user-attachments/assets/ed660d0e-9a87-4465-9970-117c7156e364" width="100%" />
+      <sub>Attendance</sub>
     </td>
   </tr>
 </table>
 
-
-
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/a95c47a1-54f2-42b8-bda7-bd84cf06b911" width="280" alt="Mobile App View" />
+  <img src="https://github.com/user-attachments/assets/8d867f4d-f781-492b-882a-1be5160b9472" width="60%" />
+  <br/><sub>System Architecture</sub>
 </p>
 
+## Core Features
 
-
-<details>
-  <summary><b>Click to expand full system screenshots (Gallery)</b></summary>
-  <br/>
-  
-  <table width="100%">
-    <tr>
-      <td><img src="https://github.com/user-attachments/assets/326cc6b9-8a6f-4de6-9ca5-7338d7a406f4" width="100%" alt="Step 3" /></td>
-      <td><img src="https://github.com/user-attachments/assets/e3576983-89c2-4663-88e0-08e087730845" width="100%" alt="Step 4" /></td>
-    </tr>
-    <tr>
-      <td><img src="https://github.com/user-attachments/assets/db96188d-6117-481a-b08b-37ad8c6b9e01" width="100%" alt="Step 5" /></td>
-      <td><img src="https://github.com/user-attachments/assets/06da003b-8e2b-45b9-be45-948d232baa53" width="100%" alt="Step 6" /></td>
-    </tr>
-    <tr>
-      <td><img src="https://github.com/user-attachments/assets/9e913daf-531e-47a0-83e1-c18c1d1f161c" width="100%" alt="Step 7" /></td>
-      <td><img src="https://github.com/user-attachments/assets/ed660d0e-9a87-4465-9970-117c7156e364" width="100%" alt="Step 8" /></td>
-    </tr>
-  </table>
-  
-  <p align="center">
-    <img src="https://github.com/user-attachments/assets/8d867f4d-f781-492b-882a-1be5160b9472" width="80%" alt="Step 9" />
-  </p>
-</details>
 
 - **Intelligent QA-Pairing**: Automatically extracts questions from uploaded PDFs/images and maps handwritten/typed student answers precisely to the corresponding sub-questions.
 - **AI-Driven Grading Engine**: Evaluates student answers using RAG, comparing them against generated rubrics and teacher reference materials (PPTs, PDFs) to provide accurate, constructive feedback and scores.
